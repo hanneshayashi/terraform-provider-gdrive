@@ -15,7 +15,7 @@ Well, if your really want to...\
 Copy the compiled binary to\
 `~/.terraform.d/plugins/github.com/hanneshayashi/gdrive/0.1.0/linux_amd64`\
 or\
-`%APPDATA%\terraform.d\plugins\github.com\hanneshayashi/gdrive/0.1.0/windows_amd64` (probably, haven't actually tested it under Windows)
+`%APPDATA%\terraform.d\plugins\github.com\hanneshayashi\gdrive\0.1.0\windows_amd64` (probably, haven't actually tested it under Windows)
 
 Also, you need a GCP Service Account with Domain Wide Delegation set up with the Google Drive scope.\
 This Provider uses [GSM](https://github.com/hanneshayashi/gsm)'s auth and drive packages, because I was lazy and they work pretty well.\
@@ -23,5 +23,5 @@ You can take a look a the GSM [Setup Guide](https://gsm.hayashi-ke.online/setup)
 TL;DR:
 1. Create GCP Project
 2. Enable Drive API
-3. Create Service Account + Key and enable DWD (you will )
+3. Create Service Account + Key and enable DWD
 4. Enter the Client ID of the Service Account Key file with the Drive scope (https://www.googleapis.com/auth/drive) in your Admin Console
