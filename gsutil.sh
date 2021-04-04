@@ -13,5 +13,5 @@ done
 gsutil -m cp tmp/* gs://${BUCKET}/${APP_NAME}/
 
 for i in ${!VERSIONS[@]}; do
-    gsutil setmeta -h \"Content-Disposition:filename=${ARCHIVE_NAME}_${VERSIONS[$i]}.tar.gz\" gs://${BUCKET}/${APP_NAME}/${ARCHIVE_NAME}_${VERSIONS[$i]}.tar.gz
+    gsutil setmeta -h "Content-Disposition:filename=${ARCHIVE_NAME}_${VERSIONS[$i]}.tar.gz" gs://${BUCKET}/${APP_NAME}/${ARCHIVE_NAME}_${VERSIONS[$i]}.tar.gz
 done
