@@ -1,4 +1,5 @@
 /*
+Package provider implements the Terraform provider
 Copyright © 2021 Hannes Hayashi
 
 This program is free software: you can redistribute it and/or modify
@@ -14,16 +15,17 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
-package main
+package provider
 
-import (
-	"github.com/hanneshayashi/terraform-provider-gdrive/provider"
-
-	"github.com/hashicorp/terraform/plugin"
-)
-
-func main() {
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: provider.Provider,
-	})
+func contains(s string, slice []string) bool {
+	for i := range slice {
+		if s == slice[i] {
+			return true
+		}
+	}
+	return false
 }
+
+// func noDiff(_, _, _ string, _ *schema.ResourceData) bool {
+// 	return true
+// }
