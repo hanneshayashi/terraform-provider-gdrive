@@ -18,10 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
-	"time"
-
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -46,7 +44,7 @@ func resourceDrive() *schema.Resource {
 		Delete: resourceDeleteDrive,
 		Exists: resourceExistsDrive,
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
@@ -61,7 +59,6 @@ func resourceCreateDrive(d *schema.ResourceData, _ interface{}) error {
 		return err
 	}
 	d.SetId(r.Id)
-	time.Sleep(time.Second * 10)
 	err = resourceReadDrive(d, nil)
 	if err != nil {
 		return err

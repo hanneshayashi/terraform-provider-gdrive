@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -85,7 +85,7 @@ func resourcePermission() *schema.Resource {
 		Delete: resourceDeletePermission,
 		Exists: resourceExistsPermission,
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }

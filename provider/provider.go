@@ -23,12 +23,11 @@ import (
 
 	"github.com/hanneshayashi/gsm/gsmauth"
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/drive/v3"
 )
 
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"service_account_key": {
