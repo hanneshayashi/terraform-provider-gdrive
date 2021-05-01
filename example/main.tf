@@ -15,6 +15,13 @@ provider "gdrive" {
 
 resource "gdrive_drive" "example_drive" {
   name = "terraform-1"
+
+  restrictions {
+    admin_managed_restrictions      = true
+    drive_members_only              = true
+    copy_requires_writer_permission = true
+    domain_users_only               = true
+  }
 }
 
 resource "gdrive_file" "folder_1" {
