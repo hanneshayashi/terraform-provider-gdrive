@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/fatih/color v1.10.0 // indirect
-	github.com/hanneshayashi/gsm v0.2.5
+	github.com/hanneshayashi/gsm v0.2.6
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-hclog v0.16.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect

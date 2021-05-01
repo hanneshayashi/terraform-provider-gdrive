@@ -54,7 +54,7 @@ func resourceDrive() *schema.Resource {
 // }
 
 func resourceCreateDrive(d *schema.ResourceData, _ interface{}) error {
-	r, err := gsmdrive.CreateDrive(&drive.Drive{Name: d.Get("name").(string)}, "")
+	r, err := gsmdrive.CreateDrive(&drive.Drive{Name: d.Get("name").(string)}, "", true)
 	if err != nil {
 		return err
 	}
