@@ -18,8 +18,7 @@ package main
 
 import (
 	"github.com/hanneshayashi/terraform-provider-gdrive/provider"
-
-	"github.com/hashicorp/terraform/plugin"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )
 
 func main() {

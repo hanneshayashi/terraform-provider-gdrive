@@ -23,28 +23,42 @@ import (
 
 	"github.com/hanneshayashi/gsm/gsmauth"
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hanneshayashi/gsm/gsmhelpers"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/drive/v3"
 )
 
-func Provider() terraform.ResourceProvider {
+// Provider returns the Terraform provider
+func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"service_account_key": {
-				Type:        schema.TypeString,
-				Optional:    true,
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: `The path to a key file for your Service Account.
+Leave empty if you want to use Application Default Credentials (ADC).`,
 				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT_KEY", ""),
 			},
 			"service_account": {
-				Type:        schema.TypeString,
-				Optional:    true,
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: `The email address of the Service Account you want to impersonate with Application Default Credentials (ADC).
+Leave empty if you want to use the Service Account of a GCE instance directly.`,
 				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT", ""),
 			},
 			"subject": {
 				Type:        schema.TypeString,
 				Required:    true,
+				Description: `The email address of the Workspace user you want to impersonate with Domain Wide Delegation (DWD)`,
 				DefaultFunc: schema.EnvDefaultFunc("SUBJECT", ""),
+			},
+			"retry_on": {
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: `A list of HTTP error codes you want the provider to retry on (e.g. 404).`,
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
@@ -52,14 +66,19 @@ func Provider() terraform.ResourceProvider {
 			"gdrive_permission": resourcePermission(),
 			"gdrive_file":       resourceFile(),
 		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"gdrive_drive":      dataSourceDrive(),
+			"gdrive_permission": dataSourcePermission(),
+			"gdrive_file":       dataSourceFile(),
+		},
 		ConfigureFunc: providerConfigure,
 	}
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	service_account_key := d.Get("service_account_key").(string)
-	if service_account_key != "" {
-		f, err := os.Open(service_account_key)
+	serviceAccountKey := d.Get("service_account_key").(string)
+	if serviceAccountKey != "" {
+		f, err := os.Open(serviceAccountKey)
 		if err != nil {
 			return nil, err
 		}
@@ -74,5 +93,12 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		client := gsmauth.GetClientADC(d.Get("subject").(string), serviceAccount, drive.DriveScope)
 		gsmdrive.SetClient(client)
 	}
+	retryOn := d.Get("retry_on").([]interface{})
+	if len(retryOn) > 0 {
+		for i := range retryOn {
+			gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i].(int))
+		}
+	}
+
 	return nil, nil
 }

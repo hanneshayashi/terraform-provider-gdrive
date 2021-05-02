@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -61,7 +61,7 @@ func resourceFile() *schema.Resource {
 		Delete: resourceDeleteFile,
 		Exists: resourceExistsFile,
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
