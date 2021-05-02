@@ -32,7 +32,7 @@ func resourcePermission() *schema.Resource {
 			"file_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "ID of the file or Shared Permission",
+				Description: "ID of the file or Shared Drive",
 				ForceNew:    true,
 			},
 			"email_message": {
