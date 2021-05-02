@@ -1,6 +1,8 @@
 # terraform-provider-gdrive
 A Terraform Provider for Google Drive
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/hanneshayashi/terraform-provider-gdrive)](https://goreportcard.com/report/github.com/hanneshayashi/terraform-provider-gdrive)
+
 ## Features
 * Manage Shared Drives
 * Manage Google Drive files (including file uploads)
