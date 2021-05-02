@@ -51,6 +51,11 @@ func Provider() *schema.Provider {
 			"gdrive_permission": resourcePermission(),
 			"gdrive_file":       resourceFile(),
 		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"gdrive_drive":      dataSourceDrive(),
+			"gdrive_permission": dataSourcePermission(),
+			"gdrive_file":       dataSourceFile(),
+		},
 		ConfigureFunc: providerConfigure,
 	}
 }
