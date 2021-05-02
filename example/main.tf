@@ -11,17 +11,18 @@ provider "gdrive" {
   service_account_key = "/path/to/sa.json"  # This is the Key file for your Service Account
   # service_account     = "email@my-project.iam.gserviceaccount.com"  # This is the email address of your Service Account. You can leave this empty on GCE, if you want to use the instance's account
   subject             = "admin@example.com" # This is the user you want to impersonate with Domain Wide Delegation
+  # retry_on = [ 404 ] # Retry on specific HTTP error codes such as 404
 }
 
 resource "gdrive_drive" "example_drive" {
   name = "terraform-1"
 
-  restrictions {
-    admin_managed_restrictions      = true
-    drive_members_only              = true
-    copy_requires_writer_permission = true
-    domain_users_only               = true
-  }
+  # restrictions {
+  #   admin_managed_restrictions      = true
+  #   drive_members_only              = true
+  #   copy_requires_writer_permission = true
+  #   domain_users_only               = true
+  # }
 }
 
 resource "gdrive_file" "folder_1" {
