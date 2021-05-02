@@ -80,48 +80,8 @@ This restriction may be overridden by other sharing policies controlled outside 
 	}
 }
 
-// func validateName(v interface{}, k string) (ws []string, es []error) {
-// 	return nil, nil
-// }
-
 func dataToDrive(d *schema.ResourceData, update bool) (*drive.Drive, error) {
-	// var err error
 	newDrive := &drive.Drive{}
-	// if d.HasChange("backgroundImageFile") {
-	// 	backgroundImageFile := d.Get("backgroundImageFile").(string)
-	// 	if backgroundImageFile != "" {
-	// 		m := gsmhelpers.FlagToMap(backgroundImageFile)
-	// 		newDrive.BackgroundImageFile = &drive.DriveBackgroundImageFile{
-	// 			Id: m["id"],
-	// 		}
-	// 		newDrive.BackgroundImageFile.Width, err = strconv.ParseFloat(m["width"], 64)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 		newDrive.BackgroundImageFile.XCoordinate, err = strconv.ParseFloat(m["xCoordinate"], 64)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 		newDrive.BackgroundImageFile.YCoordinate, err = strconv.ParseFloat(m["yCoordinate"], 64)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 	} else {
-	// 		newDrive.ForceSendFields = append(newDrive.ForceSendFields, "BackgroundImageFile")
-	// 	}
-	// }
-	// if d.Get("themeId").IsSet() {
-	// 	newDrive.ThemeId = d.Get("themeId").(string)
-	// 	if newDrive.ThemeId == "" {
-	// 		newDrive.ForceSendFields = append(newDrive.ForceSendFields, "ThemeId")
-	// 	}
-	// }
-	// if d.Get("colorRgb").IsSet() {
-	// 	newDrive.ColorRgb = d.Get("colorRgb").(string)
-	// 	if newDrive.ColorRgb == "" {
-	// 		newDrive.ForceSendFields = append(newDrive.ForceSendFields, "ColorRgb")
-	// 	}
-	// }
 	if d.HasChange("name") {
 		newDrive.Name = d.Get("name").(string)
 		if newDrive.Name == "" {
