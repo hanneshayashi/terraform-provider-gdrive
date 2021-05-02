@@ -3,17 +3,26 @@ A Terraform Provider for Google Drive
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/hanneshayashi/terraform-provider-gdrive)](https://goreportcard.com/report/github.com/hanneshayashi/terraform-provider-gdrive)
 
+[View on Terraform Registry](https://registry.terraform.io/providers/hanneshayashi/gdrive/latest).
+
 ## Features
 * Manage Shared Drives
 * Manage Google Drive files (including file uploads)
 * Manage Drive permissions
 
 ## Installation
-1. Download the latest [release](https://github.com/hanneshayashi/terraform-provider-gdrive/releases).
-2. Copy the binary to\
-`~/.terraform.d/plugins/github.com/hanneshayashi/gdrive/0.2.0/linux_amd64/terraform-provider-gdrive_v0.2.0`
+To install this provider, copy and paste this code into your Terraform configuration. Then, run terraform init.
 
-**or the equivalent of your OS** (I haven't actually tested the provider with anything other than Linux)
+```terraform
+terraform {
+  required_providers {
+    gdrive = {
+      source = "hanneshayashi/gdrive"
+      version = "0.3.0"
+    }
+  }
+}
+```
 
 ## Setup
 First, you need a GCP Service Account with Domain Wide Delegation set up with the Google Drive scope.\
@@ -52,6 +61,3 @@ provider "gdrive" {
   subject             = "admin@example.com"  # This is the user you want to impersonate with Domain Wide Delegation
 }
 ```
-
-## To Do
-+ Port less used API features from GSM

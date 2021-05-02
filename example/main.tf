@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     gdrive = {
-      source  = "github.com/hanneshayashi/gdrive"
+      source  = "hanneshayashi/gdrive"
       version = "0.3.0"
     }
   }
