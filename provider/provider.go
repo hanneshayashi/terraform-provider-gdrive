@@ -28,6 +28,7 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
+// Provider returns the Terraform provider
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
@@ -75,9 +76,9 @@ Leave empty if you want to use the Service Account of a GCE instance directly.`,
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	service_account_key := d.Get("service_account_key").(string)
-	if service_account_key != "" {
-		f, err := os.Open(service_account_key)
+	serviceAccountKey := d.Get("service_account_key").(string)
+	if serviceAccountKey != "" {
+		f, err := os.Open(serviceAccountKey)
 		if err != nil {
 			return nil, err
 		}
