@@ -46,6 +46,31 @@ func dataSourceFile() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"download_path": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Use this to specify a local file path to download a (non-Google) file",
+			},
+			"export_path": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				Description:   "Use this to specify a local file path to export a Google file (sheet, doc, etc.)",
+				ConflictsWith: []string{"download_path"},
+				RequiredWith:  []string{"export_mime_type"},
+			},
+			"export_mime_type": {
+				Type:          schema.TypeString,
+				RequiredWith:  []string{"export_path"},
+				ConflictsWith: []string{"download_path"},
+				Optional:      true,
+				Description: `Specify the target MIME type for the export.
+For a list of supported MIME types see https://developers.google.com/drive/api/v3/ref-export-formats`,
+			},
+			"local_file_path": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The path where the local copy or export of the file was created",
+			},
 		},
 		Read: dataSourceReadFile,
 	}
@@ -62,5 +87,21 @@ func dataSourceReadFile(d *schema.ResourceData, _ interface{}) error {
 	d.Set("mime_type", r.MimeType)
 	d.Set("drive_id", r.DriveId)
 	d.Set("name", r.Name)
+	downloadPath := d.Get("download_path").(string)
+	if downloadPath != "" {
+		filePath, err := gsmdrive.DownloadFile(fileID, downloadPath, false)
+		if err != nil {
+			return err
+		}
+		d.Set("local_file_path", filePath)
+	}
+	exportPath := d.Get("export_path").(string)
+	if exportPath != "" {
+		filePath, err := gsmdrive.ExportFile(fileID, d.Get("export_mime_type").(string), exportPath)
+		if err != nil {
+			return err
+		}
+		d.Set("local_file_path", filePath)
+	}
 	return nil
 }
