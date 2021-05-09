@@ -9,10 +9,12 @@ description: |-
 # gdrive Provider
 
 ## Setup
-First, you need a GCP Service Account with Domain Wide Delegation set up with the Google Drive scope.\
+First, you need a GCP Service Account with Domain Wide Delegation set up with the Google Drive scope.
+
 This provider uses [GSM](https://github.com/hanneshayashi/gsm)'s auth and drive packages.
-You can take a look at the GSM [Setup Guide](https://gsm.hayashi-ke.online/setup), if you need help.\
-TL;DR:
+You can take a look at the GSM [Setup Guide](https://gsm.hayashi-ke.online/setup), if you need help.
+
+The basic steps are:
 1. Create GCP Project
 2. Enable Drive API
 3. Create Service Account + DWD
