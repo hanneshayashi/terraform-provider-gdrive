@@ -1,5 +1,4 @@
 /*
-Package provider implements the Terraform provider
 Copyright © 2021 Hannes Hayashi
 
 This program is free software: you can redistribute it and/or modify
@@ -15,6 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
+
 package provider
 
 func contains(s string, slice []string) bool {
