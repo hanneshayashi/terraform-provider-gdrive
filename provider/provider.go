@@ -36,7 +36,7 @@ func Provider() *schema.Provider {
 			"service_account_key": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Description: `The path to a key file for your Service Account.
+				Description: `The path to or the content of a key file for your Service Account.
 Leave empty if you want to use Application Default Credentials (ADC).`,
 				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT_KEY", ""),
 			},
@@ -79,13 +79,12 @@ Leave empty if you want to use the Service Account of a GCE instance directly.`,
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	serviceAccountKey := d.Get("service_account_key").(string)
 	if serviceAccountKey != "" {
-		f, err := os.Open(serviceAccountKey)
-		if err != nil {
-			return nil, err
-		}
-		saKey, err := io.ReadAll(f)
-		if err != nil {
-			return nil, err
+		saKey := []byte(serviceAccountKey)
+		if f, err := os.Open(serviceAccountKey); err == nil {
+			saKey, err = io.ReadAll(f)
+			if err != nil {
+				return nil, err
+			}
 		}
 		client := gsmauth.GetClient(d.Get("subject").(string), saKey, drive.DriveScope)
 		gsmdrive.SetClient(client)
