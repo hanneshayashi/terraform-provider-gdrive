@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"encoding/json"
 	"io"
 	"os"
 
@@ -79,8 +80,15 @@ Leave empty if you want to use the Service Account of a GCE instance directly.`,
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	serviceAccountKey := d.Get("service_account_key").(string)
 	if serviceAccountKey != "" {
-		saKey := []byte(serviceAccountKey)
-		if f, err := os.Open(serviceAccountKey); err == nil {
+		var saKey []byte
+		s := []byte(serviceAccountKey)
+		if json.Valid(s) {
+			saKey = s
+		} else {
+			f, err := os.Open(serviceAccountKey)
+			if err != nil {
+				return nil, err
+			}
 			saKey, err = io.ReadAll(f)
 			if err != nil {
 				return nil, err
