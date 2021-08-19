@@ -2,13 +2,13 @@ terraform {
   required_providers {
     gdrive = {
       source  = "hanneshayashi/gdrive"
-      version = "0.4.0"
+      version = ">= 0.5.0"
     }
   }
 }
 
 provider "gdrive" {
-  service_account_key = "/path/to/sa.json"  # This is the Key file for your Service Account
+  service_account_key = "/path/to/sa.json"  # This is the path to your Service Account Key file or its content in JSON format
   # service_account     = "email@my-project.iam.gserviceaccount.com"  # This is the email address of your Service Account. You can leave this empty on GCE, if you want to use the instance's account
   subject             = "admin@example.com" # This is the user you want to impersonate with Domain Wide Delegation
   # retry_on = [ 404 ] # Retry on specific HTTP error codes such as 404

@@ -24,7 +24,7 @@ You can authenticate in one of two ways:
 1. Create a Service Account Key and configure the provider like so:
 ```terraform
 provider "gdrive" {
-  service_account_key = "/path/to/sa.json"  # This is the Key file for your Service Account
+  service_account_key = "/path/to/sa.json"  # This is the path to your Service Account Key file or its content in JSON format
   subject             = "admin@example.com" # This is the user you want to impersonate with Domain Wide Delegation
 }
 ```
