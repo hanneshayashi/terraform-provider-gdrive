@@ -56,6 +56,6 @@ provider "gdrive" {
 - **retry_on** (List of Number) A list of HTTP error codes you want the provider to retry on (e.g. 404).
 - **service_account** (String) The email address of the Service Account you want to impersonate with Application Default Credentials (ADC).
 Leave empty if you want to use the Service Account of a GCE instance directly.
-- **service_account_key** (String) The path to a key file for your Service Account.
+- **service_account_key** (String) The path to or the content of a key file for your Service Account.
 Leave empty if you want to use Application Default Credentials (ADC).
 - **subject** (String) The email address of the Workspace user you want to impersonate with Domain Wide Delegation (DWD)
