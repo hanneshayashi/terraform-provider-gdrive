@@ -8,7 +8,7 @@ A Terraform Provider for Google Drive
 ## Features
 * Manage Shared Drives
 * Manage Google Drive files (including file uploads)
-* Manage Drive permissions
+* Manage Google Drive permissions
 
 ## Installation
 To install this provider, copy and paste this code into your Terraform configuration. Then, run terraform init.
@@ -18,7 +18,7 @@ terraform {
   required_providers {
     gdrive = {
       source = "hanneshayashi/gdrive"
-      version = ">= 0.5.0"
+      version = ">= 0.6.0"
     }
   }
 }
