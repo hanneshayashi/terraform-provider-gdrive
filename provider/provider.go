@@ -73,6 +73,7 @@ Leave empty if you want to use the Service Account of a GCE instance directly.`,
 			"gdrive_drive":      dataSourceDrive(),
 			"gdrive_permission": dataSourcePermission(),
 			"gdrive_file":       dataSourceFile(),
+			"gdrive_files":      dataSourceFiles(),
 		},
 		ConfigureFunc: providerConfigure,
 	}

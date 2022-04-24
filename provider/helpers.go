@@ -17,6 +17,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package provider
 
+import "google.golang.org/api/drive/v3"
+
 func contains(s string, slice []string) bool {
 	for i := range slice {
 		if s == slice[i] {
@@ -24,6 +26,13 @@ func contains(s string, slice []string) bool {
 		}
 	}
 	return false
+}
+
+func getParent(file *drive.File) (parent string) {
+	if file.Parents != nil {
+		parent = file.Parents[0]
+	}
+	return
 }
 
 // func noDiff(_, _, _ string, _ *schema.ResourceData) bool {
