@@ -2,7 +2,7 @@ terraform {
   required_providers {
     gdrive = {
       source  = "hanneshayashi/gdrive"
-      version = ">= 0.6.0"
+      version = "~> 0.7"
     }
   }
 }
