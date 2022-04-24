@@ -76,7 +76,7 @@ For a list of supported MIME types see https://developers.google.com/drive/api/v
 	}
 }
 
-func dataSourceReadFile(d *schema.ResourceData, _ interface{}) error {
+func dataSourceReadFile(d *schema.ResourceData, _ any) error {
 	fileID := d.Get("file_id").(string)
 	r, err := gsmdrive.GetFile(fileID, "parents,mimeType,driveId,name", "")
 	if err != nil {

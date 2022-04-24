@@ -68,7 +68,7 @@ func dataSourceDrive() *schema.Resource {
 	}
 }
 
-func dataSourceReadDrive(d *schema.ResourceData, _ interface{}) error {
+func dataSourceReadDrive(d *schema.ResourceData, _ any) error {
 	driveID := d.Get("drive_id").(string)
 	r, err := gsmdrive.GetDrive(driveID, "*", d.Get("use_domain_admin_access").(bool))
 	if err != nil {

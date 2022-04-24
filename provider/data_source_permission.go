@@ -63,7 +63,7 @@ func dataSourcePermission() *schema.Resource {
 	}
 }
 
-func dataSourceReadPermission(d *schema.ResourceData, _ interface{}) error {
+func dataSourceReadPermission(d *schema.ResourceData, _ any) error {
 	fileID := d.Get("file_id").(string)
 	permissionID := d.Get("permission_id").(string)
 	r, err := gsmdrive.GetPermission(fileID, permissionID, "emailAddress,domain,role,type", d.Get("use_domain_admin_access").(bool))

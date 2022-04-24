@@ -91,7 +91,7 @@ func dataToDrive(d *schema.ResourceData, update bool) (*drive.Drive, error) {
 	if update {
 		if d.HasChange("restrictions") {
 			newDrive.Restrictions = &drive.DriveRestrictions{}
-			restrictions := d.Get("restrictions").([]interface{})
+			restrictions := d.Get("restrictions").([]any)
 			if len(restrictions) > 0 {
 				if d.HasChange("restrictions.0.admin_managed_restrictions") {
 					newDrive.Restrictions.AdminManagedRestrictions = d.Get("restrictions.0.admin_managed_restrictions").(bool)
@@ -125,7 +125,7 @@ func dataToDrive(d *schema.ResourceData, update bool) (*drive.Drive, error) {
 	return newDrive, nil
 }
 
-func resourceCreateDrive(d *schema.ResourceData, _ interface{}) error {
+func resourceCreateDrive(d *schema.ResourceData, _ any) error {
 	var driveResult *drive.Drive
 	var err error
 	driveRequest, err := dataToDrive(d, false)
@@ -151,7 +151,7 @@ func resourceCreateDrive(d *schema.ResourceData, _ interface{}) error {
 	return nil
 }
 
-func resourceReadDrive(d *schema.ResourceData, _ interface{}) error {
+func resourceReadDrive(d *schema.ResourceData, _ any) error {
 	r, err := gsmdrive.GetDrive(d.Id(), "*", d.Get("use_domain_admin_access").(bool))
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func resourceReadDrive(d *schema.ResourceData, _ interface{}) error {
 	return nil
 }
 
-func resourceUpdateDrive(d *schema.ResourceData, _ interface{}) error {
+func resourceUpdateDrive(d *schema.ResourceData, _ any) error {
 	driveRequest, err := dataToDrive(d, true)
 	if err != nil {
 		return err
@@ -186,12 +186,12 @@ func resourceUpdateDrive(d *schema.ResourceData, _ interface{}) error {
 	return nil
 }
 
-func resourceDeleteDrive(d *schema.ResourceData, _ interface{}) error {
+func resourceDeleteDrive(d *schema.ResourceData, _ any) error {
 	_, err := gsmdrive.DeleteDrive(d.Id())
 	return err
 }
 
-func resourceExistsDrive(d *schema.ResourceData, _ interface{}) (bool, error) {
+func resourceExistsDrive(d *schema.ResourceData, _ any) (bool, error) {
 	_, err := gsmdrive.GetDrive(d.Id(), "id", d.Get("use_domain_admin_access").(bool))
 	if err != nil {
 		return false, err

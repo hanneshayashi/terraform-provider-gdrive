@@ -78,7 +78,7 @@ Leave empty if you want to use the Service Account of a GCE instance directly.`,
 	}
 }
 
-func providerConfigure(d *schema.ResourceData) (interface{}, error) {
+func providerConfigure(d *schema.ResourceData) (any, error) {
 	serviceAccountKey := d.Get("service_account_key").(string)
 	if serviceAccountKey != "" {
 		var saKey []byte
@@ -102,7 +102,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		client := gsmauth.GetClientADC(d.Get("subject").(string), serviceAccount, drive.DriveScope)
 		gsmdrive.SetClient(client)
 	}
-	retryOn := d.Get("retry_on").([]interface{})
+	retryOn := d.Get("retry_on").([]any)
 	if len(retryOn) > 0 {
 		for i := range retryOn {
 			gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i].(int))

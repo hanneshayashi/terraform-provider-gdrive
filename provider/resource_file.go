@@ -66,7 +66,7 @@ func resourceFile() *schema.Resource {
 	}
 }
 
-func resourceCreateFile(d *schema.ResourceData, _ interface{}) error {
+func resourceCreateFile(d *schema.ResourceData, _ any) error {
 	var err error
 	f := &drive.File{
 		MimeType: d.Get("mime_type").(string),
@@ -94,7 +94,7 @@ func resourceCreateFile(d *schema.ResourceData, _ interface{}) error {
 	return nil
 }
 
-func resourceReadFile(d *schema.ResourceData, _ interface{}) error {
+func resourceReadFile(d *schema.ResourceData, _ any) error {
 	r, err := gsmdrive.GetFile(d.Id(), "parents,mimeType,driveId,name", "")
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ func resourceReadFile(d *schema.ResourceData, _ interface{}) error {
 	return nil
 }
 
-func resourceUpdateFile(d *schema.ResourceData, _ interface{}) error {
+func resourceUpdateFile(d *schema.ResourceData, _ any) error {
 	var addParents string
 	var removeParents string
 	f := &drive.File{
@@ -130,12 +130,12 @@ func resourceUpdateFile(d *schema.ResourceData, _ interface{}) error {
 	return nil
 }
 
-func resourceDeleteFile(d *schema.ResourceData, _ interface{}) error {
+func resourceDeleteFile(d *schema.ResourceData, _ any) error {
 	_, err := gsmdrive.DeleteFile(d.Id())
 	return err
 }
 
-func resourceExistsFile(d *schema.ResourceData, _ interface{}) (bool, error) {
+func resourceExistsFile(d *schema.ResourceData, _ any) (bool, error) {
 	_, err := gsmdrive.GetFile(d.Id(), "", "")
 	if err != nil {
 		return false, err
