@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"time"
 
 	"github.com/hanneshayashi/gsm/gsmauth"
 	"github.com/hanneshayashi/gsm/gsmdrive"
@@ -107,6 +108,6 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 			gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i].(int))
 		}
 	}
-
+	gsmhelpers.SetStandardRetrier(time.Duration(500 * time.Millisecond))
 	return nil, nil
 }
