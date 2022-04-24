@@ -83,7 +83,7 @@ func dataSourceReadFile(d *schema.ResourceData, _ any) error {
 		return err
 	}
 	d.SetId(fileID)
-	d.Set("parent", r.Parents[0])
+	d.Set("parent", getParent(r))
 	d.Set("mime_type", r.MimeType)
 	d.Set("drive_id", r.DriveId)
 	d.Set("name", r.Name)
