@@ -78,12 +78,7 @@ func dataSourceReadDrive(d *schema.ResourceData, _ any) error {
 	d.Set("name", r.Name)
 	restrictions := make([]map[string]bool, 1)
 	if r.Restrictions != nil {
-		restrictions[0] = map[string]bool{
-			"admin_managed_restrictions":      r.Restrictions.AdminManagedRestrictions,
-			"copy_requires_writer_permission": r.Restrictions.CopyRequiresWriterPermission,
-			"domain_users_only":               r.Restrictions.DomainUsersOnly,
-			"drive_members_only":              r.Restrictions.DriveMembersOnly,
-		}
+		restrictions[0] = getRestrictions(r)
 	}
 	d.Set("restrictions", restrictions)
 	return nil
