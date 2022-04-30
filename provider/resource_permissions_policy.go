@@ -257,7 +257,7 @@ func resourceDeletePermissionsPolicy(d *schema.ResourceData, _ any) error {
 	permissions := d.Get("permissions").(*schema.Set).List()
 	for p := range permissions {
 		permission := permissions[p].(map[string]any)
-		if permission["role"].(string) != "owner" {
+		if permission["role"].(string) != "owner" && permission["role"].(string) != "organizer" {
 			_, err := gsmdrive.DeletePermission(fileID, permission["permission_id"].(string), useDomAccess)
 			if err != nil {
 				return err
