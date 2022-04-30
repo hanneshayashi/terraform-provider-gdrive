@@ -17,7 +17,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package provider
 
-import "google.golang.org/api/drive/v3"
+import (
+	"fmt"
+
+	"google.golang.org/api/drive/v3"
+)
 
 func contains(s string, slice []string) bool {
 	for i := range slice {
@@ -26,6 +30,22 @@ func contains(s string, slice []string) bool {
 		}
 	}
 	return false
+}
+
+func getRestrictions(d *drive.Drive) (restrictions map[string]bool) {
+	if d.Restrictions != nil {
+		restrictions = map[string]bool{
+			"admin_managed_restrictions":      d.Restrictions.AdminManagedRestrictions,
+			"copy_requires_writer_permission": d.Restrictions.CopyRequiresWriterPermission,
+			"domain_users_only":               d.Restrictions.DomainUsersOnly,
+			"drive_members_only":              d.Restrictions.DriveMembersOnly,
+		}
+	}
+	return
+}
+
+func combineId(a, b string) string {
+	return fmt.Sprintf("%s/%s", a, b)
 }
 
 func getParent(file *drive.File) (parent string) {
