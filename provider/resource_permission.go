@@ -112,18 +112,18 @@ func validatePermissionType(v any, _ string) (ws []string, es []error) {
 }
 
 func resourceCreatePermission(d *schema.ResourceData, _ any) error {
-	fileId := d.Get("file_id").(string)
+	fileID := d.Get("file_id").(string)
 	p := &drive.Permission{
 		Domain:       d.Get("domain").(string),
 		EmailAddress: d.Get("email_address").(string),
 		Role:         d.Get("role").(string),
 		Type:         d.Get("type").(string),
 	}
-	r, err := gsmdrive.CreatePermission(fileId, d.Get("email_message").(string), "id", d.Get("use_domain_admin_access").(bool), d.Get("send_notification_email").(bool), false, false, p)
+	r, err := gsmdrive.CreatePermission(fileID, d.Get("email_message").(string), "id", d.Get("use_domain_admin_access").(bool), d.Get("send_notification_email").(bool), false, false, p)
 	if err != nil {
 		return err
 	}
-	d.SetId(fmt.Sprintf("%s/%s", fileId, r.Id))
+	d.SetId(fmt.Sprintf("%s/%s", fileID, r.Id))
 	err = resourceReadPermission(d, nil)
 	if err != nil {
 		return err

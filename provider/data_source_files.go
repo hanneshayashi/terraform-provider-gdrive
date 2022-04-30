@@ -94,8 +94,8 @@ When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.`,
 func dataSourceReadFiles(d *schema.ResourceData, _ any) error {
 	query := d.Get("query").(string)
 	files := make([]map[string]any, 0)
-	results, err := gsmdrive.ListFiles(query, d.Get("drive_id").(string), d.Get("corpora").(string), "", "", d.Get("spaces").(string), "files(id,name,parents,mimeType,driveId),nextPageToken", d.Get("include_items_from_all_drives").(bool), 1)
-	for f := range results {
+	r, err := gsmdrive.ListFiles(query, d.Get("drive_id").(string), d.Get("corpora").(string), "", "", d.Get("spaces").(string), "files(id,name,parents,mimeType,driveId),nextPageToken", d.Get("include_items_from_all_drives").(bool), 1)
+	for f := range r {
 		files = append(files, map[string]any{
 			"file_id":   f.Id,
 			"name":      f.Name,
