@@ -19,7 +19,6 @@ package provider
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -39,13 +38,11 @@ func resourcePermission() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "An optional email message that will be sent when the permission is created",
-				// DiffSuppressFunc: noDiff,
 			},
 			"send_notification_email": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Description: "Wether to send a notfication email",
-				// DiffSuppressFunc: noDiff,
 			},
 			"type": {
 				Type:         schema.TypeString,
@@ -78,6 +75,16 @@ func resourcePermission() *schema.Resource {
 				Optional:    true,
 				Description: "Use domain admin access",
 			},
+			"transfer_ownership": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Whether to transfer ownership to the specified user",
+			},
+			"move_to_new_owners_root": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.",
+			},
 		},
 		Create: resourceCreatePermission,
 		Read:   resourceReadPermission,
@@ -95,20 +102,6 @@ var validPermissionTypes = []string{
 	"group",
 	"domain",
 	"anyone",
-}
-
-func splitCombinedPermissionId(id string) (fileID, permissionID string) {
-	ids := strings.Split(id, "/")
-	return ids[0], ids[1]
-}
-
-func validatePermissionType(v any, _ string) (ws []string, es []error) {
-	value := v.(string)
-	if contains(value, validPermissionTypes) {
-		return nil, nil
-	}
-	es = append(es, fmt.Errorf("%s is not a valid permission type", value))
-	return nil, es
 }
 
 func resourceCreatePermission(d *schema.ResourceData, _ any) error {

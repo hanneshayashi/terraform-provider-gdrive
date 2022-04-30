@@ -19,6 +19,8 @@ package provider
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"google.golang.org/api/drive/v3"
 )
@@ -44,8 +46,28 @@ func getRestrictions(d *drive.Drive) (restrictions map[string]bool) {
 	return
 }
 
+func splitCombinedPermissionId(id string) (fileID, permissionID string) {
+	ids := strings.Split(id, "/")
+	return ids[0], ids[1]
+}
+
 func combineId(a, b string) string {
 	return fmt.Sprintf("%s/%s", a, b)
+}
+
+func permissionToSet(i any) int {
+	m := i.(map[string]any)
+	id, _ := strconv.Atoi(m["permission_id"].(string))
+	return id
+}
+
+func validatePermissionType(v any, _ string) (ws []string, es []error) {
+	value := v.(string)
+	if contains(value, validPermissionTypes) {
+		return nil, nil
+	}
+	es = append(es, fmt.Errorf("%s is not a valid permission type", value))
+	return nil, es
 }
 
 func getParent(file *drive.File) (parent string) {
