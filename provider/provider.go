@@ -31,6 +31,10 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
+func init() {
+	schema.DescriptionKind = schema.StringMarkdown
+}
+
 // Provider returns the Terraform provider
 func Provider() *schema.Provider {
 	return &schema.Provider{
@@ -65,10 +69,10 @@ Leave empty if you want to use the Service Account of a GCE instance directly.`,
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"gdrive_drive":                  resourceDrive(),
-			"gdrive_permission":             resourcePermission(),
-			"gdrive_permissions_policy":     resourcePermissionsPolicy(),
-			"gdrive_file":                   resourceFile(),
+			"gdrive_drive":              resourceDrive(),
+			"gdrive_permission":         resourcePermission(),
+			"gdrive_permissions_policy": resourcePermissionsPolicy(),
+			"gdrive_file":               resourceFile(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"gdrive_drive":       dataSourceDrive(),
