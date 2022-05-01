@@ -25,7 +25,7 @@ terraform {
 ```
 
 ## Setup
-First, you need a GCP Service Account with Domain Wide Delegation set up with the Google Drive scope.
+First, you need a GCP Service Account with [Domain Wide Delegation](https://support.google.com/a/answer/162106) set up with the Google Drive scope.
 
 This provider uses [GSM](https://github.com/hanneshayashi/gsm)'s auth and drive packages.
 You can take a look at the GSM [Setup Guide](https://gsm.hayashi-ke.online/setup), if you need help.
@@ -33,8 +33,10 @@ You can take a look at the GSM [Setup Guide](https://gsm.hayashi-ke.online/setup
 The basic steps are:
 1. Create GCP Project
 2. Enable Drive API
-3. Create Service Account + DWD
-4. Enter the Client ID of the Service Account Key file with the Drive scope (https://www.googleapis.com/auth/drive) in your Admin Console
+3. Create Service Account + Enable Domain Wide Delegation
+    * See [Perform Google Workspace Domain-Wide Delegation of Authority](https://developers.google.com/admin-sdk/directory/v1/guides/delegation)
+    * **You don't need the Service Account Key if you want to use [Application Default Credential](https://cloud.google.com/iam/docs/best-practices-for-using-and-managing-service-accounts#use-attached-service-accounts)
+4. Enter the Client ID of the Service Account with the [Drive scope](https://developers.google.com/identity/protocols/oauth2/scopes#drive) (https://www.googleapis.com/auth/drive) in your Admin Console
 
 You can authenticate in one of two ways:
 1. Create a Service Account Key and configure the provider like so:
@@ -51,15 +53,15 @@ Activate the [IAM Service Account Credentials API](https://console.developers.go
 
    **or**
 
-   b) Use a Google Compute Engine instance
+   b) Use a Google Compute Engine instance or [any service that supports attaching a Service Account in GCP](https://cloud.google.com/iam/docs/impersonating-service-accounts#attaching-new-resource)
 
-In **both** cases, the account needs the *Service Account Token Creator* role for the Service Account you set up for DWD (**even if your GCE instance is using the same account**).
+In **both** cases, the account needs the *[Service Account Token Creator](https://cloud.google.com/iam/docs/service-accounts#token-creator-role)* role for the Service Account you set up for DWD (**even if your GCP service is using the same account**).
 
 You can then configure the provider like so:
 
 ```terraform
 provider "gdrive" {
-  service_account     = "email@my-project.iam.gserviceaccount.com"  # This is the email address of your Service Account. You can leave this empty on GCE, if you want to use the instance's account
-  subject             = "admin@example.com"  # This is the user you want to impersonate with Domain Wide Delegation
+  service_account     = "email@my-project.iam.gserviceaccount.com"  # This is the email address of your Service Account. You can leave this empty on GCP, if you want to use the service's account
+  subject             = "admin@example.com"                         # This is the user you want to impersonate with Domain Wide Delegation
 }
 ```
