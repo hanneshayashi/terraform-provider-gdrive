@@ -1,5 +1,5 @@
 /*
-Copyright © 2021 Hannes Hayashi
+Copyright © 2021-2022 Hannes Hayashi
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ import (
 
 func dataSourceFile() *schema.Resource {
 	return &schema.Resource{
+		Description: "Gets a files metadata and optionally downloads / exports it to the local file system",
 		Schema: map[string]*schema.Schema{
 			"file_id": {
 				Type:        schema.TypeString,
@@ -76,14 +77,14 @@ For a list of supported MIME types see https://developers.google.com/drive/api/v
 	}
 }
 
-func dataSourceReadFile(d *schema.ResourceData, _ interface{}) error {
+func dataSourceReadFile(d *schema.ResourceData, _ any) error {
 	fileID := d.Get("file_id").(string)
 	r, err := gsmdrive.GetFile(fileID, "parents,mimeType,driveId,name", "")
 	if err != nil {
 		return err
 	}
 	d.SetId(fileID)
-	d.Set("parent", r.Parents[0])
+	d.Set("parent", getParent(r))
 	d.Set("mime_type", r.MimeType)
 	d.Set("drive_id", r.DriveId)
 	d.Set("name", r.Name)

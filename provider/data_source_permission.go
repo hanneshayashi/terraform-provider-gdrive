@@ -1,5 +1,5 @@
 /*
-Copyright © 2021 Hannes Hayashi
+Copyright © 2021-2022 Hannes Hayashi
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,14 +18,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
-	"fmt"
-
 	"github.com/hanneshayashi/gsm/gsmdrive"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func dataSourcePermission() *schema.Resource {
 	return &schema.Resource{
+		Description: "Returns the metadata of a permission on a file or Shared Drive",
 		Schema: map[string]*schema.Schema{
 			"permission_id": {
 				Type:        schema.TypeString,
@@ -63,14 +62,14 @@ func dataSourcePermission() *schema.Resource {
 	}
 }
 
-func dataSourceReadPermission(d *schema.ResourceData, _ interface{}) error {
+func dataSourceReadPermission(d *schema.ResourceData, _ any) error {
 	fileID := d.Get("file_id").(string)
 	permissionID := d.Get("permission_id").(string)
 	r, err := gsmdrive.GetPermission(fileID, permissionID, "emailAddress,domain,role,type", d.Get("use_domain_admin_access").(bool))
 	if err != nil {
 		return err
 	}
-	d.SetId(fmt.Sprintf("%s/%s", fileID, r.Id))
+	d.SetId(combineId(fileID, r.Id))
 	d.Set("email_address", r.EmailAddress)
 	d.Set("domain", r.Domain)
 	d.Set("role", r.Role)

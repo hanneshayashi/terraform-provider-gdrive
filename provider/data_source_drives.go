@@ -22,65 +22,65 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func dataSourceDrive() *schema.Resource {
+func dataSourceDrives() *schema.Resource {
 	return &schema.Resource{
-		Description: "Gets a Shared Drive and returns its metadata",
+		Description: "Returns a list of Shared Drives that match the given query",
 		Schema: map[string]*schema.Schema{
-			"drive_id": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "ID of the Shared Drive",
+			"query": {
+				Type:     schema.TypeString,
+				Required: true,
+				Description: `Query string for searching shared drives.
+See the https://developers.google.com/drive/api/v3/search-shareddrives for supported syntax.`,
 			},
 			"use_domain_admin_access": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Description: "Use domain admin access",
 			},
-			"name": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"restrictions": {
+			"drives": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"admin_managed_restrictions": {
-							Type:     schema.TypeBool,
+						"drive_id": {
+							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"copy_requires_writer_permission": {
-							Type:     schema.TypeBool,
+						"name": {
+							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"domain_users_only": {
-							Type:     schema.TypeBool,
+						"restrictions": {
+							Type:     schema.TypeMap,
 							Computed: true,
-						},
-						"drive_members_only": {
-							Type:     schema.TypeBool,
-							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeBool,
+							},
 						},
 					},
 				},
 			},
 		},
-		Read: dataSourceReadDrive,
+		Read: dataSourceReadDrives,
 	}
 }
 
-func dataSourceReadDrive(d *schema.ResourceData, _ any) error {
-	driveID := d.Get("drive_id").(string)
-	r, err := gsmdrive.GetDrive(driveID, "*", d.Get("use_domain_admin_access").(bool))
-	if err != nil {
-		return err
+func dataSourceReadDrives(d *schema.ResourceData, _ any) error {
+	query := d.Get("query").(string)
+	drives := make([]map[string]any, 0)
+	r, err := gsmdrive.ListDrives(query, "drives(name,id,restrictions),nextPageToken", d.Get("use_domain_admin_access").(bool), 1)
+	for d := range r {
+		drives = append(drives, map[string]any{
+			"drive_id":     d.Id,
+			"name":         d.Name,
+			"restrictions": getRestrictions(d),
+		})
 	}
-	d.SetId(driveID)
-	d.Set("name", r.Name)
-	restrictions := make([]map[string]bool, 1)
-	if r.Restrictions != nil {
-		restrictions[0] = getRestrictions(r)
+	d.Set("drives", drives)
+	d.SetId(query)
+	e := <-err
+	if e != nil {
+		return e
 	}
-	d.Set("restrictions", restrictions)
 	return nil
 }

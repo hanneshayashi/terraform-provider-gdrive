@@ -3,20 +3,34 @@
 page_title: "gdrive_permission Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  
+  Sets a single permission on a file or Shared Drive
 ---
 
 # gdrive_permission (Resource)
 
-## File Permission With Email Message
+Sets a single permission on a file or Shared Drive
+
+## Example Usage
+
 ```terraform
-resource "gdrive_permission" "permissions_1" {
+# Grant a user read access to a file
+resource "gdrive_permission" "permissions_simple" {
+  file_id       = "..."
+  email_address = "user@example.com"
+  role          = "reader"
+  type          = "user"
+}
+
+# Make a user the owner of a file and move it to the new owner's root
+resource "gdrive_permission" "permissions_owner_transfer" {
   file_id                 = "..."
   email_address           = "user@example.com"
-  role                    = "reader"
+  role                    = "owner"
   type                    = "user"
   send_notification_email = true
-  email_message           = "Example message"
+  transfer_ownership      = true
+  move_to_new_owners_root = true
+  email_message           = "Tag, you're it!"
 }
 ```
 
@@ -25,17 +39,28 @@ resource "gdrive_permission" "permissions_1" {
 
 ### Required
 
-- **file_id** (String) ID of the file or Shared Drive
-- **role** (String) The role
-- **type** (String) The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'
+- `file_id` (String) ID of the file or Shared Drive
+- `role` (String) The role
+- `type` (String) The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'
 
 ### Optional
 
-- **domain** (String) The domain that should be granted access
-- **email_address** (String) The email address of the trustee
-- **email_message** (String) An optional email message that will be sent when the permission is created
-- **id** (String) The ID of this resource.
-- **send_notification_email** (Boolean) Wether to send a notfication email
-- **use_domain_admin_access** (Boolean) Use domain admin access
+- `domain` (String) The domain that should be granted access
+- `email_address` (String) The email address of the trustee
+- `email_message` (String) An optional email message that will be sent when the permission is created
+- `id` (String) The ID of this resource.
+- `move_to_new_owners_root` (Boolean) This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.
+- `send_notification_email` (Boolean) Wether to send a notfication email
+- `transfer_ownership` (Boolean) Whether to transfer ownership to the specified user
+- `use_domain_admin_access` (Boolean) Use domain admin access
 
+## Import
 
+Import is supported using the following syntax:
+
+```shell
+# The ID for this resource is a combined ID that consistent of the fileId and the permissionId.
+# If you file's fileId is "abcdef" and your permissionId is "12345", the ID of the resource would be:
+# "abcdef/12345"
+terraform import gdrive_permission.permission [fileId/permisssionId]
+```

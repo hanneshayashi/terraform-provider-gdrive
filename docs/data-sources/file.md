@@ -3,15 +3,32 @@
 page_title: "gdrive_file Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  
+  Gets a files metadata and optionally downloads / exports it to the local file system
 ---
 
 # gdrive_file (Data Source)
 
+Gets a files metadata and optionally downloads / exports it to the local file system
+
+## Example Usage
+
 ```terraform
-data "gdrive_file" "file_ds" {
+# Access the metadata of a file or folder
+data "gdrive_file" "file_metadata" {
   file_id = "..."
-  download_path = "..."
+}
+
+# Download a file
+data "gdrive_file" "file_download" {
+  file_id       = "..."
+  download_path = "./my-file"
+}
+
+# Export a Google Docs file to MS Word and download it
+data "gdrive_file" "file_export" {
+  file_id          = "..."
+  export_path      = "./test.docx"
+  export_mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 }
 ```
 
@@ -20,22 +37,20 @@ data "gdrive_file" "file_ds" {
 
 ### Required
 
-- **file_id** (String) ID of the file
+- `file_id` (String) ID of the file
 
 ### Optional
 
-- **download_path** (String) Use this to specify a local file path to download a (non-Google) file
-- **export_mime_type** (String) Specify the target MIME type for the export.
+- `download_path` (String) Use this to specify a local file path to download a (non-Google) file
+- `export_mime_type` (String) Specify the target MIME type for the export.
 For a list of supported MIME types see https://developers.google.com/drive/api/v3/ref-export-formats
-- **export_path** (String) Use this to specify a local file path to export a Google file (sheet, doc, etc.)
-- **id** (String) The ID of this resource.
+- `export_path` (String) Use this to specify a local file path to export a Google file (sheet, doc, etc.)
+- `id` (String) The ID of this resource.
 
 ### Read-Only
 
-- **drive_id** (String)
-- **local_file_path** (String) The path where the local copy or export of the file was created
-- **mime_type** (String)
-- **name** (String)
-- **parent** (String)
-
-
+- `drive_id` (String)
+- `local_file_path` (String) The path where the local copy or export of the file was created
+- `mime_type` (String)
+- `name` (String)
+- `parent` (String)

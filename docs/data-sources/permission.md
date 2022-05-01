@@ -3,13 +3,17 @@
 page_title: "gdrive_permission Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  
+  Returns the metadata of a permission on a file or Shared Drive
 ---
 
 # gdrive_permission (Data Source)
 
+Returns the metadata of a permission on a file or Shared Drive
+
+## Example Usage
+
 ```terraform
-data "gdrive_permission" "permission_ds" {
+data "gdrive_permission" "permission" {
   file_id       = "..."
   permission_id = "..."
 }
@@ -20,19 +24,17 @@ data "gdrive_permission" "permission_ds" {
 
 ### Required
 
-- **file_id** (String) ID of the file or Shared Drive
-- **permission_id** (String) ID of the permission
+- `file_id` (String) ID of the file or Shared Drive
+- `permission_id` (String) ID of the permission
 
 ### Optional
 
-- **id** (String) The ID of this resource.
-- **use_domain_admin_access** (Boolean) Use domain admin access
+- `id` (String) The ID of this resource.
+- `use_domain_admin_access` (Boolean) Use domain admin access
 
 ### Read-Only
 
-- **domain** (String)
-- **email_address** (String)
-- **role** (String)
-- **type** (String)
-
-
+- `domain` (String)
+- `email_address` (String)
+- `role` (String)
+- `type` (String)
