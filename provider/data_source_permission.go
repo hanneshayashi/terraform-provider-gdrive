@@ -18,8 +18,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
-	"fmt"
-
 	"github.com/hanneshayashi/gsm/gsmdrive"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -71,7 +69,7 @@ func dataSourceReadPermission(d *schema.ResourceData, _ any) error {
 	if err != nil {
 		return err
 	}
-	d.SetId(fmt.Sprintf("%s/%s", fileID, r.Id))
+	d.SetId(combineId(fileID, r.Id))
 	d.Set("email_address", r.EmailAddress)
 	d.Set("domain", r.Domain)
 	d.Set("role", r.Role)
