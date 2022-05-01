@@ -1,2 +1,1 @@
-example/*terraform*
-provider/ignore_*
+*ignore_*
