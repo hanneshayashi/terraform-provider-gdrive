@@ -3,30 +3,28 @@
 page_title: "gdrive_file Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  
+  Creates a file or folder with the given MIME type and optionally uploads a local file
 ---
 
 # gdrive_file (Resource)
 
-## Folder
+Creates a file or folder with the given MIME type and optionally uploads a local file
+
+## Example Usage
 
 ```terraform
-resource "gdrive_file" "folder_1" {
+# Create a folder inside the impersonated user's personal Drive
+resource "gdrive_file" "folder" {
   mime_type = "application/vnd.google-apps.folder"
-  drive_id  = "..."
-  name      = "folder-1"
-  parent    = "..."
+  parent    = "root"
+  name      = "folder"
 }
-```
 
-## File With Content (Upload)
-
-```terraform
-resource "gdrive_file" "content-1" {
+# Upload a file to the folder
+resource "gdrive_file" "file_with_content" {
   mime_type = "text/plain"
-  drive_id  = "..."
   name      = "somefile"
-  parent    = "..."
+  parent    = gdrive_file.folder.id
   content   = "/path/to/somefile"
 }
 ```
@@ -36,14 +34,20 @@ resource "gdrive_file" "content-1" {
 
 ### Required
 
-- **mime_type** (String) MIME type
-- **name** (String) name of the file / folder
-- **parent** (String) fileId of the parent
+- `mime_type` (String) MIME type
+- `name` (String) name of the file / folder
+- `parent` (String) fileId of the parent
 
 ### Optional
 
-- **content** (String) path to a file to upload
-- **drive_id** (String) driveId of the Shared Drive
-- **id** (String) The ID of this resource.
+- `content` (String) path to a file to upload
+- `drive_id` (String) driveId of the Shared Drive
+- `id` (String) The ID of this resource.
 
+## Import
 
+Import is supported using the following syntax:
+
+```shell
+terraform import gdrive_file.file [fileId]
+```

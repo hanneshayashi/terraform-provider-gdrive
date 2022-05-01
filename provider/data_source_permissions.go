@@ -24,6 +24,7 @@ import (
 
 func dataSourcePermissions() *schema.Resource {
 	return &schema.Resource{
+		Description: "Returns a list of all permissions set on a file or Shared Drive",
 		Schema: map[string]*schema.Schema{
 			"file_id": {
 				Type:        schema.TypeString,

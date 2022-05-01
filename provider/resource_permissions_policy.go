@@ -33,6 +33,17 @@ type gDrivePermission struct {
 
 func resourcePermissionsPolicy() *schema.Resource {
 	return &schema.Resource{
+		Description: `Creates an authoratative permissions policy on a file or Shared Drive.
+
+**Warning: This resource will set exactly the defined permissions and remove everything else!**
+
+It is HIGHLY recommended that you import the resource and make sure that the owner is properly set before applying it!
+
+You can import the resource using the file's or Shared Drive's id like so:
+
+terraform import [resource address] [fileId]
+
+**Important**: On a *destroy*, this resource will preserve the owner and organizer permissions!`,
 		Schema: map[string]*schema.Schema{
 			"file_id": {
 				Type:        schema.TypeString,

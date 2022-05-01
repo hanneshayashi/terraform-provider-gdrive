@@ -27,6 +27,7 @@ import (
 
 func resourceFile() *schema.Resource {
 	return &schema.Resource{
+		Description: "Creates a file or folder with the given MIME type and optionally uploads a local file",
 		Schema: map[string]*schema.Schema{
 			"parent": {
 				Type:        schema.TypeString,

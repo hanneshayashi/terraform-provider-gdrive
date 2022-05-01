@@ -24,6 +24,7 @@ import (
 
 func dataSourceFiles() *schema.Resource {
 	return &schema.Resource{
+		Description: "Returns a list of files that match the given query",
 		Schema: map[string]*schema.Schema{
 			"query": {
 				Type:     schema.TypeString,

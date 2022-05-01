@@ -24,6 +24,7 @@ import (
 
 func dataSourceFile() *schema.Resource {
 	return &schema.Resource{
+		Description: "Gets a files metadata and optionally downloads / exports it to the local file system",
 		Schema: map[string]*schema.Schema{
 			"file_id": {
 				Type:        schema.TypeString,

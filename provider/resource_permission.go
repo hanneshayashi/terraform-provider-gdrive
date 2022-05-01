@@ -27,6 +27,7 @@ import (
 
 func resourcePermission() *schema.Resource {
 	return &schema.Resource{
+		Description: "Sets a single permission on a file or Shared Drive",
 		Schema: map[string]*schema.Schema{
 			"file_id": {
 				Type:        schema.TypeString,

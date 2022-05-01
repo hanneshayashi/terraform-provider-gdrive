@@ -24,6 +24,7 @@ import (
 
 func dataSourceDrive() *schema.Resource {
 	return &schema.Resource{
+		Description: "Gets a Shared Drive and returns its metadata",
 		Schema: map[string]*schema.Schema{
 			"drive_id": {
 				Type:        schema.TypeString,

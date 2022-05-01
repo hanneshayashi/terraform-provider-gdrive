@@ -43,20 +43,23 @@ func Provider() *schema.Provider {
 				Type:     schema.TypeString,
 				Optional: true,
 				Description: `The path to or the content of a key file for your Service Account.
-Leave empty if you want to use Application Default Credentials (ADC).`,
+Leave empty if you want to use Application Default Credentials (ADC).<br>
+You can also use the "SERVICE_ACCOUNT_KEY" environment variable to store either the path to the key file or the key itself (in JSON format).`,
 				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT_KEY", ""),
 			},
 			"service_account": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Description: `The email address of the Service Account you want to impersonate with Application Default Credentials (ADC).
-Leave empty if you want to use the Service Account of a GCE instance directly.`,
+Leave empty if you want to use the Service Account of a GCP service (GCE, Cloud Run, Cloud Build, etc) directly.<br>
+You can also use the "SERVICE_ACCOUNT" environment variable.`,
 				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT", ""),
 			},
 			"subject": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: `The email address of the Workspace user you want to impersonate with Domain Wide Delegation (DWD)`,
+				Type:     schema.TypeString,
+				Required: true,
+				Description: `The email address of the Workspace user you want to impersonate with Domain Wide Delegation (DWD).<br>
+You can also use the "SUBJECT" environment variable.`,
 				DefaultFunc: schema.EnvDefaultFunc("SUBJECT", ""),
 			},
 			"retry_on": {

@@ -26,6 +26,7 @@ import (
 
 func dataSourcePermission() *schema.Resource {
 	return &schema.Resource{
+		Description: "Returns the metadata of a permission on a file or Shared Drive",
 		Schema: map[string]*schema.Schema{
 			"permission_id": {
 				Type:        schema.TypeString,

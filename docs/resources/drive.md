@@ -3,21 +3,32 @@
 page_title: "gdrive_drive Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  
+  Creates a Shared Drive
 ---
 
 # gdrive_drive (Resource)
 
-```terraform
-resource "gdrive_drive" "example_drive" {
-  name = "terraform-1"
+Creates a Shared Drive
 
-  # restrictions {
-  #   admin_managed_restrictions      = true
-  #   drive_members_only              = true
-  #   copy_requires_writer_permission = true
-  #   domain_users_only               = true
-  # }
+## Example Usage
+
+```terraform
+# Create a Shared Drive
+resource "gdrive_drive" "drive_simple" {
+  name                    = "terraform-1"
+  use_domain_admin_access = true
+}
+
+# Create a Shared Drive with restrictions
+resource "gdrive_drive" "drive_restrictions" {
+  name                    = "terraform-1"
+  use_domain_admin_access = true
+  restrictions {
+    admin_managed_restrictions      = true
+    drive_members_only              = false
+    copy_requires_writer_permission = true
+    domain_users_only               = true
+  }
 }
 ```
 
@@ -26,24 +37,30 @@ resource "gdrive_drive" "example_drive" {
 
 ### Required
 
-- **name** (String) Name of the Shared Drive
+- `name` (String) Name of the Shared Drive
 
 ### Optional
 
-- **id** (String) The ID of this resource.
-- **restrictions** (Block List, Max: 1) (see [below for nested schema](#nestedblock--restrictions))
-- **use_domain_admin_access** (Boolean) Use domain admin access
+- `id` (String) The ID of this resource.
+- `restrictions` (Block List, Max: 1) (see [below for nested schema](#nestedblock--restrictions))
+- `use_domain_admin_access` (Boolean) Use domain admin access
 
 <a id="nestedblock--restrictions"></a>
 ### Nested Schema for `restrictions`
 
 Optional:
 
-- **admin_managed_restrictions** (Boolean) Whether administrative privileges on this shared drive are required to modify restrictions
-- **copy_requires_writer_permission** (Boolean) Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
+- `admin_managed_restrictions` (Boolean) Whether administrative privileges on this shared drive are required to modify restrictions
+- `copy_requires_writer_permission` (Boolean) Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
 When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive
-- **domain_users_only** (Boolean) Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
+- `domain_users_only` (Boolean) Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
 This restriction may be overridden by other sharing policies controlled outside of this shared drive
-- **drive_members_only** (Boolean) Whether access to items inside this shared drive is restricted to its members
+- `drive_members_only` (Boolean) Whether access to items inside this shared drive is restricted to its members
 
+## Import
 
+Import is supported using the following syntax:
+
+```shell
+terraform import gdrive_drive.drive [driveId]
+```

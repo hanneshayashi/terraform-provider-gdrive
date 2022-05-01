@@ -3,15 +3,18 @@
 page_title: "gdrive_drive Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  
+  Gets a Shared Drive and returns its metadata
 ---
 
 # gdrive_drive (Data Source)
 
+Gets a Shared Drive and returns its metadata
+
+## Example Usage
+
 ```terraform
-data "gdrive_drive" "drive_ds" {
-  drive_id                = "..."
-  use_domain_admin_access = true
+data "gdrive_drive" "drive" {
+  drive_id = "..."
 }
 ```
 
@@ -20,26 +23,24 @@ data "gdrive_drive" "drive_ds" {
 
 ### Required
 
-- **drive_id** (String) ID of the Shared Drive
+- `drive_id` (String) ID of the Shared Drive
 
 ### Optional
 
-- **id** (String) The ID of this resource.
-- **use_domain_admin_access** (Boolean) Use domain admin access
+- `id` (String) The ID of this resource.
+- `use_domain_admin_access` (Boolean) Use domain admin access
 
 ### Read-Only
 
-- **name** (String)
-- **restrictions** (List of Object) (see [below for nested schema](#nestedatt--restrictions))
+- `name` (String)
+- `restrictions` (List of Object) (see [below for nested schema](#nestedatt--restrictions))
 
 <a id="nestedatt--restrictions"></a>
 ### Nested Schema for `restrictions`
 
 Read-Only:
 
-- **admin_managed_restrictions** (Boolean)
-- **copy_requires_writer_permission** (Boolean)
-- **domain_users_only** (Boolean)
-- **drive_members_only** (Boolean)
-
-
+- `admin_managed_restrictions` (Boolean)
+- `copy_requires_writer_permission` (Boolean)
+- `domain_users_only` (Boolean)
+- `drive_members_only` (Boolean)

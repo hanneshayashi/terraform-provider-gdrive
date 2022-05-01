@@ -25,12 +25,12 @@ import (
 
 func resourceDrive() *schema.Resource {
 	return &schema.Resource{
+		Description: "Creates a Shared Drive",
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "Name of the Shared Drive",
-				// ValidateFunc: validateName,
 			},
 			"use_domain_admin_access": {
 				Type:        schema.TypeBool,
