@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.14.0
 	google.golang.org/api v0.75.0
+	github.com/hanneshayashi/gsm v0.6.0
 )
 
 require (
@@ -19,7 +20,6 @@ require (
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.3.0 // indirect
-	github.com/hanneshayashi/gsm v0.6.0
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320 // indirect
 	github.com/hashicorp/go-hclog v1.2.0 // indirect
