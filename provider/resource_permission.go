@@ -112,7 +112,7 @@ func resourceCreatePermission(d *schema.ResourceData, _ any) error {
 		Role:         d.Get("role").(string),
 		Type:         d.Get("type").(string),
 	}
-	r, err := gsmdrive.CreatePermission(fileID, d.Get("email_message").(string), "id", d.Get("use_domain_admin_access").(bool), d.Get("send_notification_email").(bool), false, false, p)
+	r, err := gsmdrive.CreatePermission(fileID, d.Get("email_message").(string), "id", d.Get("use_domain_admin_access").(bool), d.Get("send_notification_email").(bool), d.Get("transfer_ownership").(bool), d.Get("move_to_new_owners_root").(bool), p)
 	if err != nil {
 		return err
 	}
