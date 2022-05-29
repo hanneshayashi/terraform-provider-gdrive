@@ -21,10 +21,12 @@ package provider
 import (
 	"encoding/json"
 	"io"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/hanneshayashi/gsm/gsmauth"
+	"github.com/hanneshayashi/gsm/gsmcibeta"
 	"github.com/hanneshayashi/gsm/gsmdrive"
 	"github.com/hanneshayashi/gsm/gsmhelpers"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -70,12 +72,21 @@ You can also use the "SUBJECT" environment variable.`,
 					Type: schema.TypeInt,
 				},
 			},
+			"use_cloud_identity_api": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Description: `Set this to true if you want to manage Shared Drives in organizational units.
+See for setup details.
+Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"`,
+				DefaultFunc: schema.EnvDefaultFunc("USE_CLOUD_IDENTITY_API", ""),
+			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"gdrive_drive":              resourceDrive(),
-			"gdrive_permission":         resourcePermission(),
-			"gdrive_permissions_policy": resourcePermissionsPolicy(),
-			"gdrive_file":               resourceFile(),
+			"gdrive_drive":               resourceDrive(),
+			"gdrive_permission":          resourcePermission(),
+			"gdrive_permissions_policy":  resourcePermissionsPolicy(),
+			"gdrive_file":                resourceFile(),
+			"gdrive_drive_ou_membership": resourceDriveOuMembership(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"gdrive_drive":       dataSourceDrive(),
@@ -91,13 +102,21 @@ You can also use the "SUBJECT" environment variable.`,
 
 func providerConfigure(d *schema.ResourceData) (any, error) {
 	serviceAccountKey := d.Get("service_account_key").(string)
+	scopes := []string{drive.DriveScope}
+	use_cloud_identity_api := d.Get("use_cloud_identity_api").(bool)
+	if use_cloud_identity_api {
+		scopes = append(scopes, "https://www.googleapis.com/auth/cloud-identity.orgunits")
+	}
+	var client *http.Client
+	var err error
 	if serviceAccountKey != "" {
 		var saKey []byte
 		s := []byte(serviceAccountKey)
 		if json.Valid(s) {
 			saKey = s
 		} else {
-			f, err := os.Open(serviceAccountKey)
+			var f *os.File
+			f, err = os.Open(serviceAccountKey)
 			if err != nil {
 				return nil, err
 			}
@@ -106,12 +125,17 @@ func providerConfigure(d *schema.ResourceData) (any, error) {
 				return nil, err
 			}
 		}
-		client := gsmauth.GetClient(d.Get("subject").(string), saKey, drive.DriveScope)
-		gsmdrive.SetClient(client)
+		client, err = gsmauth.GetClient(d.Get("subject").(string), saKey, scopes...)
 	} else {
 		serviceAccount := d.Get("service_account").(string)
-		client := gsmauth.GetClientADC(d.Get("subject").(string), serviceAccount, drive.DriveScope)
-		gsmdrive.SetClient(client)
+		client, err = gsmauth.GetClientADC(d.Get("subject").(string), serviceAccount, scopes...)
+	}
+	if err != nil {
+		return nil, err
+	}
+	gsmdrive.SetClient(client)
+	if use_cloud_identity_api {
+		gsmcibeta.SetClient(client)
 	}
 	retryOn := d.Get("retry_on").([]any)
 	if len(retryOn) > 0 {
