@@ -27,11 +27,11 @@ data "gdrive_drive" "drive" {
 
 ### Optional
 
-- `id` (String) The ID of this resource.
 - `use_domain_admin_access` (Boolean) Use domain admin access
 
 ### Read-Only
 
+- `id` (String) The ID of this resource.
 - `name` (String)
 - `restrictions` (List of Object) (see [below for nested schema](#nestedatt--restrictions))
 

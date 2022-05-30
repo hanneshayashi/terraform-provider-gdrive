@@ -35,12 +35,12 @@ See the https://developers.google.com/drive/api/v3/search-shareddrives for suppo
 
 ### Optional
 
-- `id` (String) The ID of this resource.
 - `use_domain_admin_access` (Boolean) Use domain admin access
 
 ### Read-Only
 
 - `drives` (List of Object) (see [below for nested schema](#nestedatt--drives))
+- `id` (String) The ID of this resource.
 
 <a id="nestedatt--drives"></a>
 ### Nested Schema for `drives`

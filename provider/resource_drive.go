@@ -18,6 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"time"
+
 	"github.com/hanneshayashi/gsm/gsmdrive"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/drive/v3"
@@ -40,30 +42,37 @@ func resourceDrive() *schema.Resource {
 			"restrictions": {
 				Type:     schema.TypeList,
 				Optional: true,
-				MaxItems: 1,
+				DiffSuppressFunc: func(_, oldValue, newValue string, _ *schema.ResourceData) bool {
+					if (oldValue == "true" && newValue == "false") || (oldValue == "false" && newValue == "true") || (oldValue == "" && newValue != "") || (oldValue == "0" && newValue == "1") {
+						return false
+					}
+					return true
+				},
+				Description: "The restrictions that should be set on the Shared Drive",
+				MaxItems:    1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"admin_managed_restrictions": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "Whether administrative privileges on this shared drive are required to modify restrictions",
+							Description: "Whether administrative privileges on this Shared Drive are required to modify restrictions",
 						},
 						"copy_requires_writer_permission": {
 							Type:     schema.TypeBool,
 							Optional: true,
-							Description: `Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
-When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive`,
+							Description: `Whether the options to copy, print, or download files inside this Shared Drive, should be disabled for readers and commenters.
+When this restriction is set to true, it will override the similarly named field to true for any file inside this Shared Drive`,
 						},
 						"domain_users_only": {
 							Type:     schema.TypeBool,
 							Optional: true,
-							Description: `Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
-This restriction may be overridden by other sharing policies controlled outside of this shared drive`,
+							Description: `Whether access to this Shared Drive and items inside this Shared Drive is restricted to users of the domain to which this Shared Drive belongs.
+This restriction may be overridden by other sharing policies controlled outside of this Shared Drive`,
 						},
 						"drive_members_only": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "Whether access to items inside this shared drive is restricted to its members",
+							Description: "Whether access to items inside this Shared Drive is restricted to its members",
 						},
 					},
 				},
@@ -137,18 +146,8 @@ func resourceCreateDrive(d *schema.ResourceData, _ any) error {
 		return err
 	}
 	d.SetId(driveResult.Id)
-	if d.HasChange("restrictions") {
-		err = resourceUpdateDrive(d, nil)
-		if err != nil {
-			return err
-		}
-	} else {
-		err = resourceReadDrive(d, nil)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	time.Sleep(5 * time.Second)
+	return resourceUpdateDrive(d, nil)
 }
 
 func resourceReadDrive(d *schema.ResourceData, _ any) error {
@@ -157,14 +156,13 @@ func resourceReadDrive(d *schema.ResourceData, _ any) error {
 		return err
 	}
 	d.Set("name", r.Name)
-	restrictions := make([]map[string]bool, 1)
-	if r.Restrictions != nil {
-		restrictions[0] = map[string]bool{
+	restrictions := []map[string]bool{
+		{
 			"admin_managed_restrictions":      r.Restrictions.AdminManagedRestrictions,
 			"copy_requires_writer_permission": r.Restrictions.CopyRequiresWriterPermission,
 			"domain_users_only":               r.Restrictions.DomainUsersOnly,
 			"drive_members_only":              r.Restrictions.DriveMembersOnly,
-		}
+		},
 	}
 	d.Set("restrictions", restrictions)
 	return nil
