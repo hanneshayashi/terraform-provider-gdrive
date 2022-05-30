@@ -19,6 +19,7 @@ package provider
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/hanneshayashi/gsm/gsmcibeta"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -96,10 +97,10 @@ func resourceDeleteDriveOuMembership(d *schema.ResourceData, _ any) error {
 }
 
 func resourceExistsDriveOuMembership(d *schema.ResourceData, _ any) (bool, error) {
-	name := d.Id()
-	r, err := gsmcibeta.ListOrgUnitMemberships("orgUnits/"+d.Get("parent").(string), "customers/my_customer", "", "", 1)
+	name := d.Id()[0:strings.Index(d.Id(), "/memberships")]
+	r, err := gsmcibeta.ListOrgUnitMemberships(name, "customers/my_customer", "", "", 1)
 	for i := range r {
-		if i.Name == name {
+		if i.Name == d.Id() {
 			return true, nil
 		}
 	}
