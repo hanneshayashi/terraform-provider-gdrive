@@ -49,6 +49,22 @@ provider "gdrive" {
 }
 ```
 
+### Optional: Enable Management of Shared Drives in Organizational Units
+
+**BEWARE! THE API AND THIS FEATURE ARE IN BETA AND MAY BREAK WITHOUT WARNING!**
+
+If you want to organize your Shared Drives in organizational units with this provider, some additional setup is required:
+  1. Enable the Cloud Identity API in your GCP project
+  2. Add `https://www.googleapis.com/auth/cloud-identity.orgunits` as a scope to your Domain Wide Delegation config
+  3. Set "use_cloud_identity_api = true" in you provider configuration:
+
+```terraform
+provider "gdrive" {
+  # ...
+  use_cloud_identity_api = true
+}
+```
+
 ## Example Usage
 
 {{tffile "examples/provider/provider.tf"}}
