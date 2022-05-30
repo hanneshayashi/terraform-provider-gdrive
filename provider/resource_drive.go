@@ -38,8 +38,14 @@ func resourceDrive() *schema.Resource {
 				Description: "Use domain admin access",
 			},
 			"restrictions": {
-				Type:        schema.TypeList,
-				Optional:    true,
+				Type:     schema.TypeList,
+				Optional: true,
+				DiffSuppressFunc: func(_, oldValue, newValue string, _ *schema.ResourceData) bool {
+					if (oldValue == "true" && newValue == "false") || (oldValue == "false" && newValue == "true") {
+						return false
+					}
+					return true
+				},
 				Description: "The restrictions that should be set on the Shared Drive",
 				MaxItems:    1,
 				Elem: &schema.Resource{
@@ -158,14 +164,13 @@ func resourceReadDrive(d *schema.ResourceData, _ any) error {
 		return err
 	}
 	d.Set("name", r.Name)
-	restrictions := make([]map[string]bool, 1)
-	if r.Restrictions != nil {
-		restrictions[0] = map[string]bool{
+	restrictions := []map[string]bool{
+		{
 			"admin_managed_restrictions":      r.Restrictions.AdminManagedRestrictions,
 			"copy_requires_writer_permission": r.Restrictions.CopyRequiresWriterPermission,
 			"domain_users_only":               r.Restrictions.DomainUsersOnly,
 			"drive_members_only":              r.Restrictions.DriveMembersOnly,
-		}
+		},
 	}
 	d.Set("restrictions", restrictions)
 	return nil
