@@ -6,8 +6,8 @@ A Terraform Provider for Google Drive
 [View on Terraform Registry](https://registry.terraform.io/providers/hanneshayashi/gdrive/latest).
 
 ## Features
-* Manage Shared Drives
-* Manage Google Drive files (including file uploads)
+* Manage Shared Drives and organize them into organizational units
+* Manage Google Drive files (including file uploads, downloads and exports)
 * Manage Google Drive permissions
 
 ## Installation
@@ -18,7 +18,7 @@ terraform {
   required_providers {
     gdrive = {
       source = "hanneshayashi/gdrive"
-      version = "~> 0.7"
+      version = "~> 0.8"
     }
   }
 }
@@ -36,7 +36,7 @@ The basic steps are:
 3. Create Service Account + Enable Domain Wide Delegation
     * See [Perform Google Workspace Domain-Wide Delegation of Authority](https://developers.google.com/admin-sdk/directory/v1/guides/delegation)
     * **You don't need the Service Account Key if you want to use [Application Default Credential](https://cloud.google.com/iam/docs/best-practices-for-using-and-managing-service-accounts#use-attached-service-accounts)
-4. Enter the Client ID of the Service Account with the [Drive scope](https://developers.google.com/identity/protocols/oauth2/scopes#drive) (https://www.googleapis.com/auth/drive) in your Admin Console
+4. Enter the Client ID of the Service Account with the [Drive scope](https://developers.google.com/identity/protocols/oauth2/scopes#drive) (`https://www.googleapis.com/auth/drive`) in your Admin Console
 
 You can authenticate in one of two ways:
 1. Create a Service Account Key and configure the provider like so:
@@ -63,5 +63,21 @@ You can then configure the provider like so:
 provider "gdrive" {
   service_account     = "email@my-project.iam.gserviceaccount.com"  # This is the email address of your Service Account. You can leave this empty on GCP, if you want to use the service's account
   subject             = "admin@example.com"                         # This is the user you want to impersonate with Domain Wide Delegation
+}
+```
+
+### Optional: Enable Management of Shared Drives in Organizational Units
+
+**BEWARE! THE API AND THIS FEATURE ARE IN BETA AND MAY BREAK WITHOUT WARNING!**
+
+If you want to organize your Shared Drives in organizational units with this provider, some additional setup is required:
+  1. Enable the Cloud Identity API in your GCP project
+  2. Add `https://www.googleapis.com/auth/cloud-identity.orgunits` as a scope to your Domain Wide Delegation config
+  3. Set "use_cloud_identity_api = true" in you provider configuration:
+
+```terraform
+provider "gdrive" {
+  # ...
+  use_cloud_identity_api = true
 }
 ```
