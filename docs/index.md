@@ -49,7 +49,7 @@ provider "gdrive" {
 }
 ```
 
- ## Example Usage
+## Example Usage
 
 ```terraform
 # Use a Service Account Key from a JSON file
@@ -85,5 +85,4 @@ You can also use the "SERVICE_ACCOUNT_KEY" environment variable to store either 
 - `subject` (String) The email address of the Workspace user you want to impersonate with Domain Wide Delegation (DWD).<br>
 You can also use the "SUBJECT" environment variable.
 - `use_cloud_identity_api` (Boolean) Set this to true if you want to manage Shared Drives in organizational units.
-See for setup details.
 Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"

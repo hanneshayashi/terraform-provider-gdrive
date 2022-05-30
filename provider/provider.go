@@ -76,7 +76,6 @@ You can also use the "SUBJECT" environment variable.`,
 				Type:     schema.TypeBool,
 				Optional: true,
 				Description: `Set this to true if you want to manage Shared Drives in organizational units.
-See for setup details.
 Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"`,
 				DefaultFunc: schema.EnvDefaultFunc("USE_CLOUD_IDENTITY_API", false),
 			},
