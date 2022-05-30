@@ -29,12 +29,12 @@ data "gdrive_permission" "permission" {
 
 ### Optional
 
-- `id` (String) The ID of this resource.
 - `use_domain_admin_access` (Boolean) Use domain admin access
 
 ### Read-Only
 
 - `domain` (String)
 - `email_address` (String)
+- `id` (String) The ID of this resource.
 - `role` (String)
 - `type` (String)

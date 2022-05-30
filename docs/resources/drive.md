@@ -41,21 +41,24 @@ resource "gdrive_drive" "drive_restrictions" {
 
 ### Optional
 
-- `id` (String) The ID of this resource.
-- `restrictions` (Block List, Max: 1) (see [below for nested schema](#nestedblock--restrictions))
+- `restrictions` (Block List, Max: 1) The restrictions that should be set on the Shared Drive (see [below for nested schema](#nestedblock--restrictions))
 - `use_domain_admin_access` (Boolean) Use domain admin access
+
+### Read-Only
+
+- `id` (String) The ID of this resource.
 
 <a id="nestedblock--restrictions"></a>
 ### Nested Schema for `restrictions`
 
 Optional:
 
-- `admin_managed_restrictions` (Boolean) Whether administrative privileges on this shared drive are required to modify restrictions
-- `copy_requires_writer_permission` (Boolean) Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
-When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive
-- `domain_users_only` (Boolean) Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
-This restriction may be overridden by other sharing policies controlled outside of this shared drive
-- `drive_members_only` (Boolean) Whether access to items inside this shared drive is restricted to its members
+- `admin_managed_restrictions` (Boolean) Whether administrative privileges on this Shared Drive are required to modify restrictions
+- `copy_requires_writer_permission` (Boolean) Whether the options to copy, print, or download files inside this Shared Drive, should be disabled for readers and commenters.
+When this restriction is set to true, it will override the similarly named field to true for any file inside this Shared Drive
+- `domain_users_only` (Boolean) Whether access to this Shared Drive and items inside this Shared Drive is restricted to users of the domain to which this Shared Drive belongs.
+This restriction may be overridden by other sharing policies controlled outside of this Shared Drive
+- `drive_members_only` (Boolean) Whether access to items inside this Shared Drive is restricted to its members
 
 ## Import
 

@@ -45,11 +45,11 @@ data "gdrive_file" "file_export" {
 - `export_mime_type` (String) Specify the target MIME type for the export.
 For a list of supported MIME types see https://developers.google.com/drive/api/v3/ref-export-formats
 - `export_path` (String) Use this to specify a local file path to export a Google file (sheet, doc, etc.)
-- `id` (String) The ID of this resource.
 
 ### Read-Only
 
 - `drive_id` (String)
+- `id` (String) The ID of this resource.
 - `local_file_path` (String) The path where the local copy or export of the file was created
 - `mime_type` (String)
 - `name` (String)

@@ -42,11 +42,11 @@ resource "gdrive_permissions_policy" "permissions_policy" {
 
 ### Optional
 
-- `id` (String) The ID of this resource.
 - `use_domain_admin_access` (Boolean) Use domain admin access
 
 ### Read-Only
 
+- `id` (String) The ID of this resource.
 - `permissions` (List of Object) (see [below for nested schema](#nestedatt--permissions))
 
 <a id="nestedatt--permissions"></a>

@@ -44,7 +44,6 @@ Supported groupings are:
 'allDrives' (A combination of 'user' and 'drive' for all drives where the user is a member).
 When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.
 - `drive_id` (String) ID of the shared drive.
-- `id` (String) The ID of this resource.
 - `include_items_from_all_drives` (Boolean) Whether both My Drive and shared drive items should be included in results.
 - `spaces` (String) A comma-separated list of spaces to query within the corpus.
 Supported values are 'drive', 'appDataFolder' and 'photos'.
@@ -52,6 +51,7 @@ Supported values are 'drive', 'appDataFolder' and 'photos'.
 ### Read-Only
 
 - `files` (List of Object) (see [below for nested schema](#nestedatt--files))
+- `id` (String) The ID of this resource.
 
 <a id="nestedatt--files"></a>
 ### Nested Schema for `files`

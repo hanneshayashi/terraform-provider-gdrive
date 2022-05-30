@@ -42,6 +42,9 @@ resource "gdrive_file" "file_with_content" {
 
 - `content` (String) path to a file to upload
 - `drive_id` (String) driveId of the Shared Drive
+
+### Read-Only
+
 - `id` (String) The ID of this resource.
 
 ## Import

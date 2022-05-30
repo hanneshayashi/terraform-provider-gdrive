@@ -73,9 +73,12 @@ resource "gdrive_permissions_policy" "permissions_policy_shared_drive" {
 
 ### Optional
 
-- `id` (String) The ID of this resource.
 - `permissions` (Block Set) (see [below for nested schema](#nestedblock--permissions))
 - `use_domain_admin_access` (Boolean) Use domain admin access
+
+### Read-Only
+
+- `id` (String) The ID of this resource.
 
 <a id="nestedblock--permissions"></a>
 ### Nested Schema for `permissions`
