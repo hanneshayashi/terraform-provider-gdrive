@@ -8,7 +8,7 @@ description: |-
   This resource requires additional setup:
   1. Enable the Cloud Identity API in your GCP project
   2. Add "https://www.googleapis.com/auth/cloud-identity.orgunits" as a scope to your Domain Wide Delegation config
-  3. Set "usecloudidentity_api = true" in you provider configuration
+  3. Set "use_cloudidentity_api = true" in you provider configuration
   The resource will move the Shared Drive to the specified OU in your Admin Console.
   Some things to note:
   - You need to specify the ID of the OU (NOT THE PATH!)
