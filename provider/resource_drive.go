@@ -18,6 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"time"
+
 	"github.com/hanneshayashi/gsm/gsmdrive"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/drive/v3"
@@ -41,7 +43,7 @@ func resourceDrive() *schema.Resource {
 				Type:     schema.TypeList,
 				Optional: true,
 				DiffSuppressFunc: func(_, oldValue, newValue string, _ *schema.ResourceData) bool {
-					if (oldValue == "true" && newValue == "false") || (oldValue == "false" && newValue == "true") {
+					if (oldValue == "true" && newValue == "false") || (oldValue == "false" && newValue == "true") || (oldValue == "" && newValue != "") || (oldValue == "0" && newValue == "1") {
 						return false
 					}
 					return true
@@ -144,18 +146,8 @@ func resourceCreateDrive(d *schema.ResourceData, _ any) error {
 		return err
 	}
 	d.SetId(driveResult.Id)
-	if d.HasChange("restrictions") {
-		err = resourceUpdateDrive(d, nil)
-		if err != nil {
-			return err
-		}
-	} else {
-		err = resourceReadDrive(d, nil)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	time.Sleep(5 * time.Second)
+	return resourceUpdateDrive(d, nil)
 }
 
 func resourceReadDrive(d *schema.ResourceData, _ any) error {
