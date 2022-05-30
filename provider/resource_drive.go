@@ -38,32 +38,33 @@ func resourceDrive() *schema.Resource {
 				Description: "Use domain admin access",
 			},
 			"restrictions": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:        schema.TypeList,
+				Optional:    true,
+				Description: "The restrictions that should be set on the Shared Drive",
+				MaxItems:    1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"admin_managed_restrictions": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "Whether administrative privileges on this shared drive are required to modify restrictions",
+							Description: "Whether administrative privileges on this Shared Drive are required to modify restrictions",
 						},
 						"copy_requires_writer_permission": {
 							Type:     schema.TypeBool,
 							Optional: true,
-							Description: `Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
-When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive`,
+							Description: `Whether the options to copy, print, or download files inside this Shared Drive, should be disabled for readers and commenters.
+When this restriction is set to true, it will override the similarly named field to true for any file inside this Shared Drive`,
 						},
 						"domain_users_only": {
 							Type:     schema.TypeBool,
 							Optional: true,
-							Description: `Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
-This restriction may be overridden by other sharing policies controlled outside of this shared drive`,
+							Description: `Whether access to this Shared Drive and items inside this Shared Drive is restricted to users of the domain to which this Shared Drive belongs.
+This restriction may be overridden by other sharing policies controlled outside of this Shared Drive`,
 						},
 						"drive_members_only": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "Whether access to items inside this shared drive is restricted to its members",
+							Description: "Whether access to items inside this Shared Drive is restricted to its members",
 						},
 					},
 				},
