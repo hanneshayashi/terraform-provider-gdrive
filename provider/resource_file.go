@@ -42,7 +42,12 @@ func resourceFile() *schema.Resource {
 			"mime_type": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "MIME type",
+				Description: "MIME type of the target file (in Google Drive)",
+			},
+			"mime_type_source": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "MIME type of the source file (on the local system)",
 			},
 			"drive_id": {
 				Type:        schema.TypeString,
@@ -83,7 +88,7 @@ func resourceCreateFile(d *schema.ResourceData, _ any) error {
 		}
 		defer content.Close()
 	}
-	r, err := gsmdrive.CreateFile(f, content, false, false, false, "", "", "id")
+	r, err := gsmdrive.CreateFile(f, content, false, false, false, "", "", d.Get("mime_type_source").(string), "id")
 	if err != nil {
 		return err
 	}
