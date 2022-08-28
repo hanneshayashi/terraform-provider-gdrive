@@ -18,13 +18,42 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/drive/v3"
 )
+
+func labelFieldsR() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeSet,
+		Required:    true,
+		Description: ``,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"field_id": {
+					Type:        schema.TypeString,
+					Required:    true,
+					Description: "",
+				},
+				"value_type": {
+					Type:        schema.TypeString,
+					Required:    true,
+					Description: "",
+				},
+				"values": {
+					Type:        schema.TypeSet,
+					Required:    true,
+					Description: "",
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+	}
+}
 
 func resourceLabelAssignment() *schema.Resource {
 	return &schema.Resource{
@@ -40,33 +69,7 @@ func resourceLabelAssignment() *schema.Resource {
 				Required:    true,
 				Description: "",
 			},
-			"field": {
-				Type:        schema.TypeSet,
-				Required:    true,
-				Description: ``,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"field_id": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "",
-						},
-						"value_type": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "",
-						},
-						"values": {
-							Type:        schema.TypeSet,
-							Required:    true,
-							Description: "",
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-							},
-						},
-					},
-				},
-			},
+			"field": labelFieldsR(),
 		},
 		Create: resourceUpdateLabelAssignment,
 		Read:   resourceReadLabelAssignment,
@@ -82,72 +85,16 @@ func resourceLabelAssignment() *schema.Resource {
 func resourceUpdateLabelAssignment(d *schema.ResourceData, _ any) error {
 	labelID := d.Get("label_id").(string)
 	fileID := d.Get("file_id").(string)
-	old, new := d.GetChange("field")
-	oL := old.(*schema.Set).List()
-	nL := new.(*schema.Set).List()
-	nM := make(map[string]bool)
-	oM := make(map[string]bool)
-	for _, n := range nL {
-		nf := n.(map[string]any)
-		nM[nf["field_id"].(string)] = true
-	}
-	for _, o := range oL {
-		of := o.(map[string]any)
-		fid := of["field_id"].(string)
-		if _, ok := nM[fid]; !ok {
-			oM[fid] = true
-		}
+	labelModification, err := getLabelModification(labelID, getRemovedItemsFromSet(d, "field", "field_id"), d.Get("field").(*schema.Set))
+	if err != nil {
+		return err
 	}
 	req := &drive.ModifyLabelsRequest{
 		LabelModifications: []*drive.LabelModification{
-			{
-				LabelId: labelID,
-			},
+			labelModification,
 		},
 	}
-	fields := d.Get("field").(*schema.Set)
-	req.LabelModifications[0].FieldModifications = make([]*drive.LabelFieldModification, fields.Len())
-	for i, f := range fields.List() {
-		field := f.(map[string]any)
-		valueType := field["value_type"]
-		values := field["values"].(*schema.Set).List()
-		req.LabelModifications[0].FieldModifications[i] = &drive.LabelFieldModification{
-			FieldId: field["field_id"].(string),
-		}
-		fmt.Println("[DEBUG] UPDATE VALUES ON", req.LabelModifications[0].FieldModifications[i].FieldId)
-		switch valueType {
-		case "text":
-			for v := range values {
-				req.LabelModifications[0].FieldModifications[i].SetTextValues = append(req.LabelModifications[0].FieldModifications[i].SetTextValues, values[v].(string))
-			}
-		case "dateString":
-			for v := range values {
-				req.LabelModifications[0].FieldModifications[i].SetDateValues = append(req.LabelModifications[0].FieldModifications[i].SetDateValues, values[v].(string))
-			}
-		case "selection":
-			for v := range values {
-				req.LabelModifications[0].FieldModifications[i].SetSelectionValues = append(req.LabelModifications[0].FieldModifications[i].SetSelectionValues, values[v].(string))
-			}
-		case "user":
-			for v := range values {
-				req.LabelModifications[0].FieldModifications[i].SetUserValues = append(req.LabelModifications[0].FieldModifications[i].SetUserValues, values[v].(string))
-			}
-		case "integer":
-			for v := range values {
-				value, err := strconv.ParseInt(values[v].(string), 10, 64)
-				if err != nil {
-					return err
-				}
-				req.LabelModifications[0].FieldModifications[i].SetIntegerValues = append(req.LabelModifications[0].FieldModifications[i].SetIntegerValues, value)
-			}
-		default:
-			return fmt.Errorf("unknown value_type %s", valueType)
-		}
-	}
-	for o := range oM {
-		req.LabelModifications[0].FieldModifications = append(req.LabelModifications[0].FieldModifications, &drive.LabelFieldModification{FieldId: o, UnsetValues: true})
-	}
-	_, err := gsmdrive.ModifyLabels(fileID, "", req)
+	_, err = gsmdrive.ModifyLabels(fileID, "", req)
 	if err != nil {
 		return err
 	}

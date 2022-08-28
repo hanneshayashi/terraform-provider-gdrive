@@ -100,6 +100,7 @@ Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"`,
 			"gdrive_file":                resourceFile(),
 			"gdrive_drive_ou_membership": resourceDriveOuMembership(),
 			"gdrive_label_assignment":    resourceLabelAssignment(),
+			"gdrive_label_policy":        resourceLabelPolicy(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"gdrive_drive":       dataSourceDrive(),

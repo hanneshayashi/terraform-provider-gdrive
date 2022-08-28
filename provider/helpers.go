@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/drivelabels/v2"
 )
@@ -183,4 +184,106 @@ func getLabelFields(labelFields []*drivelabels.GoogleAppsDriveLabelsV2Field) []m
 		fields = append(fields, field)
 	}
 	return fields
+}
+
+func getFields(labelFields map[string]drive.LabelField) []map[string]any {
+	fields := make([]map[string]any, 0)
+	for f := range labelFields {
+		field := map[string]any{
+			"field_id":   labelFields[f].Id,
+			"value_type": labelFields[f].ValueType,
+		}
+		switch labelFields[f].ValueType {
+		case "dateString":
+			field["values"] = labelFields[f].DateString
+		case "text":
+			field["values"] = labelFields[f].Text
+		case "user":
+			values := make([]string, len(labelFields[f].User))
+			for u := range labelFields[f].User {
+				values[u] = labelFields[f].User[u].EmailAddress
+			}
+			field["values"] = values
+		case "selection":
+			field["values"] = labelFields[f].Selection
+		case "integer":
+			values := []string{}
+			for _, value := range labelFields[f].Integer {
+				values = append(values, strconv.FormatInt(value, 10))
+			}
+			field["values"] = values
+		}
+		fields = append(fields, field)
+	}
+	return fields
+}
+
+func getRemovedItemsFromSet(d *schema.ResourceData, fieldName, id string) map[string]bool {
+	old, new := d.GetChange(fieldName)
+	oL := old.(*schema.Set).List()
+	nL := new.(*schema.Set).List()
+	nM := make(map[string]bool)
+	oM := make(map[string]bool)
+	for _, n := range nL {
+		nf := n.(map[string]any)
+		nM[nf[id].(string)] = true
+	}
+	for _, o := range oL {
+		of := o.(map[string]any)
+		fid := of[id].(string)
+		if _, ok := nM[fid]; !ok {
+			oM[fid] = true
+		}
+	}
+	return oM
+}
+
+func getLabelModification(labelID string, fieldsToRemove map[string]bool, fields *schema.Set) (*drive.LabelModification, error) {
+	labelModification := &drive.LabelModification{
+		LabelId: labelID,
+	}
+	labelModification.FieldModifications = make([]*drive.LabelFieldModification, fields.Len())
+	for i, f := range fields.List() {
+		field := f.(map[string]any)
+		valueType := field["value_type"]
+		values := field["values"].(*schema.Set).List()
+		labelModification.FieldModifications[i] = &drive.LabelFieldModification{
+			FieldId: field["field_id"].(string),
+		}
+		switch valueType {
+		case "text":
+			for v := range values {
+				labelModification.FieldModifications[i].SetTextValues = append(labelModification.FieldModifications[i].SetTextValues, values[v].(string))
+			}
+		case "dateString":
+			for v := range values {
+				labelModification.FieldModifications[i].SetDateValues = append(labelModification.FieldModifications[i].SetDateValues, values[v].(string))
+			}
+		case "selection":
+			for v := range values {
+				labelModification.FieldModifications[i].SetSelectionValues = append(labelModification.FieldModifications[i].SetSelectionValues, values[v].(string))
+			}
+		case "user":
+			for v := range values {
+				labelModification.FieldModifications[i].SetUserValues = append(labelModification.FieldModifications[i].SetUserValues, values[v].(string))
+			}
+		case "integer":
+			for v := range values {
+				value, err := strconv.ParseInt(values[v].(string), 10, 64)
+				if err != nil {
+					return nil, err
+				}
+				labelModification.FieldModifications[i].SetIntegerValues = append(labelModification.FieldModifications[i].SetIntegerValues, value)
+			}
+		default:
+			return nil, fmt.Errorf("unknown value_type %s", valueType)
+		}
+	}
+	for o := range fieldsToRemove {
+		labelModification.FieldModifications = append(labelModification.FieldModifications, &drive.LabelFieldModification{
+			FieldId:     o,
+			UnsetValues: true,
+		})
+	}
+	return labelModification, nil
 }

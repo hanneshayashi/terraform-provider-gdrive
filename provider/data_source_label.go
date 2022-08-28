@@ -23,7 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func driveLabelFieldsDS() *schema.Schema {
+func labelFieldsDS() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Computed: true,
@@ -268,7 +268,7 @@ When not specified, values in the default configured language are used.`,
 				Computed:    true,
 				Description: ``,
 			},
-			"fields": driveLabelFieldsDS(),
+			"fields": labelFieldsDS(),
 		},
 		Read: dataSourceReadLabel,
 	}
