@@ -23,201 +23,203 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-var labelFieldsDS = schema.Schema{
-	Type:     schema.TypeList,
-	Computed: true,
-	Elem: &schema.Resource{
-		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"value_type": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"date_options": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"date_format": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"date_format_type": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"max_value": {
-							Type:     schema.TypeList,
-							Required: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"day": {
-										Type:     schema.TypeInt,
-										Computed: true,
-									},
-									"month": {
-										Type:     schema.TypeInt,
-										Computed: true,
-									},
-									"year": {
-										Type:     schema.TypeInt,
-										Computed: true,
-									},
-								},
-							},
-						},
-						"min_value": {
-							Type:     schema.TypeList,
-							Required: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"day": {
-										Type:     schema.TypeInt,
-										Computed: true,
-									},
-									"month": {
-										Type:     schema.TypeInt,
-										Computed: true,
-									},
-									"year": {
-										Type:     schema.TypeInt,
-										Computed: true,
-									},
-								},
-							},
-						},
-					},
+func driveLabelFieldsDS() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Computed: true,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"id": {
+					Type:     schema.TypeString,
+					Computed: true,
 				},
-			},
-			"selection_options": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"list_options": {
-							Type:     schema.TypeList,
-							Computed: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"max_entries": {
-										Type:     schema.TypeInt,
-										Computed: true,
+				"value_type": {
+					Type:     schema.TypeString,
+					Computed: true,
+				},
+				"date_options": {
+					Type:     schema.TypeList,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"date_format": {
+								Type:     schema.TypeString,
+								Computed: true,
+							},
+							"date_format_type": {
+								Type:     schema.TypeString,
+								Computed: true,
+							},
+							"max_value": {
+								Type:     schema.TypeList,
+								Required: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"day": {
+											Type:     schema.TypeInt,
+											Computed: true,
+										},
+										"month": {
+											Type:     schema.TypeInt,
+											Computed: true,
+										},
+										"year": {
+											Type:     schema.TypeInt,
+											Computed: true,
+										},
 									},
 								},
 							},
-						},
-						"choices": {
-							Type:     schema.TypeList,
-							Computed: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"id": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-									"state": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-									"display_name": {
-										Type:     schema.TypeString,
-										Computed: true,
+							"min_value": {
+								Type:     schema.TypeList,
+								Required: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"day": {
+											Type:     schema.TypeInt,
+											Computed: true,
+										},
+										"month": {
+											Type:     schema.TypeInt,
+											Computed: true,
+										},
+										"year": {
+											Type:     schema.TypeInt,
+											Computed: true,
+										},
 									},
 								},
 							},
 						},
 					},
 				},
-			},
-			"integer_options": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"max_value": {
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
-						"min_value": {
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
-					},
-				},
-			},
-			"text_options": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"min_length": {
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
-						"max_length": {
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
-					},
-				},
-			},
-			"user_options": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"list_options": {
-							Type:     schema.TypeList,
-							Computed: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"max_entries": {
-										Type:     schema.TypeInt,
-										Computed: true,
+				"selection_options": {
+					Type:     schema.TypeList,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"list_options": {
+								Type:     schema.TypeList,
+								Computed: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"max_entries": {
+											Type:     schema.TypeInt,
+											Computed: true,
+										},
+									},
+								},
+							},
+							"choices": {
+								Type:     schema.TypeList,
+								Computed: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"id": {
+											Type:     schema.TypeString,
+											Computed: true,
+										},
+										"state": {
+											Type:     schema.TypeString,
+											Computed: true,
+										},
+										"display_name": {
+											Type:     schema.TypeString,
+											Computed: true,
+										},
 									},
 								},
 							},
 						},
 					},
 				},
-			},
-			"properties": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"display_name": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"required": {
-							Type:     schema.TypeBool,
-							Computed: true,
+				"integer_options": {
+					Type:     schema.TypeList,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"max_value": {
+								Type:     schema.TypeInt,
+								Computed: true,
+							},
+							"min_value": {
+								Type:     schema.TypeInt,
+								Computed: true,
+							},
 						},
 					},
 				},
-			},
-			"query_key": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"life_cycle": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"state": {
-							Type:     schema.TypeString,
-							Computed: true,
+				"text_options": {
+					Type:     schema.TypeList,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"min_length": {
+								Type:     schema.TypeInt,
+								Computed: true,
+							},
+							"max_length": {
+								Type:     schema.TypeInt,
+								Computed: true,
+							},
+						},
+					},
+				},
+				"user_options": {
+					Type:     schema.TypeList,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"list_options": {
+								Type:     schema.TypeList,
+								Computed: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"max_entries": {
+											Type:     schema.TypeInt,
+											Computed: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				"properties": {
+					Type:     schema.TypeList,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"display_name": {
+								Type:     schema.TypeString,
+								Computed: true,
+							},
+							"required": {
+								Type:     schema.TypeBool,
+								Computed: true,
+							},
+						},
+					},
+				},
+				"query_key": {
+					Type:     schema.TypeString,
+					Computed: true,
+				},
+				"life_cycle": {
+					Type:     schema.TypeList,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"state": {
+								Type:     schema.TypeString,
+								Computed: true,
+							},
 						},
 					},
 				},
 			},
 		},
-	},
+	}
 }
 
 func dataSourceLabel() *schema.Resource {
@@ -266,7 +268,7 @@ When not specified, values in the default configured language are used.`,
 				Computed:    true,
 				Description: ``,
 			},
-			"fields": &labelFieldsDS,
+			"fields": driveLabelFieldsDS(),
 		},
 		Read: dataSourceReadLabel,
 	}
