@@ -55,10 +55,11 @@ func resourceFile() *schema.Resource {
 				Description: "driveId of the Shared Drive",
 			},
 			"content": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "path to a file to upload",
-				ForceNew:    true,
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: `path to a file to upload.
+The provider does not check the content of the file for updates.
+If you need to upload a new version of a file, you need to supply a different file name.`,
 			},
 		},
 		Create: resourceCreateFile,
@@ -115,6 +116,7 @@ func resourceReadFile(d *schema.ResourceData, _ any) error {
 func resourceUpdateFile(d *schema.ResourceData, _ any) error {
 	var addParents string
 	var removeParents string
+	var err error
 	f := &drive.File{
 		MimeType: d.Get("mime_type").(string),
 		Name:     d.Get("name").(string),
@@ -125,7 +127,15 @@ func resourceUpdateFile(d *schema.ResourceData, _ any) error {
 		removeParents = rp.(string)
 		addParents = ap.(string)
 	}
-	_, err := gsmdrive.UpdateFile(d.Id(), addParents, removeParents, "", "", "id", f, nil, false, false)
+	var content *os.File
+	if d.HasChange("content") {
+		content, err = os.Open(d.Get("content").(string))
+		if err != nil {
+			return err
+		}
+		defer content.Close()
+	}
+	_, err = gsmdrive.UpdateFile(d.Id(), addParents, removeParents, "", "", "id", f, content, false, false)
 	if err != nil {
 		return err
 	}
