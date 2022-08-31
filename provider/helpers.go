@@ -139,12 +139,16 @@ func getLabelFields(labelFields []*drivelabels.GoogleAppsDriveLabelsV2Field) []m
 					}
 				}
 				if labelFields[i].SelectionOptions.Choices != nil {
-					choices := make([]map[string]string, len(labelFields[i].SelectionOptions.Choices))
+					choices := make([]map[string]any, len(labelFields[i].SelectionOptions.Choices))
 					for c := range labelFields[i].SelectionOptions.Choices {
-						choices[c] = map[string]string{
+						choices[c] = map[string]any{
 							"display_name": labelFields[i].SelectionOptions.Choices[c].Properties.DisplayName,
 							"id":           labelFields[i].SelectionOptions.Choices[c].Id,
-							"state":        labelFields[i].SelectionOptions.Choices[c].Lifecycle.State,
+							"life_cycle": []map[string]any{
+								{
+									"state": labelFields[i].SelectionOptions.Choices[c].Lifecycle.State,
+								},
+							},
 						}
 					}
 					selectionOptions["choices"] = choices
