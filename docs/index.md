@@ -18,7 +18,7 @@ The basic steps are:
 2. Enable Drive API
 3. Create Service Account + Enable Domain Wide Delegation
     * See [Perform Google Workspace Domain-Wide Delegation of Authority](https://developers.google.com/admin-sdk/directory/v1/guides/delegation)
-    * **You don't need the Service Account Key if you want to use [Application Default Credential](https://cloud.google.com/iam/docs/best-practices-for-using-and-managing-service-accounts#use-attached-service-accounts)
+    * **You don't need the Service Account Key if you want to use [Application Default Credential](https://cloud.google.com/iam/docs/best-practices-for-using-and-managing-service-accounts#use-attached-service-accounts)**
 4. Enter the Client ID of the Service Account with the [Drive scope](https://developers.google.com/identity/protocols/oauth2/scopes#drive) (https://www.googleapis.com/auth/drive) in your Admin Console
 
 You can authenticate in one of two ways:
@@ -102,3 +102,7 @@ You can also use the "SERVICE_ACCOUNT_KEY" environment variable to store either 
 You can also use the "SUBJECT" environment variable.
 - `use_cloud_identity_api` (Boolean) Set this to true if you want to manage Shared Drives in organizational units.
 Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"
+- `use_labels_admin_scope` (Boolean) Set this to true if you want to manage Drive labels with the admin scope.
+Can also be set with the environment variable "USE_LABELS_ADMIN_SCOPE"
+- `use_labels_api` (Boolean) Set this to true if you want to manage Drive labels.
+Can also be set with the environment variable "USE_LABELS_API"

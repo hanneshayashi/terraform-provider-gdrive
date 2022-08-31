@@ -81,15 +81,17 @@ Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"`,
 				DefaultFunc: schema.EnvDefaultFunc("USE_CLOUD_IDENTITY_API", false),
 			},
 			"use_labels_api": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: `Set this to true if you want to manage Drive labels.`,
+				Type:     schema.TypeBool,
+				Optional: true,
+				Description: `Set this to true if you want to manage Drive labels.
+Can also be set with the environment variable "USE_LABELS_API"`,
 				DefaultFunc: schema.EnvDefaultFunc("USE_LABELS_API", false),
 			},
 			"use_labels_admin_scope": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: `Set this to true if you want to manage Drive labels with the admin scope.`,
+				Type:     schema.TypeBool,
+				Optional: true,
+				Description: `Set this to true if you want to manage Drive labels with the admin scope.
+Can also be set with the environment variable "USE_LABELS_ADMIN_SCOPE"`,
 				DefaultFunc: schema.EnvDefaultFunc("USE_LABELS_ADMIN_SCOPE", false),
 			},
 		},

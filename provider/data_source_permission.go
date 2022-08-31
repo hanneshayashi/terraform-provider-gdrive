@@ -37,20 +37,24 @@ func dataSourcePermission() *schema.Resource {
 				Description: "ID of the file or Shared Drive",
 			},
 			"type": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
 			},
 			"domain": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The domain if the type of this permissions is 'domain'",
 			},
 			"email_address": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The email address if the type of this permissions is 'user' or 'group'",
 			},
 			"role": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The role that this trustee is granted",
 			},
 			"use_domain_admin_access": {
 				Type:        schema.TypeBool,

@@ -32,20 +32,24 @@ func dataSourceFile() *schema.Resource {
 				Description: "ID of the file",
 			},
 			"parent": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The ID of the file's parent",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The name of the file",
 			},
 			"mime_type": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Name MIME type of the file in Google Drive",
 			},
 			"drive_id": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The driveId if the file is located in a Shared Drive",
 			},
 			"download_path": {
 				Type:        schema.TypeString,

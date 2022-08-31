@@ -24,18 +24,26 @@ import (
 
 func dataSourceLabels() *schema.Resource {
 	return &schema.Resource{
-		Description: "Gets a Shared Drive and returns its metadata",
+		Description: "Retrieves all matching labels.",
 		Schema: map[string]*schema.Schema{
 			"use_admin_access": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Description: `Set to true in order to use the user's admin credentials.
-The server verifies that the user is an admin for the label before allowing access.`,
+The server verifies that the user is an admin for the label before allowing access.
+Requires setting the 'use_labels_admin_scope' property to 'true' in the provider config.`,
 			},
 			"published_only": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: ``,
+				Type:     schema.TypeBool,
+				Optional: true,
+				Description: `Whether to include only published labels in the results.
+
+When true, only the current published label revisions are returned.
+Disabled labels are included.
+Returned label resource names reference the published revision (labels/{id}/{revisionId}).
+
+When false, the current label revisions are returned, which might not be published.
+Returned label resource names don't reference a specific revision (labels/{id}).`,
 			},
 			"language_code": {
 				Type:     schema.TypeString,
@@ -47,11 +55,11 @@ When not specified, values in the default configured language are used.`,
 				Type:     schema.TypeString,
 				Optional: true,
 				Description: `Specifies the level of access the user must have on the returned Labels.
-                              The minimum role a user must have on a label.
-                              Defaults to READER.
-                              [READER|APPLIER|ORGANIZER|EDITOR]
-                              READER     - A reader can read the label and associated metadata applied to Drive items.
-                              APPLIER    - An applier can write associated metadata on Drive items in which they also have write access to. Implies READER.`,
+The minimum role a user must have on a label.
+Defaults to READER.
+[READER|APPLIER|ORGANIZER|EDITOR]
+READER     - A reader can read the label and associated metadata applied to Drive items.
+APPLIER    - An applier can write associated metadata on Drive items in which they also have write access to. Implies READER.`,
 			},
 			"labels": {
 				Type:     schema.TypeList,
@@ -61,22 +69,22 @@ When not specified, values in the default configured language are used.`,
 						"id": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: ``,
+							Description: `The id of this label.`,
 						},
 						"label_type": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: ``,
+							Description: `The type of this label.`,
 						},
 						"description": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: ``,
+							Description: `The description of the label.`,
 						},
 						"title": {
 							Type:        schema.TypeString,
 							Computed:    true,
-							Description: ``,
+							Description: `Title of the label.`,
 						},
 						"fields": labelFieldsDS(),
 					},

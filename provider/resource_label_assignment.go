@@ -35,17 +35,24 @@ func labelFieldsR() *schema.Schema {
 				"field_id": {
 					Type:        schema.TypeString,
 					Required:    true,
-					Description: "",
+					Description: "The identifier of this field.",
 				},
 				"value_type": {
-					Type:        schema.TypeString,
-					Required:    true,
-					Description: "",
+					Type:     schema.TypeString,
+					Required: true,
+					Description: `The field type.
+While new values may be supported in the future, the following are currently allowed:
+- dateString
+- integer
+- selection
+- text
+- user`,
 				},
 				"values": {
-					Type:        schema.TypeSet,
-					Required:    true,
-					Description: "",
+					Type:     schema.TypeSet,
+					Required: true,
+					Description: `The values that should be set.
+Must be compatible with the specified valueType.`,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
@@ -62,12 +69,12 @@ func resourceLabelAssignment() *schema.Resource {
 			"file_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "ID of the file to assign the label to",
+				Description: "ID of the file to assign the label to.",
 			},
 			"label_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "",
+				Description: "The ID of the label.",
 			},
 			"field": labelFieldsR(),
 		},

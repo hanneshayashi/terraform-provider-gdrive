@@ -32,18 +32,21 @@ func resourceLabelPolicy() *schema.Resource {
 			"file_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "ID of the file to assign the label policy to",
+				Description: "ID of the file to assign the label policy to.",
 			},
 			"label": {
-				Type:        schema.TypeSet,
-				Optional:    true,
-				Description: ``,
+				Type:     schema.TypeSet,
+				Optional: true,
+				Description: `Represents a single label configuration.
+May be used multiple times to assign multiple labels to the file.
+All labels not configured here will be removed.
+If no labels are defined, all labels will be removed!`,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"label_id": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "",
+							Description: "The ID of the label.",
 						},
 						"field": labelFieldsR(),
 					},
@@ -115,8 +118,10 @@ func resourceDeleteLabelPolicy(d *schema.ResourceData, _ any) error {
 	}
 	for l := range labels {
 		label := labels[l].(map[string]any)
-		req.LabelModifications[l].LabelId = label["label_id"].(string)
-		req.LabelModifications[l].RemoveLabel = true
+		req.LabelModifications[l] = &drive.LabelModification{
+			LabelId:     label["label_id"].(string),
+			RemoveLabel: true,
+		}
 	}
 	_, err := gsmdrive.ModifyLabels(d.Get("file_id").(string), "", req)
 	return err
