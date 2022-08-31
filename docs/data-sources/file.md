@@ -48,9 +48,9 @@ For a list of supported MIME types see https://developers.google.com/drive/api/v
 
 ### Read-Only
 
-- `drive_id` (String)
+- `drive_id` (String) The driveId if the file is located in a Shared Drive
 - `id` (String) The ID of this resource.
 - `local_file_path` (String) The path where the local copy or export of the file was created
-- `mime_type` (String)
-- `name` (String)
-- `parent` (String)
+- `mime_type` (String) Name MIME type of the file in Google Drive
+- `name` (String) The name of the file
+- `parent` (String) The ID of the file's parent

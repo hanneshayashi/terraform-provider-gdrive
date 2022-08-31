@@ -47,7 +47,7 @@ resource "gdrive_permissions_policy" "permissions_policy" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `permissions` (List of Object) (see [below for nested schema](#nestedatt--permissions))
+- `permissions` (List of Object) The list of permissions set on this file or Shared Drive (see [below for nested schema](#nestedatt--permissions))
 
 <a id="nestedatt--permissions"></a>
 ### Nested Schema for `permissions`

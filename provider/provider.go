@@ -77,6 +77,8 @@ You can also use the "SUBJECT" environment variable.`,
 				Type:     schema.TypeBool,
 				Optional: true,
 				Description: `Set this to true if you want to manage Shared Drives in organizational units.
+Adds the scope 'https://www.googleapis.com/auth/cloud-identity.orgunits' to the provider's http client.
+This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
 Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"`,
 				DefaultFunc: schema.EnvDefaultFunc("USE_CLOUD_IDENTITY_API", false),
 			},
@@ -84,6 +86,8 @@ Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"`,
 				Type:     schema.TypeBool,
 				Optional: true,
 				Description: `Set this to true if you want to manage Drive labels.
+Adds the scope 'https://www.googleapis.com/auth/drive.labels' to the provider's http client.
+This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
 Can also be set with the environment variable "USE_LABELS_API"`,
 				DefaultFunc: schema.EnvDefaultFunc("USE_LABELS_API", false),
 			},
@@ -91,6 +95,9 @@ Can also be set with the environment variable "USE_LABELS_API"`,
 				Type:     schema.TypeBool,
 				Optional: true,
 				Description: `Set this to true if you want to manage Drive labels with the admin scope.
+Only has effect if 'use_labels_api' is also set to 'true'.
+Adds the scope 'https://www.googleapis.com/auth/drive.admin.labels' to the provider's http client.
+This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
 Can also be set with the environment variable "USE_LABELS_ADMIN_SCOPE"`,
 				DefaultFunc: schema.EnvDefaultFunc("USE_LABELS_ADMIN_SCOPE", false),
 			},

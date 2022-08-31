@@ -33,8 +33,8 @@ data "gdrive_permission" "permission" {
 
 ### Read-Only
 
-- `domain` (String)
-- `email_address` (String)
+- `domain` (String) The domain if the type of this permissions is 'domain'
+- `email_address` (String) The email address if the type of this permissions is 'user' or 'group'
 - `id` (String) The ID of this resource.
-- `role` (String)
-- `type` (String)
+- `role` (String) The role that this trustee is granted
+- `type` (String) The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'
