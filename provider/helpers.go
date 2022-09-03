@@ -48,7 +48,7 @@ func getRestrictions(d *drive.Drive) (restrictions map[string]bool) {
 	return
 }
 
-func splitCombinedPermissionId(id string) (fileID, permissionID string) {
+func splitId(id string) (fileID, secondaryID string) {
 	ids := strings.Split(id, "/")
 	return ids[0], ids[1]
 }

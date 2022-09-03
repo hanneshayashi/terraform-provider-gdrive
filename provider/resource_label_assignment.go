@@ -110,8 +110,7 @@ func resourceUpdateLabelAssignment(d *schema.ResourceData, _ any) error {
 }
 
 func resourceReadLabelAssignment(d *schema.ResourceData, _ any) error {
-	fileID := d.Get("file_id").(string)
-	labelID := d.Get("label_id").(string)
+	fileID, labelID := splitId(d.Id())
 	fields := make([]map[string]any, 0)
 	r, err := gsmdrive.ListLabels(fileID, "", 1)
 	for l := range r {
@@ -154,10 +153,11 @@ func resourceReadLabelAssignment(d *schema.ResourceData, _ any) error {
 }
 
 func resourceDeleteLabelAssignment(d *schema.ResourceData, _ any) error {
-	_, err := gsmdrive.ModifyLabels(d.Get("file_id").(string), "", &drive.ModifyLabelsRequest{
+	fileID, labelID := splitId(d.Id())
+	_, err := gsmdrive.ModifyLabels(fileID, "", &drive.ModifyLabelsRequest{
 		LabelModifications: []*drive.LabelModification{
 			{
-				LabelId:     d.Get("label_id").(string),
+				LabelId:     labelID,
 				RemoveLabel: true,
 			},
 		},
@@ -166,8 +166,8 @@ func resourceDeleteLabelAssignment(d *schema.ResourceData, _ any) error {
 }
 
 func resourceExistsLabelAssignment(d *schema.ResourceData, _ any) (bool, error) {
-	labelID := d.Get("label_id").(string)
-	r, err := gsmdrive.ListLabels(d.Get("file_id").(string), "", 1)
+	fileID, labelID := splitId(d.Id())
+	r, err := gsmdrive.ListLabels(fileID, "", 1)
 	for l := range r {
 		if l.Id == labelID {
 			return true, nil

@@ -94,9 +94,8 @@ func resourceUpdateLabelPolicy(d *schema.ResourceData, _ any) error {
 }
 
 func resourceReadLabelPolicy(d *schema.ResourceData, _ any) error {
-	fileID := d.Get("file_id").(string)
 	labels := make([]map[string]any, 0)
-	r, err := gsmdrive.ListLabels(fileID, "", 1)
+	r, err := gsmdrive.ListLabels(d.Id(), "", 1)
 	for l := range r {
 		labels = append(labels, map[string]any{
 			"label_id": l.Id,
