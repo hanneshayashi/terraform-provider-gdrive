@@ -124,7 +124,7 @@ func resourceCreatePermission(d *schema.ResourceData, _ any) error {
 }
 
 func resourceReadPermission(d *schema.ResourceData, _ any) error {
-	fileID, permissionID := splitCombinedPermissionId(d.Id())
+	fileID, permissionID := splitId(d.Id())
 	r, err := gsmdrive.GetPermission(fileID, permissionID, "emailAddress,domain,role,type", d.Get("use_domain_admin_access").(bool))
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func resourceReadPermission(d *schema.ResourceData, _ any) error {
 }
 
 func resourceUpdatePermission(d *schema.ResourceData, _ any) error {
-	fileID, permissionID := splitCombinedPermissionId(d.Id())
+	fileID, permissionID := splitId(d.Id())
 	p := &drive.Permission{Role: d.Get("role").(string)}
 	_, err := gsmdrive.UpdatePermission(fileID, permissionID, "id", d.Get("use_domain_admin_access").(bool), false, p)
 	if err != nil {
@@ -151,13 +151,13 @@ func resourceUpdatePermission(d *schema.ResourceData, _ any) error {
 }
 
 func resourceDeletePermission(d *schema.ResourceData, _ any) error {
-	fileID, permissionID := splitCombinedPermissionId(d.Id())
+	fileID, permissionID := splitId(d.Id())
 	_, err := gsmdrive.DeletePermission(fileID, permissionID, d.Get("use_domain_admin_access").(bool))
 	return err
 }
 
 func resourceExistsPermission(d *schema.ResourceData, _ any) (bool, error) {
-	fileID, permissionID := splitCombinedPermissionId(d.Id())
+	fileID, permissionID := splitId(d.Id())
 	_, err := gsmdrive.GetPermission(fileID, permissionID, "", d.Get("use_domain_admin_access").(bool))
 	if err != nil {
 		return false, err

@@ -99,7 +99,7 @@ Optional:
 
 Read-Only:
 
-- `permission_id` (String)
+- `permission_id` (String) The permission ID
 
 ## Import
 

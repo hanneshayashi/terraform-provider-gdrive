@@ -32,8 +32,8 @@ data "gdrive_drive" "drive" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `name` (String)
-- `restrictions` (List of Object) (see [below for nested schema](#nestedatt--restrictions))
+- `name` (String) The name of this shared drive.
+- `restrictions` (List of Object) A set of restrictions that apply to this shared drive or items inside this shared drive. (see [below for nested schema](#nestedatt--restrictions))
 
 <a id="nestedatt--restrictions"></a>
 ### Nested Schema for `restrictions`

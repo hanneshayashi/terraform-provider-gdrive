@@ -57,8 +57,9 @@ terraform import [resource address] [fileId]
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"permission_id": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:        schema.TypeString,
+							Description: "The permission ID",
+							Computed:    true,
 						},
 						"email_message": {
 							Type:        schema.TypeString,

@@ -12,3 +12,12 @@ resource "gdrive_file" "file_with_content" {
   parent    = gdrive_file.folder.id
   content   = "/path/to/somefile"
 }
+
+# Updload a CSV file and import it as a Google Sheet
+resource "gdrive_file" "import_csv" {
+  name             = "my_sheet"
+  mime_type        = "application/vnd.google-apps.spreadsheet"
+  mime_type_source = "text/csv"
+  content          = "./test.csv"
+  parent           = gdrive_file.folder.id
+}

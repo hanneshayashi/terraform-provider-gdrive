@@ -18,7 +18,7 @@ The basic steps are:
 2. Enable Drive API
 3. Create Service Account + Enable Domain Wide Delegation
     * See [Perform Google Workspace Domain-Wide Delegation of Authority](https://developers.google.com/admin-sdk/directory/v1/guides/delegation)
-    * **You don't need the Service Account Key if you want to use [Application Default Credential](https://cloud.google.com/iam/docs/best-practices-for-using-and-managing-service-accounts#use-attached-service-accounts)
+    * **You don't need the Service Account Key if you want to use [Application Default Credential](https://cloud.google.com/iam/docs/best-practices-for-using-and-managing-service-accounts#use-attached-service-accounts)**
 4. Enter the Client ID of the Service Account with the [Drive scope](https://developers.google.com/identity/protocols/oauth2/scopes#drive) (https://www.googleapis.com/auth/drive) in your Admin Console
 
 You can authenticate in one of two ways:
@@ -49,19 +49,49 @@ provider "gdrive" {
 }
 ```
 
-### Optional: Enable Management of Shared Drives in Organizational Units
+### Optional
+
+#### Enable Management of Shared Drives in Organizational Units
 
 **BEWARE! THE API AND THIS FEATURE ARE IN BETA AND MAY BREAK WITHOUT WARNING!**
 
 If you want to organize your Shared Drives in organizational units with this provider, some additional setup is required:
-  1. Enable the Cloud Identity API in your GCP project
-  2. Add `https://www.googleapis.com/auth/cloud-identity.orgunits` as a scope to your Domain Wide Delegation config
-  3. Set "use_cloud_identity_api = true" in you provider configuration:
+1. Enable the Cloud Identity API in your GCP project
+2. Add `https://www.googleapis.com/auth/cloud-identity.orgunits` as a scope to your Domain Wide Delegation config
+3. Set `use_cloud_identity_api = true` in your provider configuration:
 
 ```terraform
 provider "gdrive" {
   # ...
   use_cloud_identity_api = true
+}
+```
+
+#### Enable Drive Label API
+
+**Label assignments use the normal Drive API so no additional setup is required**
+
+If you want to use Google Drive Labels (currently data sources only), some additional setup is required:
+1. Enable the Drive Labels API in your GCP project
+2. Add `https://www.googleapis.com/auth/drive.labels` as a scope to your Domain Wide Delegation config
+3. Set `use_labels_api = true` in your provider configuration:
+
+```terraform
+provider "gdrive" {
+  # ...
+  use_labels_api = true
+}
+```
+
+If you want to use "admin access" when working with labels, you also need to do the following:
+1. Add `https://www.googleapis.com/auth/drive.admin.labels` as a scope to your Domain Wide Delegation config
+2. Set `use_labels_admin_scope = true` in your provider configuration:
+
+```terraform
+provider "gdrive" {
+  # ...
+  use_labels_api         = true
+  use_labels_admin_scope = true
 }
 ```
 

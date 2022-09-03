@@ -37,41 +37,56 @@ func dataSourcePermissions() *schema.Resource {
 				Description: "Use domain admin access",
 			},
 			"permissions": {
-				Type:     schema.TypeList,
-				Computed: true,
+				Type:        schema.TypeList,
+				Computed:    true,
+				Description: "The list of permissions set on this file or Shared Drive",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"permission_id": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "ID of the permission",
 						},
 						"display_name": {
 							Type:     schema.TypeString,
 							Optional: true,
+							Description: `The "pretty" name of the value of the permission.
+The following is a list of examples for each type of permission:
+- user    - User's full name, as defined for their Google account, such as "Joe Smith."
+- group   - Name of the Google Group, such as "The Company Administrators."
+- domain  - String domain name, such as "thecompany.com."
+- anyone  - No displayName is present.`,
 						},
 						"domain": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The domain if the type of this permissions is 'domain'",
 						},
 						"deleted": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Description: `Whether the account associated with this permission has been deleted.
+This field only pertains to user and group permissions.`,
 						},
 						"email_address": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The email address if the type of this permissions is 'user' or 'group'",
 						},
 						"expiration_time": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The time at which this permission will expire (RFC 3339 date-time)",
 						},
 						"role": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The role that this trustee is granted",
 						},
 						"type": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
 						},
 					},
 				},
