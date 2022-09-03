@@ -49,19 +49,49 @@ provider "gdrive" {
 }
 ```
 
-### Optional: Enable Management of Shared Drives in Organizational Units
+### Optional
+
+#### Enable Management of Shared Drives in Organizational Units
 
 **BEWARE! THE API AND THIS FEATURE ARE IN BETA AND MAY BREAK WITHOUT WARNING!**
 
 If you want to organize your Shared Drives in organizational units with this provider, some additional setup is required:
-  1. Enable the Cloud Identity API in your GCP project
-  2. Add `https://www.googleapis.com/auth/cloud-identity.orgunits` as a scope to your Domain Wide Delegation config
-  3. Set "use_cloud_identity_api = true" in you provider configuration:
+1. Enable the Cloud Identity API in your GCP project
+2. Add `https://www.googleapis.com/auth/cloud-identity.orgunits` as a scope to your Domain Wide Delegation config
+3. Set `use_cloud_identity_api = true` in your provider configuration:
 
 ```terraform
 provider "gdrive" {
   # ...
   use_cloud_identity_api = true
+}
+```
+
+#### Enable Drive Label API
+
+**Label assignments use the normal Drive API so no additional setup is required**
+
+If you want to use Google Drive Labels (currently data sources only), some additional setup is required:
+1. Enable the Drive Labels API in your GCP project
+2. Add `https://www.googleapis.com/auth/drive.labels` as a scope to your Domain Wide Delegation config
+3. Set `use_labels_api = true` in your provider configuration:
+
+```terraform
+provider "gdrive" {
+  # ...
+  use_labels_api = true
+}
+```
+
+If you want to use "admin access" when working with labels, you also need to do the following:
+1. Add `https://www.googleapis.com/auth/drive.admin.labels` as a scope to your Domain Wide Delegation config
+2. Set `use_labels_admin_scope = true` in your provider configuration:
+
+```terraform
+provider "gdrive" {
+  # ...
+  use_labels_api         = true
+  use_labels_admin_scope = true
 }
 ```
 

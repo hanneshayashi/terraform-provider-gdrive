@@ -24,7 +24,11 @@ import (
 
 func dataSourceLabels() *schema.Resource {
 	return &schema.Resource{
-		Description: "Retrieves all matching labels.",
+		Description: `Retrieves all matching labels.
+This resource requires additional setup:
+1. Enable the Drive Labels API in your GCP project
+2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
+3. Set 'use_labels_api' to 'true' in your provider configuration`,
 		Schema: map[string]*schema.Schema{
 			"use_admin_access": {
 				Type:     schema.TypeBool,

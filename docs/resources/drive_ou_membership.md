@@ -7,8 +7,8 @@ description: |-
   Sets the membership of a Shared Drive in an organizational unit.
   This resource requires additional setup:
   1. Enable the Cloud Identity API in your GCP project
-  2. Add "https://www.googleapis.com/auth/cloud-identity.orgunits" as a scope to your Domain Wide Delegation config
-  3. Set "use_cloud_identity_api = true" in you provider configuration
+  2. Add 'https://www.googleapis.com/auth/cloud-identity.orgunits' as a scope to your Domain Wide Delegation config
+  3. Set 'use_cloud_identity_api' to 'true' in your provider configuration
   The resource will move the Shared Drive to the specified OU in your Admin Console.
   Some things to note:
   - You need to specify the ID of the OU (NOT THE PATH!)
@@ -23,8 +23,8 @@ BEWARE! THE API AND THIS RESOURCE ARE IN BETA AND MAY BREAK WITHOUT WARNING!
 Sets the membership of a Shared Drive in an organizational unit.
 This resource requires additional setup:
 1. Enable the Cloud Identity API in your GCP project
-2. Add "https://www.googleapis.com/auth/cloud-identity.orgunits" as a scope to your Domain Wide Delegation config
-3. Set "use_cloud_identity_api = true" in you provider configuration
+2. Add 'https://www.googleapis.com/auth/cloud-identity.orgunits' as a scope to your Domain Wide Delegation config
+3. Set 'use_cloud_identity_api' to 'true' in your provider configuration
 
 The resource will move the Shared Drive to the specified OU in your Admin Console.
 

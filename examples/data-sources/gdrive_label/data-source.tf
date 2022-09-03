@@ -9,3 +9,8 @@ data "gdrive_label" "label_revision" {
   revision         = "1"
   use_admin_access = true
 }
+
+# Find all files with a specific field value
+data "gdrive_files" "files_with_label" {
+  query = "${data.gdrive_label.label.fields[0].query_key} = 'my value'"
+}

@@ -3,12 +3,20 @@
 page_title: "gdrive_label Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  This resource can be used to get the fields and other metadata for a single label
+  This resource can be used to get the fields and other metadata for a single label.
+  This resource requires additional setup:
+  1. Enable the Drive Labels API in your GCP project
+  2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
+  3. Set 'uselabelsapi' to 'true' in your provider configuration
 ---
 
 # gdrive_label (Data Source)
 
-This resource can be used to get the fields and other metadata for a single label
+This resource can be used to get the fields and other metadata for a single label.
+This resource requires additional setup:
+1. Enable the Drive Labels API in your GCP project
+2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
+3. Set 'use_labels_api' to 'true' in your provider configuration
 
 ## Example Usage
 
@@ -23,6 +31,11 @@ data "gdrive_label" "label_revision" {
   name             = "..."
   revision         = "1"
   use_admin_access = true
+}
+
+# Find all files with a specific field value
+data "gdrive_files" "files_with_label" {
+  query = "${data.gdrive_label.label.fields[0].query_key} = 'my value'"
 }
 ```
 

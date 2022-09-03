@@ -249,7 +249,11 @@ For example, "{queryKey} > 2001-01-01".`,
 
 func dataSourceLabel() *schema.Resource {
 	return &schema.Resource{
-		Description: "This resource can be used to get the fields and other metadata for a single label",
+		Description: `This resource can be used to get the fields and other metadata for a single label.
+This resource requires additional setup:
+1. Enable the Drive Labels API in your GCP project
+2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
+3. Set 'use_labels_api' to 'true' in your provider configuration`,
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:     schema.TypeString,
