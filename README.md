@@ -9,6 +9,7 @@ A Terraform Provider for Google Drive
 * Manage Shared Drives and organize them into organizational units
 * Manage Google Drive files (including file uploads, downloads and exports)
 * Manage Google Drive permissions
+* Manage Google Drive Labels (assignment to files als folders)
 
 ## Installation
 To install this provider, copy and paste this code into your Terraform configuration. Then, run terraform init.
