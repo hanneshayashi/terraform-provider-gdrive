@@ -43,6 +43,9 @@ resource "gdrive_drive" "drive_restrictions" {
 
 - `restrictions` (Block List, Max: 1) The restrictions that should be set on the Shared Drive (see [below for nested schema](#nestedblock--restrictions))
 - `use_domain_admin_access` (Boolean) Use domain admin access
+- `wait_after_create` (Number) The Drive API returns a Shared Drive object immediately after creation, even though it is often not ready or visibile in other APIS.
+In order to prevent 404 errors after the creation of a Shared Drive, the provider will wait the specified number of seconds after the creation of a Shared Drive and before returning or attempting further operations.
+This value is only used for the initial creation and not used for updates. Changing this value after the initial creation has no effect.
 
 ### Read-Only
 

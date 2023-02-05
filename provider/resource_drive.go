@@ -39,6 +39,14 @@ func resourceDrive() *schema.Resource {
 				Optional:    true,
 				Description: "Use domain admin access",
 			},
+			"wait_after_create": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  60,
+				Description: `The Drive API returns a Shared Drive object immediately after creation, even though it is often not ready or visibile in other APIS.
+In order to prevent 404 errors after the creation of a Shared Drive, the provider will wait the specified number of seconds after the creation of a Shared Drive and before returning or attempting further operations.
+This value is only used for the initial creation and not used for updates. Changing this value after the initial creation has no effect.`,
+			},
 			"restrictions": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -146,8 +154,11 @@ func resourceCreateDrive(d *schema.ResourceData, _ any) error {
 		return err
 	}
 	d.SetId(driveResult.Id)
-	time.Sleep(5 * time.Second)
-	return resourceUpdateDrive(d, nil)
+	time.Sleep(time.Duration(d.Get("wait_after_create").(int)) * time.Second)
+	if d.HasChange("restrictions") {
+		return resourceUpdateDrive(d, nil)
+	}
+	return resourceReadDrive(d, nil)
 }
 
 func resourceReadDrive(d *schema.ResourceData, _ any) error {
@@ -177,11 +188,7 @@ func resourceUpdateDrive(d *schema.ResourceData, _ any) error {
 	if err != nil {
 		return err
 	}
-	err = resourceReadDrive(d, nil)
-	if err != nil {
-		return err
-	}
-	return nil
+	return resourceReadDrive(d, nil)
 }
 
 func resourceDeleteDrive(d *schema.ResourceData, _ any) error {
