@@ -1,6 +1,6 @@
 module github.com/hanneshayashi/terraform-provider-gdrive
 
-go 1.19
+go 1.20
 
 require (
 	github.com/hanneshayashi/gsm v0.8.0
