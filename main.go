@@ -18,12 +18,23 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"context"
+	"log"
+
 	"github.com/hanneshayashi/terraform-provider-gdrive/provider"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
 func main() {
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: provider.Provider,
-	})
+	err := providerserver.Serve(
+		context.Background(),
+		provider.New,
+		providerserver.ServeOpts{
+			Address: "registry.terraform.io/hanneshayashi/gdrive",
+		},
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
