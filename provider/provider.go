@@ -183,6 +183,7 @@ func (p *gdriveProvider) Resources(ctx context.Context) []func() resource.Resour
 	return []func() resource.Resource{
 		newDrive,
 		newFile,
+		newPermission,
 	}
 }
 

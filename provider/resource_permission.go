@@ -17,150 +17,253 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package provider
 
-// import (
-// 	"github.com/hanneshayashi/gsm/gsmdrive"
-// 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-// 	"google.golang.org/api/drive/v3"
-// )
+import (
+	"context"
+	"fmt"
+	"net/http"
 
-// func resourcePermission() *schema.Resource {
-// 	return &schema.Resource{
-// 		Description: "Sets a single permission on a file or Shared Drive",
-// 		Schema: map[string]*schema.Schema{
-// 			"file_id": {
-// 				Type:        schema.TypeString,
-// 				Required:    true,
-// 				Description: "ID of the file or Shared Drive",
-// 				ForceNew:    true,
-// 			},
-// 			"email_message": {
-// 				Type:        schema.TypeString,
-// 				Optional:    true,
-// 				Description: "An optional email message that will be sent when the permission is created",
-// 			},
-// 			"send_notification_email": {
-// 				Type:        schema.TypeBool,
-// 				Optional:    true,
-// 				Description: "Wether to send a notfication email",
-// 			},
-// 			"type": {
-// 				Type:         schema.TypeString,
-// 				Required:     true,
-// 				Description:  "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
-// 				ValidateFunc: validatePermissionType,
-// 				ForceNew:     true,
-// 			},
-// 			"domain": {
-// 				Type:          schema.TypeString,
-// 				Optional:      true,
-// 				Description:   "The domain that should be granted access",
-// 				ConflictsWith: []string{"email_address"},
-// 				ForceNew:      true,
-// 			},
-// 			"email_address": {
-// 				Type:          schema.TypeString,
-// 				Optional:      true,
-// 				Description:   "The email address of the trustee",
-// 				ConflictsWith: []string{"domain"},
-// 				ForceNew:      true,
-// 			},
-// 			"role": {
-// 				Type:        schema.TypeString,
-// 				Required:    true,
-// 				Description: "The role",
-// 			},
-// 			"use_domain_admin_access": {
-// 				Type:        schema.TypeBool,
-// 				Optional:    true,
-// 				Description: "Use domain admin access",
-// 			},
-// 			"transfer_ownership": {
-// 				Type:        schema.TypeBool,
-// 				Optional:    true,
-// 				Description: "Whether to transfer ownership to the specified user",
-// 			},
-// 			"move_to_new_owners_root": {
-// 				Type:        schema.TypeBool,
-// 				Optional:    true,
-// 				Description: "This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.",
-// 			},
-// 		},
-// 		Create: resourceCreatePermission,
-// 		Read:   resourceReadPermission,
-// 		Update: resourceUpdatePermission,
-// 		Delete: resourceDeletePermission,
-// 		Exists: resourceExistsPermission,
-// 		Importer: &schema.ResourceImporter{
-// 			StateContext: schema.ImportStatePassthroughContext,
-// 		},
-// 	}
-// }
+	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"google.golang.org/api/drive/v3"
+)
+
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ resource.Resource = &gdrivePermissionResource{}
+var _ resource.ResourceWithImportState = &gdrivePermissionResource{}
+
+const fieldsPermission = "emailAddress,domain,role,type,id"
+
+func newPermission() resource.Resource {
+	return &gdrivePermissionResource{}
+}
+
+// gdrivePermissionResource defines the resource implementation.
+type gdrivePermissionResource struct {
+	client *http.Client
+}
+
+// gdrivePermissionResourceModel describes the resource data model.
+type gdrivePermissionResourceModel struct {
+	FileId                types.String `tfsdk:"file_id"`
+	PermissionId          types.String `tfsdk:"permission_id"`
+	EmailMessage          types.String `tfsdk:"email_message"`
+	SendNotificationEmail types.Bool   `tfsdk:"send_notification_email"`
+	UseDomainAdminAccess  types.Bool   `tfsdk:"use_domain_admin_access"`
+	TransferOwnership     types.Bool   `tfsdk:"transfer_ownership"`
+	MoveToNewOwnersRoot   types.Bool   `tfsdk:"move_to_new_owners_root"`
+	Id                    types.String `tfsdk:"id"`
+	Type                  types.String `tfsdk:"type"`
+	Domain                types.String `tfsdk:"domain"`
+	EmailAddress          types.String `tfsdk:"email_address"`
+	Role                  types.String `tfsdk:"role"`
+}
+
+func (r *gdrivePermissionResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_permission"
+}
+
+func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Creates a file or folder with the given MIME type and optionally uploads a local file",
+		Attributes: map[string]schema.Attribute{
+			"file_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the file or Shared Drive",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"email_message": schema.StringAttribute{
+				MarkdownDescription: "An optional email message that will be sent when the permission is created",
+				Optional:            true,
+			},
+			"send_notification_email": schema.BoolAttribute{
+				MarkdownDescription: "Wether to send a notfication email",
+				Optional:            true,
+			},
+			"type": schema.StringAttribute{
+				MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+				// Validators: []validator.String{
+				// TODO
+				// 				ValidateFunc: validatePermissionType,
+				// },
+			},
+			"domain": schema.StringAttribute{
+				MarkdownDescription: "The domain that should be granted access",
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+				// Validators: []validator.String{
+				// TODO
+				// 				ConflictsWith: []string{"email_address"},
+				// },
+			},
+			"email_address": schema.StringAttribute{
+				MarkdownDescription: "The email address of the trustee",
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+				// Validators: []validator.String{
+				// TODO
+				// 				ConflictsWith: []string{"domain"},
+				// },
+			},
+			"role": schema.StringAttribute{
+				MarkdownDescription: "The role",
+				Required:            true,
+				// Validators: []validator.String{
+				// TODO
+				// 				ConflictsWith: []string{"email_address"},
+				// },
+			},
+			"use_domain_admin_access": schema.BoolAttribute{
+				MarkdownDescription: "Use domain admin access",
+				Optional:            true,
+			},
+			"transfer_ownership": schema.BoolAttribute{
+				MarkdownDescription: "Whether to transfer ownership to the specified user",
+				Optional:            true,
+			},
+			"move_to_new_owners_root": schema.BoolAttribute{
+				MarkdownDescription: "This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.",
+				Optional:            true,
+			},
+			"permission_id": schema.StringAttribute{
+				MarkdownDescription: "PermissionID of the trustee",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The ID of the permission assignment (fileId/permissionId)",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+		},
+	}
+}
+
+func (r *gdrivePermissionResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	r.client = client
+}
+
+func (r *gdrivePermissionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	plan := &gdrivePermissionResourceModel{}
+	diags := req.Plan.Get(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	fileID := plan.FileId.ValueString()
+	permissionReq := &drive.Permission{
+		Domain:       plan.Domain.ValueString(),
+		EmailAddress: plan.EmailAddress.ValueString(),
+		Role:         plan.Role.ValueString(),
+		Type:         plan.Type.ValueString(),
+	}
+	p, err := gsmdrive.CreatePermission(fileID, plan.EmailMessage.ValueString(), fieldsPermission, plan.UseDomainAdminAccess.ValueBool(), plan.SendNotificationEmail.ValueBool(), plan.TransferOwnership.ValueBool(), plan.MoveToNewOwnersRoot.ValueBool(), permissionReq)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set permission on file, got error: %s", err))
+		return
+	}
+	plan.Id = types.StringValue((combineId(fileID, p.Id)))
+	plan.PermissionId = types.StringValue(p.Id)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *gdrivePermissionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	plan := &gdrivePermissionResourceModel{}
+	diags := req.State.Get(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	p, err := gsmdrive.GetPermission(plan.FileId.ValueString(), plan.PermissionId.ValueString(), fieldsPermission, plan.UseDomainAdminAccess.ValueBool())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read permission on file, got error: %s", err))
+		return
+	}
+	if p.EmailAddress != "" {
+		plan.EmailAddress = types.StringValue(p.EmailAddress)
+	}
+	if p.Domain != "" {
+		plan.Domain = types.StringValue(p.Domain)
+	}
+	plan.Role = types.StringValue(p.Role)
+	plan.Type = types.StringValue(p.Type)
+	diags = resp.State.Set(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+}
+
+func (r *gdrivePermissionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	plan := &gdrivePermissionResourceModel{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	state := &gdrivePermissionResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	permissionReq := &drive.Permission{
+		Role: plan.Role.ValueString(),
+	}
+	_, err := gsmdrive.UpdatePermission(plan.FileId.ValueString(), plan.PermissionId.ValueString(), fieldsPermission, plan.UseDomainAdminAccess.ValueBool(), false, permissionReq)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update permission on file, got error: %s", err))
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *gdrivePermissionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	plan := &gdrivePermissionResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	_, err := gsmdrive.DeletePermission(plan.FileId.ValueString(), plan.PermissionId.ValueString(), plan.UseDomainAdminAccess.ValueBool())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete permission, got error: %s", err))
+		return
+	}
+}
+
+func (r *gdrivePermissionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
 
 // var validPermissionTypes = []string{
 // 	"user",
 // 	"group",
 // 	"domain",
 // 	"anyone",
-// }
-
-// func resourceCreatePermission(d *schema.ResourceData, _ any) error {
-// 	fileID := d.Get("file_id").(string)
-// 	p := &drive.Permission{
-// 		Domain:       d.Get("domain").(string),
-// 		EmailAddress: d.Get("email_address").(string),
-// 		Role:         d.Get("role").(string),
-// 		Type:         d.Get("type").(string),
-// 	}
-// 	r, err := gsmdrive.CreatePermission(fileID, d.Get("email_message").(string), "id", d.Get("use_domain_admin_access").(bool), d.Get("send_notification_email").(bool), d.Get("transfer_ownership").(bool), d.Get("move_to_new_owners_root").(bool), p)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	d.SetId(combineId(fileID, r.Id))
-// 	err = resourceReadPermission(d, nil)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// func resourceReadPermission(d *schema.ResourceData, _ any) error {
-// 	fileID, permissionID := splitId(d.Id())
-// 	r, err := gsmdrive.GetPermission(fileID, permissionID, "emailAddress,domain,role,type", d.Get("use_domain_admin_access").(bool))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	d.Set("email_address", r.EmailAddress)
-// 	d.Set("domain", r.Domain)
-// 	d.Set("role", r.Role)
-// 	d.Set("type", r.Type)
-// 	return nil
-// }
-
-// func resourceUpdatePermission(d *schema.ResourceData, _ any) error {
-// 	fileID, permissionID := splitId(d.Id())
-// 	p := &drive.Permission{Role: d.Get("role").(string)}
-// 	_, err := gsmdrive.UpdatePermission(fileID, permissionID, "id", d.Get("use_domain_admin_access").(bool), false, p)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = resourceReadPermission(d, nil)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// func resourceDeletePermission(d *schema.ResourceData, _ any) error {
-// 	fileID, permissionID := splitId(d.Id())
-// 	_, err := gsmdrive.DeletePermission(fileID, permissionID, d.Get("use_domain_admin_access").(bool))
-// 	return err
-// }
-
-// func resourceExistsPermission(d *schema.ResourceData, _ any) (bool, error) {
-// 	fileID, permissionID := splitId(d.Id())
-// 	_, err := gsmdrive.GetPermission(fileID, permissionID, "", d.Get("use_domain_admin_access").(bool))
-// 	if err != nil {
-// 		return false, err
-// 	}
-// 	return true, nil
 // }
