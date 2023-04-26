@@ -86,14 +86,11 @@ func (r *gdriveFileResource) Schema(ctx context.Context, req resource.SchemaRequ
 			"drive_id": schema.StringAttribute{
 				MarkdownDescription: "driveId of the Shared Drive",
 				Optional:            true,
-				// PlanModifiers: []planmodifier.String{
-				// 	stringplanmodifier.RequiresReplace(),
-				// },
 			},
 			"content": schema.StringAttribute{
 				MarkdownDescription: `path to a file to upload.
-// The provider does not check the content of the file for updates.
-// If you need to upload a new version of a file, you need to supply a different file name.`,
+The provider does not check the content of the file for updates.
+If you need to upload a new version of a file, you need to supply a different file name.`,
 				Optional: true,
 			},
 			"id": schema.StringAttribute{
@@ -171,10 +168,14 @@ func (r *gdriveFileResource) Read(ctx context.Context, req resource.ReadRequest,
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get file, got error: %s", err))
 		return
 	}
+	if len(f.Parents) != 0 {
+		plan.Parent = types.StringValue(f.Parents[0])
+	}
+	if f.DriveId != "" {
+		plan.DriveId = types.StringValue(f.DriveId)
+	}
 	plan.Name = types.StringValue(f.Name)
-	plan.Parent = types.StringValue(f.Parents[0])
 	plan.MimeType = types.StringValue(f.MimeType)
-	plan.DriveId = types.StringValue(f.DriveId)
 	diags = resp.State.Set(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 }
