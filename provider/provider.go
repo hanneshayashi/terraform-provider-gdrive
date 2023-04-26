@@ -182,6 +182,7 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 func (p *gdriveProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		newDrive,
+		newFile,
 	}
 }
 
@@ -194,87 +195,3 @@ func (p *gdriveProvider) DataSources(ctx context.Context) []func() datasource.Da
 func New() provider.Provider {
 	return &gdriveProvider{}
 }
-
-// // Provider returns the Terraform provider
-// func Provider() *schema.Provider {
-// 	return &schema.Provider{
-// 		ResourcesMap: map[string]*schema.Resource{
-// 			"gdrive_drive":               resourceDrive(),
-// 			"gdrive_permission":          resourcePermission(),
-// 			"gdrive_permissions_policy":  resourcePermissionsPolicy(),
-// 			"gdrive_file":                resourceFile(),
-// 			"gdrive_drive_ou_membership": resourceDriveOuMembership(),
-// 			"gdrive_label_assignment":    resourceLabelAssignment(),
-// 			"gdrive_label_policy":        resourceLabelPolicy(),
-// 		},
-// 		DataSourcesMap: map[string]*schema.Resource{
-// 			"gdrive_drive":       dataSourceDrive(),
-// 			"gdrive_drives":      dataSourceDrives(),
-// 			"gdrive_permission":  dataSourcePermission(),
-// 			"gdrive_permissions": dataSourcePermissions(),
-// 			"gdrive_file":        dataSourceFile(),
-// 			"gdrive_files":       dataSourceFiles(),
-// 			"gdrive_label":       dataSourceLabel(),
-// 			"gdrive_labels":      dataSourceLabels(),
-// 		},
-// 		ConfigureFunc: providerConfigure,
-// 	}
-// }
-
-// func providerConfigure(d *schema.ResourceData) (any, error) {
-// 	serviceAccountKey := d.Get("service_account_key").(string)
-// 	scopes := []string{drive.DriveScope}
-// 	use_cloud_identity_api := d.Get("use_cloud_identity_api").(bool)
-// 	if use_cloud_identity_api {
-// 		scopes = append(scopes, "https://www.googleapis.com/auth/cloud-identity.orgunits")
-// 	}
-// 	use_labels_api := d.Get("use_labels_api").(bool)
-// 	use_labels_admin_scope := d.Get("use_labels_admin_scope").(bool)
-// 	if use_labels_api {
-// 		scopes = append(scopes, "https://www.googleapis.com/auth/drive.labels")
-// 		if use_labels_admin_scope {
-// 			scopes = append(scopes, "https://www.googleapis.com/auth/drive.admin.labels")
-// 		}
-// 	}
-// 	var client *http.Client
-// 	var err error
-// 	if serviceAccountKey != "" {
-// 		var saKey []byte
-// 		s := []byte(serviceAccountKey)
-// 		if json.Valid(s) {
-// 			saKey = s
-// 		} else {
-// 			var f *os.File
-// 			f, err = os.Open(serviceAccountKey)
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			saKey, err = io.ReadAll(f)
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 		}
-// 		client, err = gsmauth.GetClient(d.Get("subject").(string), saKey, scopes...)
-// 	} else {
-// 		serviceAccount := d.Get("service_account").(string)
-// 		client, err = gsmauth.GetClientADC(d.Get("subject").(string), serviceAccount, scopes...)
-// 	}
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	gsmdrive.SetClient(client)
-// 	if use_cloud_identity_api {
-// 		gsmcibeta.SetClient(client)
-// 	}
-// 	if use_labels_api {
-// 		gsmdrivelabels.SetClient(client)
-// 	}
-// 	retryOn := d.Get("retry_on").([]any)
-// 	if len(retryOn) > 0 {
-// 		for i := range retryOn {
-// 			gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i].(int))
-// 		}
-// 	}
-// 	gsmhelpers.SetStandardRetrier(time.Duration(500 * time.Millisecond))
-// 	return nil, nil
-// }
