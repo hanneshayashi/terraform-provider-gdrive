@@ -274,17 +274,17 @@ func (r *gdriveDriveResource) Read(ctx context.Context, req resource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	drive, err := gsmdrive.GetDrive(plan.Id.ValueString(), fieldsDrive, plan.UseDomainAdminAccess.ValueBool())
+	d, err := gsmdrive.GetDrive(plan.Id.ValueString(), fieldsDrive, plan.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create drive, got error: %s", err))
 		return
 	}
-	plan.Name = types.StringValue(drive.Name)
-	if drive.Restrictions != nil && (drive.Restrictions.AdminManagedRestrictions || drive.Restrictions.CopyRequiresWriterPermission || drive.Restrictions.DomainUsersOnly || drive.Restrictions.DriveMembersOnly) {
-		adminManagedRestrictions := types.BoolValue(drive.Restrictions.AdminManagedRestrictions)
-		copyRequiresWriterPermission := types.BoolValue(drive.Restrictions.CopyRequiresWriterPermission)
-		domainUsersOnly := types.BoolValue(drive.Restrictions.DomainUsersOnly)
-		driveMembersOnly := types.BoolValue(drive.Restrictions.DriveMembersOnly)
+	plan.Name = types.StringValue(d.Name)
+	if d.Restrictions != nil && (d.Restrictions.AdminManagedRestrictions || d.Restrictions.CopyRequiresWriterPermission || d.Restrictions.DomainUsersOnly || d.Restrictions.DriveMembersOnly) {
+		adminManagedRestrictions := types.BoolValue(d.Restrictions.AdminManagedRestrictions)
+		copyRequiresWriterPermission := types.BoolValue(d.Restrictions.CopyRequiresWriterPermission)
+		domainUsersOnly := types.BoolValue(d.Restrictions.DomainUsersOnly)
+		driveMembersOnly := types.BoolValue(d.Restrictions.DriveMembersOnly)
 		plan.Restrictions = &restrictionsModel{
 			AdminManagedRestrictions:     adminManagedRestrictions,
 			CopyRequiresWriterPermission: copyRequiresWriterPermission,
