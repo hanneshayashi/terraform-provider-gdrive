@@ -17,6 +17,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package provider
 
+import (
+	"fmt"
+)
+
 // import (
 // 	"fmt"
 // 	"strconv"
@@ -53,9 +57,9 @@ package provider
 // 	return ids[0], ids[1]
 // }
 
-// func combineId(a, b string) string {
-// 	return fmt.Sprintf("%s/%s", a, b)
-// }
+func combineId(a, b string) string {
+	return fmt.Sprintf("%s/%s", a, b)
+}
 
 // func permissionToSet(i any) int {
 // 	m := i.(map[string]any)
