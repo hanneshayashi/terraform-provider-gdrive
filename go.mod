@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/hanneshayashi/gsm v0.8.0
 	github.com/hashicorp/terraform-plugin-framework v1.2.0
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	google.golang.org/api v0.94.0
 )
 
@@ -50,7 +51,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/net v0.0.0-20220826154423-83b083e8dc8b // indirect
 	golang.org/x/oauth2 v0.0.0-20220822191816-0ebed06d0094 // indirect
-	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220829175752-36a9c930ecbf // indirect

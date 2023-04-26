@@ -21,6 +21,8 @@ import (
 var _ resource.Resource = &gdriveDriveResource{}
 var _ resource.ResourceWithImportState = &gdriveDriveResource{}
 
+const fields = "id,name,restrictions"
+
 func newDrive() resource.Resource {
 	return &gdriveDriveResource{}
 }
@@ -76,9 +78,8 @@ func (r *gdriveDriveResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: `The Drive API returns a Shared Drive object immediately after creation, even though it is often not ready or visibile in other APIs.
 In order to prevent 404 errors after the creation of a Shared Drive, the provider will wait the specified number of seconds after the creation of a Shared Drive and before returning or attempting further operations.
 This value is only used for the initial creation and not used for updates. Changing this value after the initial creation has no effect.`,
-				Optional: true,
-				Computed: true,
-				Default:  int64default.StaticInt64(60),
+				Optional:           true,
+				DeprecationMessage: "Remove this attribute's configuration as it no longer is used and the attribute will be removed in the next major version of the provider.",
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -223,7 +224,7 @@ func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateReq
 	driveReq := &drive.Drive{
 		Name: data.Name.ValueString(),
 	}
-	d, err := gsmdrive.CreateDrive(driveReq, "id,name,restrictions", false)
+	d, err := gsmdrive.CreateDrive(driveReq, fields, false)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create drive, got error: %s", err))
 		return
@@ -258,7 +259,7 @@ func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateReq
 				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "DriveMembersOnly")
 			}
 		}
-		d, err = gsmdrive.UpdateDrive(d.Id, "id,name,restrictions", false, driveReq)
+		d, err = gsmdrive.UpdateDrive(d.Id, fields, data.UseDomainAdminAccess.ValueBool(), driveReq)
 		if err != nil {
 			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set drive restrictions, got error: %s", err))
 			return
@@ -273,7 +274,7 @@ func (r *gdriveDriveResource) Read(ctx context.Context, req resource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	drive, err := gsmdrive.GetDrive(data.Id.ValueString(), "id,name,restrictions", data.UseDomainAdminAccess.ValueBool())
+	drive, err := gsmdrive.GetDrive(data.Id.ValueString(), fields, data.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create drive, got error: %s", err))
 		return
@@ -336,7 +337,7 @@ func (r *gdriveDriveResource) Update(ctx context.Context, req resource.UpdateReq
 			}
 		}
 	}
-	_, err := gsmdrive.UpdateDrive(plan.Id.ValueString(), "id,name,restrictions", plan.UseDomainAdminAccess.ValueBool(), driveReq)
+	_, err := gsmdrive.UpdateDrive(plan.Id.ValueString(), fields, plan.UseDomainAdminAccess.ValueBool(), driveReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set drive restrictions, got error: %s", err))
 		return

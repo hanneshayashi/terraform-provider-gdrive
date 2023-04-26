@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"golang.org/x/exp/slices"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -70,9 +71,10 @@ You can also use the "SUBJECT" environment variable.`,
 				// 				DefaultFunc: schema.EnvDefaultFunc("SUBJECT", ""),
 			},
 			"retry_on": schema.ListAttribute{
-				Optional:            true,
-				MarkdownDescription: `A list of HTTP error codes you want the provider to retry on (e.g. 404).`,
-				ElementType:         types.Int64Type,
+				Optional: true,
+				MarkdownDescription: `A list of HTTP error codes you want the provider to retry on.
+The provider will always retry on rate limiting errors and 404 using an exponential backoff strategy.`,
+				ElementType: types.Int64Type,
 			},
 			"use_cloud_identity_api": schema.BoolAttribute{
 				Optional: true,
@@ -168,10 +170,11 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if len(retryOn) > 0 {
-		for i := range retryOn {
-			gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i])
-		}
+	if !slices.Contains(retryOn, 404) {
+		retryOn = append(retryOn, 404)
+	}
+	for i := range retryOn {
+		gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i])
 	}
 	gsmhelpers.SetStandardRetrier(time.Duration(500 * time.Millisecond))
 }
