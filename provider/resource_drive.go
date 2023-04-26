@@ -309,9 +309,7 @@ func (r *gdriveDriveResource) Update(ctx context.Context, req resource.UpdateReq
 		driveReq.Name = plan.Name.ValueString()
 	}
 	if plan.Restrictions != nil {
-		driveReq = &drive.Drive{
-			Restrictions: &drive.DriveRestrictions{},
-		}
+		driveReq.Restrictions = &drive.DriveRestrictions{}
 		if !plan.Restrictions.AdminManagedRestrictions.IsNull() {
 			driveReq.Restrictions.AdminManagedRestrictions = plan.Restrictions.AdminManagedRestrictions.ValueBool()
 			if !driveReq.Restrictions.AdminManagedRestrictions {
