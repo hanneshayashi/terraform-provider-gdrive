@@ -21,7 +21,7 @@ import (
 var _ resource.Resource = &gdriveDriveResource{}
 var _ resource.ResourceWithImportState = &gdriveDriveResource{}
 
-const fields = "id,name,restrictions"
+const fieldsDrive = "id,name,restrictions"
 
 func newDrive() resource.Resource {
 	return &gdriveDriveResource{}
@@ -215,51 +215,51 @@ func (r *gdriveDriveResource) Configure(ctx context.Context, req resource.Config
 }
 
 func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	data := &gdriveDriveResourceModelV1{}
-	diags := req.Plan.Get(ctx, data)
+	plan := &gdriveDriveResourceModelV1{}
+	diags := req.Plan.Get(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	driveReq := &drive.Drive{
-		Name: data.Name.ValueString(),
+		Name: plan.Name.ValueString(),
 	}
-	d, err := gsmdrive.CreateDrive(driveReq, fields, false)
+	d, err := gsmdrive.CreateDrive(driveReq, fieldsDrive, false)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create drive, got error: %s", err))
 		return
 	}
-	data.Id = types.StringValue(d.Id)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-	if data.Restrictions != nil {
+	plan.Id = types.StringValue(d.Id)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if plan.Restrictions != nil {
 		driveReq = &drive.Drive{
 			Restrictions: &drive.DriveRestrictions{},
 		}
-		if !data.Restrictions.AdminManagedRestrictions.IsNull() {
-			driveReq.Restrictions.AdminManagedRestrictions = data.Restrictions.AdminManagedRestrictions.ValueBool()
+		if !plan.Restrictions.AdminManagedRestrictions.IsNull() {
+			driveReq.Restrictions.AdminManagedRestrictions = plan.Restrictions.AdminManagedRestrictions.ValueBool()
 			if !driveReq.Restrictions.AdminManagedRestrictions {
 				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "AdminManagedRestrictions")
 			}
 		}
-		if !data.Restrictions.CopyRequiresWriterPermission.IsNull() {
-			driveReq.Restrictions.CopyRequiresWriterPermission = data.Restrictions.CopyRequiresWriterPermission.ValueBool()
+		if !plan.Restrictions.CopyRequiresWriterPermission.IsNull() {
+			driveReq.Restrictions.CopyRequiresWriterPermission = plan.Restrictions.CopyRequiresWriterPermission.ValueBool()
 			if !driveReq.Restrictions.CopyRequiresWriterPermission {
 				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "CopyRequiresWriterPermission")
 			}
 		}
-		if !data.Restrictions.DomainUsersOnly.IsNull() {
-			driveReq.Restrictions.DomainUsersOnly = data.Restrictions.DomainUsersOnly.ValueBool()
+		if !plan.Restrictions.DomainUsersOnly.IsNull() {
+			driveReq.Restrictions.DomainUsersOnly = plan.Restrictions.DomainUsersOnly.ValueBool()
 			if !driveReq.Restrictions.DomainUsersOnly {
 				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "DomainUsersOnly")
 			}
 		}
-		if !data.Restrictions.DriveMembersOnly.IsNull() {
-			driveReq.Restrictions.DriveMembersOnly = data.Restrictions.DriveMembersOnly.ValueBool()
+		if !plan.Restrictions.DriveMembersOnly.IsNull() {
+			driveReq.Restrictions.DriveMembersOnly = plan.Restrictions.DriveMembersOnly.ValueBool()
 			if !driveReq.Restrictions.DriveMembersOnly {
 				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "DriveMembersOnly")
 			}
 		}
-		d, err = gsmdrive.UpdateDrive(d.Id, fields, data.UseDomainAdminAccess.ValueBool(), driveReq)
+		_, err = gsmdrive.UpdateDrive(d.Id, fieldsDrive, plan.UseDomainAdminAccess.ValueBool(), driveReq)
 		if err != nil {
 			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set drive restrictions, got error: %s", err))
 			return
@@ -268,31 +268,31 @@ func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateReq
 }
 
 func (r *gdriveDriveResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	data := &gdriveDriveResourceModelV1{}
-	diags := req.State.Get(ctx, data)
+	plan := &gdriveDriveResourceModelV1{}
+	diags := req.State.Get(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	drive, err := gsmdrive.GetDrive(data.Id.ValueString(), fields, data.UseDomainAdminAccess.ValueBool())
+	drive, err := gsmdrive.GetDrive(plan.Id.ValueString(), fieldsDrive, plan.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create drive, got error: %s", err))
 		return
 	}
-	data.Name = types.StringValue(drive.Name)
+	plan.Name = types.StringValue(drive.Name)
 	if drive.Restrictions != nil && (drive.Restrictions.AdminManagedRestrictions || drive.Restrictions.CopyRequiresWriterPermission || drive.Restrictions.DomainUsersOnly || drive.Restrictions.DriveMembersOnly) {
 		adminManagedRestrictions := types.BoolValue(drive.Restrictions.AdminManagedRestrictions)
 		copyRequiresWriterPermission := types.BoolValue(drive.Restrictions.CopyRequiresWriterPermission)
 		domainUsersOnly := types.BoolValue(drive.Restrictions.DomainUsersOnly)
 		driveMembersOnly := types.BoolValue(drive.Restrictions.DriveMembersOnly)
-		data.Restrictions = &restrictionsModel{
+		plan.Restrictions = &restrictionsModel{
 			AdminManagedRestrictions:     adminManagedRestrictions,
 			CopyRequiresWriterPermission: copyRequiresWriterPermission,
 			DomainUsersOnly:              domainUsersOnly,
 			DriveMembersOnly:             driveMembersOnly,
 		}
 	}
-	diags = resp.State.Set(ctx, &data)
+	diags = resp.State.Set(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 }
 
@@ -337,7 +337,7 @@ func (r *gdriveDriveResource) Update(ctx context.Context, req resource.UpdateReq
 			}
 		}
 	}
-	_, err := gsmdrive.UpdateDrive(plan.Id.ValueString(), fields, plan.UseDomainAdminAccess.ValueBool(), driveReq)
+	_, err := gsmdrive.UpdateDrive(plan.Id.ValueString(), fieldsDrive, plan.UseDomainAdminAccess.ValueBool(), driveReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set drive restrictions, got error: %s", err))
 		return
@@ -346,12 +346,12 @@ func (r *gdriveDriveResource) Update(ctx context.Context, req resource.UpdateReq
 }
 
 func (r *gdriveDriveResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	data := &gdriveDriveResourceModelV1{}
-	resp.Diagnostics.Append(req.State.Get(ctx, data)...)
+	plan := &gdriveDriveResourceModelV1{}
+	resp.Diagnostics.Append(req.State.Get(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	_, err := gsmdrive.DeleteDrive(data.Id.ValueString())
+	_, err := gsmdrive.DeleteDrive(plan.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete drive, got error: %s", err))
 		return
