@@ -36,7 +36,7 @@ import (
 var _ resource.Resource = &gdrivePermissionResource{}
 var _ resource.ResourceWithImportState = &gdrivePermissionResource{}
 
-const fieldsPermission = "emailAddress,domain,role,type,id"
+const fieldsPermission = "emailAddress,domain,role,type,id,permissionDetails(inherited)"
 
 func newPermission() resource.Resource {
 	return &gdrivePermissionResource{}
