@@ -18,7 +18,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"google.golang.org/api/drive/v3"
 )
 
 // import (
@@ -295,3 +301,92 @@ func combineId(a, b string) string {
 // 	}
 // 	return labelModification, nil
 // }
+
+func (plan *gdrivePermissionPolicyResourceModel) getCurrentPermissions(ctx context.Context) ([]*gdrivePermissionPolicyPermissionResourceModel, error) {
+	currentP, err := gsmdrive.ListPermissions(plan.FileId.ValueString(), "", fmt.Sprintf("permissions(%s),nextPageToken", fieldsPermission), plan.UseDomainAdminAccess.ValueBool(), 1)
+	permissions := []*gdrivePermissionPolicyPermissionResourceModel{}
+	for i := range currentP {
+		if i.PermissionDetails != nil && i.PermissionDetails[0].Inherited {
+			tflog.Debug(ctx, fmt.Sprintf("XXX Skipping permission %s on %s", i.Id, plan.FileId.ValueString()))
+			continue
+		}
+		tflog.Debug(ctx, fmt.Sprintf("YYY ADDING permission %s on %s", i.Id, plan.FileId.ValueString()))
+		permissions = append(permissions, &gdrivePermissionPolicyPermissionResourceModel{
+			PermissionId: types.StringValue(i.Id),
+			Type:         types.StringValue(i.Type),
+			Domain:       types.StringValue(i.Domain),
+			EmailAddress: types.StringValue(i.EmailAddress),
+			Role:         types.StringValue(i.Role),
+		})
+	}
+	e := <-err
+	if e != nil {
+		return nil, fmt.Errorf("Unable to read current permissions on file, got error: %s", e)
+	}
+	return permissions, nil
+}
+
+func permissionsToMap(permissions []*gdrivePermissionPolicyPermissionResourceModel) map[string]*gdrivePermissionPolicyPermissionResourceModel {
+	m := map[string]*gdrivePermissionPolicyPermissionResourceModel{}
+	for i := range permissions {
+		m[combineId(permissions[i].Domain.ValueString(), permissions[i].EmailAddress.ValueString())] = permissions[i]
+	}
+	return m
+}
+
+func (plan *gdrivePermissionPolicyResourceModel) setPermissionPolicy(ctx context.Context) error {
+	fileID := plan.FileId.ValueString()
+	useDomAccess := plan.UseDomainAdminAccess.ValueBool()
+	currentP, err := plan.getCurrentPermissions(ctx)
+	if err != nil {
+		return err
+	}
+	currentPMap := permissionsToMap(currentP)
+	plannedPMap := map[string]*gdrivePermissionPolicyPermissionResourceModel{}
+	for i := range plan.Permissions {
+		role := plan.Permissions[i].Role.ValueString()
+		mapID := combineId(plan.Permissions[i].Domain.ValueString(), plan.Permissions[i].EmailAddress.ValueString())
+		plannedPMap[mapID] = plan.Permissions[i]
+		_, ok := currentPMap[mapID]
+		if ok {
+			tflog.Debug(ctx, fmt.Sprintf("ZZZ found %s on %s", plan.Permissions[i].PermissionId.ValueString(), plan.FileId.ValueString()))
+			if !plan.Permissions[i].Role.Equal(currentPMap[mapID].Role) {
+				tflog.Debug(ctx, fmt.Sprintf("QQQ I will %s on %s from %s to %s", plan.Permissions[i].PermissionId.ValueString(), plan.FileId.ValueString(), currentPMap[mapID].Role.ValueString(), plan.Permissions[i].PermissionId.ValueString()))
+				permissionReq := &drive.Permission{
+					Role: role,
+				}
+				p, err := gsmdrive.UpdatePermission(fileID, currentPMap[mapID].PermissionId.ValueString(), fieldsPermission, useDomAccess, false, permissionReq)
+				if err != nil {
+					return fmt.Errorf("Unable to update permission on file, got error: %s", err)
+				}
+				plan.Permissions[i].PermissionId = types.StringValue(p.Id)
+			} else {
+				plan.Permissions[i].PermissionId = currentPMap[mapID].PermissionId
+			}
+			delete(currentPMap, mapID)
+		} else {
+			permissionReq := &drive.Permission{
+				Domain:       plan.Permissions[i].Domain.ValueString(),
+				EmailAddress: plan.Permissions[i].EmailAddress.ValueString(),
+				Role:         role,
+				Type:         plan.Permissions[i].Type.ValueString(),
+			}
+			p, err := gsmdrive.CreatePermission(fileID, plan.Permissions[i].EmailMessage.ValueString(), fieldsPermission, useDomAccess, plan.Permissions[i].SendNotificationEmail.ValueBool(), plan.Permissions[i].TransferOwnership.ValueBool(), plan.Permissions[i].MoveToNewOwnersRoot.ValueBool(), permissionReq)
+			if err != nil {
+				return fmt.Errorf("Unable to set permission on file, got error: %s", err)
+			}
+			plan.Permissions[i].PermissionId = types.StringValue(p.Id)
+		}
+	}
+	for i := range currentPMap {
+		_, ok := plannedPMap[i]
+		if !ok {
+			_, err := gsmdrive.DeletePermission(fileID, currentPMap[i].PermissionId.ValueString(), useDomAccess)
+			if err != nil {
+				return fmt.Errorf("Unable to remove permission from file, got error: %s", err)
+			}
+		}
+	}
+	plan.Id = types.StringValue(fileID)
+	return nil
+}
