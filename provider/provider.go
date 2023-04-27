@@ -184,6 +184,7 @@ func (p *gdriveProvider) Resources(ctx context.Context) []func() resource.Resour
 		newDrive,
 		newFile,
 		newPermission,
+		newPermissionPolicy,
 	}
 }
 
