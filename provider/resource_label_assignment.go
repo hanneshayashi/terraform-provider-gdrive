@@ -47,7 +47,7 @@ type gdriveLabelAssignmentResource struct {
 	client *http.Client
 }
 
-type gdriveLabelAssignmentFieldModel struct {
+type gdriveLabelFieldModel struct {
 	FieldId   types.String `tfsdk:"field_id"`
 	ValueType types.String `tfsdk:"value_type"`
 	Values    types.Set    `tfsdk:"values"`
@@ -55,10 +55,10 @@ type gdriveLabelAssignmentFieldModel struct {
 
 // gdriveLabelAssignmentResourceModel describes the resource data model.
 type gdriveLabelAssignmentResourceModel struct {
-	FileId  types.String                       `tfsdk:"file_id"`
-	LabelId types.String                       `tfsdk:"label_id"`
-	Id      types.String                       `tfsdk:"id"`
-	Field   []*gdriveLabelAssignmentFieldModel `tfsdk:"field"`
+	FileId  types.String             `tfsdk:"file_id"`
+	LabelId types.String             `tfsdk:"label_id"`
+	Id      types.String             `tfsdk:"id"`
+	Field   []*gdriveLabelFieldModel `tfsdk:"field"`
 }
 
 func (r *gdriveLabelAssignmentResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -230,12 +230,12 @@ func (r *gdriveLabelAssignmentResource) Read(ctx context.Context, req resource.R
 	}
 	fileID := state.FileId.ValueString()
 	labelID := state.LabelId.ValueString()
-	state.Field = []*gdriveLabelAssignmentFieldModel{}
+	state.Field = []*gdriveLabelFieldModel{}
 	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
 	for l := range currentLabels {
 		if l.Id == labelID {
 			for f := range l.Fields {
-				field := &gdriveLabelAssignmentFieldModel{
+				field := &gdriveLabelFieldModel{
 					ValueType: types.StringValue(l.Fields[f].ValueType),
 					FieldId:   types.StringValue(l.Fields[f].Id),
 				}
@@ -263,7 +263,6 @@ func (r *gdriveLabelAssignmentResource) Read(ctx context.Context, req resource.R
 						return
 					}
 				case "selection":
-
 					field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].Selection)
 					resp.Diagnostics.Append(diags...)
 					if resp.Diagnostics.HasError() {
@@ -291,14 +290,6 @@ func (r *gdriveLabelAssignmentResource) Read(ctx context.Context, req resource.R
 	}
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
-}
-
-func (label *gdriveLabelAssignmentResourceModel) toMap() map[string]*gdriveLabelAssignmentFieldModel {
-	m := map[string]*gdriveLabelAssignmentFieldModel{}
-	for i := range label.Field {
-		m[label.Field[i].FieldId.ValueString()] = label.Field[i]
-	}
-	return m
 }
 
 func (r *gdriveLabelAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {

@@ -20,8 +20,10 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"google.golang.org/api/drive/v3"
@@ -302,15 +304,231 @@ func combineId(a, b string) string {
 // 	return labelModification, nil
 // }
 
-func (plan *gdrivePermissionPolicyResourceModel) getCurrentPermissions(ctx context.Context) ([]*gdrivePermissionPolicyPermissionResourceModel, error) {
-	currentP, err := gsmdrive.ListPermissions(plan.FileId.ValueString(), "", fmt.Sprintf("permissions(%s),nextPageToken", fieldsPermission), plan.UseDomainAdminAccess.ValueBool(), 1)
+func fieldsToMap(fields []*gdriveLabelFieldModel) map[string]*gdriveLabelFieldModel {
+	m := map[string]*gdriveLabelFieldModel{}
+	for i := range fields {
+		m[fields[i].FieldId.ValueString()] = fields[i]
+	}
+	return m
+}
+
+func (labelModel *gdriveLabelPolicyLabelModel) toMap() map[string]*gdriveLabelFieldModel {
+	return fieldsToMap(labelModel.Field)
+}
+
+func (labelModel *gdriveLabelAssignmentResourceModel) toMap() map[string]*gdriveLabelFieldModel {
+	return fieldsToMap(labelModel.Field)
+}
+
+func (labelModel *gdriveLabelPolicyResourceModel) toMap() map[string]*gdriveLabelPolicyLabelModel {
+	m := map[string]*gdriveLabelPolicyLabelModel{}
+	for i := range labelModel.Label {
+		m[labelModel.Label[i].LabelId.ValueString()] = labelModel.Label[i]
+	}
+	return m
+}
+
+func (fieldModel *gdriveLabelFieldModel) toFieldModification(ctx context.Context) (*drive.LabelFieldModification, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	fieldMod := &drive.LabelFieldModification{
+		FieldId: fieldModel.FieldId.ValueString(),
+	}
+	if fieldModel.Values.IsNull() {
+		fieldMod.UnsetValues = true
+	} else {
+		valueType := fieldModel.ValueType.ValueString()
+		switch valueType {
+		case "dateString":
+			diags = fieldModel.Values.ElementsAs(ctx, &fieldMod.SetDateValues, false)
+			if diags.HasError() {
+				return nil, diags
+			}
+		case "integer":
+			values := []string{}
+			diags = fieldModel.Values.ElementsAs(ctx, &values, false)
+			if diags.HasError() {
+				return nil, diags
+			}
+			for v := range values {
+				vi, err := strconv.ParseInt(values[v], 10, 64)
+				if err != nil {
+					diags.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value for an integer field, got error: %s", values[v], err))
+					return nil, diags
+				}
+				fieldMod.SetIntegerValues = append(fieldMod.SetIntegerValues, vi)
+			}
+		case "selection":
+			diags = fieldModel.Values.ElementsAs(ctx, &fieldMod.SetSelectionValues, false)
+			if diags.HasError() {
+				return nil, diags
+			}
+		case "text":
+			diags = fieldModel.Values.ElementsAs(ctx, &fieldMod.SetTextValues, false)
+			if diags.HasError() {
+				return nil, diags
+			}
+		case "user":
+			diags = fieldModel.Values.ElementsAs(ctx, &fieldMod.SetUserValues, false)
+			if diags.HasError() {
+				return nil, diags
+			}
+		case "default":
+			diags.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value_type for field", valueType))
+			return nil, diags
+		}
+	}
+	return fieldMod, diags
+}
+
+func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Context) diag.Diagnostics {
+	var diags diag.Diagnostics
+	planLabels := plan.toMap()
+	stateLabels := state.toMap()
+	modLabelsReq := &drive.ModifyLabelsRequest{
+		LabelModifications: []*drive.LabelModification{},
+	}
+	for i := range planLabels {
+		tflog.Debug(ctx, fmt.Sprintf("Planned Label: %s", i))
+		_, labelAlreadyExists := stateLabels[i]
+		change := false
+		labelMod := &drive.LabelModification{
+			LabelId:            i,
+			FieldModifications: []*drive.LabelFieldModification{},
+		}
+		if labelAlreadyExists {
+			planFieldMap := planLabels[i].toMap()
+			stateFieldMap := stateLabels[i].toMap()
+			for f := range planFieldMap {
+				tflog.Debug(ctx, fmt.Sprintf("Planned Label %s already exists, so checking if planned Field %s already exists and if it has changed", i, planFieldMap[f].FieldId.ValueString()))
+				_, fieldAlreadyExists := stateFieldMap[f]
+				tflog.Debug(ctx, fmt.Sprintf("Planned Label %s; Field %s exists: %v", i, planFieldMap[f].FieldId.ValueString(), fieldAlreadyExists))
+				if !fieldAlreadyExists || (fieldAlreadyExists && !stateFieldMap[f].Values.Equal(planFieldMap[f].Values)) {
+					var fieldMod *drive.LabelFieldModification
+					fieldMod, diags = planFieldMap[f].toFieldModification(ctx)
+					if diags.HasError() {
+						return diags
+					}
+					labelMod.FieldModifications = append(labelMod.FieldModifications, fieldMod)
+					change = true
+				}
+			}
+			for f := range stateFieldMap {
+				tflog.Debug(ctx, fmt.Sprintf("Planned Label %s already exists, so checking if state Field %s should still exists", i, stateFieldMap[f].FieldId.ValueString()))
+				_, fieldShouldStillExist := planFieldMap[f]
+				if !fieldShouldStillExist {
+					tflog.Debug(ctx, fmt.Sprintf("State Field %s is no longer planned for Label %s", f, i))
+					labelMod.FieldModifications = append(labelMod.FieldModifications, &drive.LabelFieldModification{
+						FieldId:     f,
+						UnsetValues: true,
+					})
+					change = true
+				}
+			}
+		} else {
+			tflog.Debug(ctx, fmt.Sprintf("Planned Label %s does not exist yet", i))
+			for f := range planLabels[i].Field {
+				tflog.Debug(ctx, fmt.Sprintf("Planned Label %s does not exist yet, so adding Field %s", i, planLabels[i].Field[f].FieldId.ValueString()))
+				var fieldMod *drive.LabelFieldModification
+				fieldMod, diags = planLabels[i].Field[f].toFieldModification(ctx)
+				if diags.HasError() {
+					return diags
+				}
+				labelMod.FieldModifications = append(labelMod.FieldModifications, fieldMod)
+				change = true
+			}
+		}
+		if change {
+			modLabelsReq.LabelModifications = append(modLabelsReq.LabelModifications, labelMod)
+		}
+	}
+	for i := range stateLabels {
+		tflog.Debug(ctx, fmt.Sprintf("State Label %s", stateLabels[i].LabelId.ValueString()))
+		_, labelStillPlanned := planLabels[i]
+		if !labelStillPlanned {
+			tflog.Debug(ctx, fmt.Sprintf("State Label %s is no longer planned, so removing", stateLabels[i].LabelId.ValueString()))
+			modLabelsReq.LabelModifications = append(modLabelsReq.LabelModifications, &drive.LabelModification{
+				LabelId:     stateLabels[i].LabelId.ValueString(),
+				RemoveLabel: true,
+			})
+		}
+	}
+	_, err := gsmdrive.ModifyLabels(plan.FileId.ValueString(), "", modLabelsReq)
+	if err != nil {
+		diags.AddError("Configuration Error", fmt.Sprintf("Unable to update label assignment, got error: %s", err))
+		return diags
+	}
+	return diags
+}
+
+func (state *gdriveLabelPolicyResourceModel) getCurrentLabels(ctx context.Context) diag.Diagnostics {
+	var diags diag.Diagnostics
+	state.Label = []*gdriveLabelPolicyLabelModel{}
+	fileID := state.FileId.ValueString()
+	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
+	for l := range currentLabels {
+		label := &gdriveLabelPolicyLabelModel{
+			LabelId: types.StringValue(l.Id),
+			Field:   []*gdriveLabelFieldModel{},
+		}
+		for f := range l.Fields {
+			field := &gdriveLabelFieldModel{
+				ValueType: types.StringValue(l.Fields[f].ValueType),
+				FieldId:   types.StringValue(l.Fields[f].Id),
+			}
+			switch l.Fields[f].ValueType {
+			case "dateString":
+				field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].DateString)
+				if diags.HasError() {
+					return diags
+				}
+			case "text":
+				field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].Text)
+				if diags.HasError() {
+					return diags
+				}
+			case "user":
+				values := []string{}
+				for u := range l.Fields[f].User {
+					values = append(values, l.Fields[f].User[u].EmailAddress)
+				}
+				field.Values, diags = types.SetValueFrom(ctx, types.StringType, values)
+				if diags.HasError() {
+					return diags
+				}
+			case "selection":
+				field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].Selection)
+				if diags.HasError() {
+					return diags
+				}
+			case "integer":
+				values := []string{}
+				for _, value := range l.Fields[f].Integer {
+					values = append(values, strconv.FormatInt(value, 10))
+				}
+				field.Values, diags = types.SetValueFrom(ctx, types.StringType, values)
+				if diags.HasError() {
+					return diags
+				}
+			}
+			label.Field = append(label.Field, field)
+		}
+		state.Label = append(state.Label, label)
+	}
+	e := <-err
+	if e != nil {
+		diags.AddError("Client Error", fmt.Sprintf("Unable to use list labels on file, got error: %s", e))
+		return diags
+	}
+	return diags
+}
+
+func (permissionPolicyModel *gdrivePermissionPolicyResourceModel) getCurrentPermissions(ctx context.Context) ([]*gdrivePermissionPolicyPermissionResourceModel, error) {
+	currentP, err := gsmdrive.ListPermissions(permissionPolicyModel.FileId.ValueString(), "", fmt.Sprintf("permissions(%s),nextPageToken", fieldsPermission), permissionPolicyModel.UseDomainAdminAccess.ValueBool(), 1)
 	permissions := []*gdrivePermissionPolicyPermissionResourceModel{}
 	for i := range currentP {
 		if i.PermissionDetails != nil && i.PermissionDetails[0].Inherited {
-			tflog.Debug(ctx, fmt.Sprintf("XXX Skipping permission %s on %s", i.Id, plan.FileId.ValueString()))
 			continue
 		}
-		tflog.Debug(ctx, fmt.Sprintf("YYY ADDING permission %s on %s", i.Id, plan.FileId.ValueString()))
 		permissions = append(permissions, &gdrivePermissionPolicyPermissionResourceModel{
 			PermissionId: types.StringValue(i.Id),
 			Type:         types.StringValue(i.Type),
@@ -334,24 +552,24 @@ func permissionsToMap(permissions []*gdrivePermissionPolicyPermissionResourceMod
 	return m
 }
 
-func (plan *gdrivePermissionPolicyResourceModel) setPermissionPolicy(ctx context.Context) error {
-	fileID := plan.FileId.ValueString()
-	useDomAccess := plan.UseDomainAdminAccess.ValueBool()
-	currentP, err := plan.getCurrentPermissions(ctx)
+func (permissionPolicyModel *gdrivePermissionPolicyResourceModel) setPermissionPolicy(ctx context.Context) error {
+	fileID := permissionPolicyModel.FileId.ValueString()
+	useDomAccess := permissionPolicyModel.UseDomainAdminAccess.ValueBool()
+	currentP, err := permissionPolicyModel.getCurrentPermissions(ctx)
 	if err != nil {
 		return err
 	}
 	currentPMap := permissionsToMap(currentP)
 	plannedPMap := map[string]*gdrivePermissionPolicyPermissionResourceModel{}
-	for i := range plan.Permissions {
-		role := plan.Permissions[i].Role.ValueString()
-		mapID := combineId(plan.Permissions[i].Domain.ValueString(), plan.Permissions[i].EmailAddress.ValueString())
-		plannedPMap[mapID] = plan.Permissions[i]
+	for i := range permissionPolicyModel.Permissions {
+		role := permissionPolicyModel.Permissions[i].Role.ValueString()
+		mapID := combineId(permissionPolicyModel.Permissions[i].Domain.ValueString(), permissionPolicyModel.Permissions[i].EmailAddress.ValueString())
+		plannedPMap[mapID] = permissionPolicyModel.Permissions[i]
 		_, ok := currentPMap[mapID]
 		if ok {
-			tflog.Debug(ctx, fmt.Sprintf("ZZZ found %s on %s", plan.Permissions[i].PermissionId.ValueString(), plan.FileId.ValueString()))
-			if !plan.Permissions[i].Role.Equal(currentPMap[mapID].Role) {
-				tflog.Debug(ctx, fmt.Sprintf("QQQ I will %s on %s from %s to %s", plan.Permissions[i].PermissionId.ValueString(), plan.FileId.ValueString(), currentPMap[mapID].Role.ValueString(), plan.Permissions[i].PermissionId.ValueString()))
+			tflog.Debug(ctx, fmt.Sprintf("ZZZ found %s on %s", permissionPolicyModel.Permissions[i].PermissionId.ValueString(), permissionPolicyModel.FileId.ValueString()))
+			if !permissionPolicyModel.Permissions[i].Role.Equal(currentPMap[mapID].Role) {
+				tflog.Debug(ctx, fmt.Sprintf("QQQ I will %s on %s from %s to %s", permissionPolicyModel.Permissions[i].PermissionId.ValueString(), permissionPolicyModel.FileId.ValueString(), currentPMap[mapID].Role.ValueString(), permissionPolicyModel.Permissions[i].PermissionId.ValueString()))
 				permissionReq := &drive.Permission{
 					Role: role,
 				}
@@ -359,23 +577,23 @@ func (plan *gdrivePermissionPolicyResourceModel) setPermissionPolicy(ctx context
 				if err != nil {
 					return fmt.Errorf("Unable to update permission on file, got error: %s", err)
 				}
-				plan.Permissions[i].PermissionId = types.StringValue(p.Id)
+				permissionPolicyModel.Permissions[i].PermissionId = types.StringValue(p.Id)
 			} else {
-				plan.Permissions[i].PermissionId = currentPMap[mapID].PermissionId
+				permissionPolicyModel.Permissions[i].PermissionId = currentPMap[mapID].PermissionId
 			}
 			delete(currentPMap, mapID)
 		} else {
 			permissionReq := &drive.Permission{
-				Domain:       plan.Permissions[i].Domain.ValueString(),
-				EmailAddress: plan.Permissions[i].EmailAddress.ValueString(),
+				Domain:       permissionPolicyModel.Permissions[i].Domain.ValueString(),
+				EmailAddress: permissionPolicyModel.Permissions[i].EmailAddress.ValueString(),
 				Role:         role,
-				Type:         plan.Permissions[i].Type.ValueString(),
+				Type:         permissionPolicyModel.Permissions[i].Type.ValueString(),
 			}
-			p, err := gsmdrive.CreatePermission(fileID, plan.Permissions[i].EmailMessage.ValueString(), fieldsPermission, useDomAccess, plan.Permissions[i].SendNotificationEmail.ValueBool(), plan.Permissions[i].TransferOwnership.ValueBool(), plan.Permissions[i].MoveToNewOwnersRoot.ValueBool(), permissionReq)
+			p, err := gsmdrive.CreatePermission(fileID, permissionPolicyModel.Permissions[i].EmailMessage.ValueString(), fieldsPermission, useDomAccess, permissionPolicyModel.Permissions[i].SendNotificationEmail.ValueBool(), permissionPolicyModel.Permissions[i].TransferOwnership.ValueBool(), permissionPolicyModel.Permissions[i].MoveToNewOwnersRoot.ValueBool(), permissionReq)
 			if err != nil {
 				return fmt.Errorf("Unable to set permission on file, got error: %s", err)
 			}
-			plan.Permissions[i].PermissionId = types.StringValue(p.Id)
+			permissionPolicyModel.Permissions[i].PermissionId = types.StringValue(p.Id)
 		}
 	}
 	for i := range currentPMap {
@@ -387,6 +605,6 @@ func (plan *gdrivePermissionPolicyResourceModel) setPermissionPolicy(ctx context
 			}
 		}
 	}
-	plan.Id = types.StringValue(fileID)
+	permissionPolicyModel.Id = types.StringValue(fileID)
 	return nil
 }
