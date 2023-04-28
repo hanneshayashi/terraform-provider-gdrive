@@ -349,7 +349,7 @@ func (r *gdriveDriveResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	_, err := gsmdrive.DeleteDrive(plan.Id.ValueString())
+	_, err := gsmdrive.DeleteDrive(plan.Id.ValueString(), plan.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete drive, got error: %s", err))
 		return

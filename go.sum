@@ -155,6 +155,8 @@ github.com/googleapis/google-cloud-go-testing v0.0.0-20200911160855-bcd43fbb19e8
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/hanneshayashi/gsm v0.8.0 h1:kWzvs8b5w8PmMP/iX8giFWH49gWcCOBh1x1Ohm/A018=
 github.com/hanneshayashi/gsm v0.8.0/go.mod h1:mH/zMebicSYDpjTSaEPrXmPBqauKg173QGrXrWNfX/Y=
+github.com/hanneshayashi/gsm v0.8.1-0.20230428055027-4a89754dc043 h1:C9iK05fw1U/dNMXuhovhRmV0B6niunXwyxbTEtgSjHA=
+github.com/hanneshayashi/gsm v0.8.1-0.20230428055027-4a89754dc043/go.mod h1:byGtwXIfQLkTi/Q/dPewX2RLzO+Xd/ZaCtKRo3oa8+U=
 github.com/hashicorp/go-hclog v1.5.0 h1:bI2ocEMgcVlz55Oj1xZNBsVi900c7II+fWDyV9o+13c=
 github.com/hashicorp/go-hclog v1.5.0/go.mod h1:W4Qnvbt70Wk/zYJryRzDRU/4r0kIg0PVHBcfoyhpF5M=
 github.com/hashicorp/go-plugin v1.4.9 h1:ESiK220/qE0aGxWdzKIvRH69iLiuN/PjoLTm69RoWtU=
