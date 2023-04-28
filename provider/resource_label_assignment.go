@@ -17,165 +17,403 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package provider
 
-// import (
-// 	"strconv"
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"strconv"
 
-// 	"github.com/hanneshayashi/gsm/gsmdrive"
-// 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-// 	"google.golang.org/api/drive/v3"
-// )
+	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"google.golang.org/api/drive/v3"
+)
 
-// func labelFieldsR() *schema.Schema {
-// 	return &schema.Schema{
-// 		Type:        schema.TypeSet,
-// 		Required:    true,
-// 		Description: ``,
-// 		Elem: &schema.Resource{
-// 			Schema: map[string]*schema.Schema{
-// 				"field_id": {
-// 					Type:        schema.TypeString,
-// 					Required:    true,
-// 					Description: "The identifier of this field.",
-// 				},
-// 				"value_type": {
-// 					Type:     schema.TypeString,
-// 					Required: true,
-// 					Description: `The field type.
-// While new values may be supported in the future, the following are currently allowed:
-// - dateString
-// - integer
-// - selection
-// - text
-// - user`,
-// 				},
-// 				"values": {
-// 					Type:     schema.TypeSet,
-// 					Required: true,
-// 					Description: `The values that should be set.
-// Must be compatible with the specified valueType.`,
-// 					Elem: &schema.Schema{
-// 						Type: schema.TypeString,
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// }
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ resource.Resource = &gdriveLabelAssignmentResource{}
+var _ resource.ResourceWithImportState = &gdriveLabelAssignmentResource{}
 
-// func resourceLabelAssignment() *schema.Resource {
-// 	return &schema.Resource{
-// 		Description: "Sets the labels on a Drive object",
-// 		Schema: map[string]*schema.Schema{
-// 			"file_id": {
-// 				Type:        schema.TypeString,
-// 				Required:    true,
-// 				Description: "ID of the file to assign the label to.",
-// 			},
-// 			"label_id": {
-// 				Type:        schema.TypeString,
-// 				Required:    true,
-// 				Description: "The ID of the label.",
-// 			},
-// 			"field": labelFieldsR(),
-// 		},
-// 		Create: resourceUpdateLabelAssignment,
-// 		Read:   resourceReadLabelAssignment,
-// 		Update: resourceUpdateLabelAssignment,
-// 		Delete: resourceDeleteLabelAssignment,
-// 		Exists: resourceExistsLabelAssignment,
-// 		Importer: &schema.ResourceImporter{
-// 			StateContext: schema.ImportStatePassthroughContext,
-// 		},
-// 	}
-// }
+func newLabelAssignment() resource.Resource {
+	return &gdriveLabelAssignmentResource{}
+}
 
-// func resourceUpdateLabelAssignment(d *schema.ResourceData, _ any) error {
-// 	labelID := d.Get("label_id").(string)
-// 	fileID := d.Get("file_id").(string)
-// 	labelModification, err := getLabelModification(labelID, getRemovedItemsFromSet(d, "field", "field_id"), d.Get("field").(*schema.Set))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	req := &drive.ModifyLabelsRequest{
-// 		LabelModifications: []*drive.LabelModification{
-// 			labelModification,
-// 		},
-// 	}
-// 	_, err = gsmdrive.ModifyLabels(fileID, "", req)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	d.SetId(combineId(fileID, labelID))
-// 	return nil
-// }
+// gdriveLabelAssignmentResource defines the resource implementation.
+type gdriveLabelAssignmentResource struct {
+	client *http.Client
+}
 
-// func resourceReadLabelAssignment(d *schema.ResourceData, _ any) error {
-// 	fileID, labelID := splitId(d.Id())
-// 	fields := make([]map[string]any, 0)
-// 	r, err := gsmdrive.ListLabels(fileID, "", 1)
-// 	for l := range r {
-// 		if l.Id == labelID {
-// 			for f := range l.Fields {
-// 				field := map[string]any{
-// 					"field_id":   l.Fields[f].Id,
-// 					"value_type": l.Fields[f].ValueType,
-// 				}
-// 				switch l.Fields[f].ValueType {
-// 				case "dateString":
-// 					field["values"] = l.Fields[f].DateString
-// 				case "text":
-// 					field["values"] = l.Fields[f].Text
-// 				case "user":
-// 					values := make([]string, len(l.Fields[f].User))
-// 					for u := range l.Fields[f].User {
-// 						values[u] = l.Fields[f].User[u].EmailAddress
-// 					}
-// 					field["values"] = values
-// 				case "selection":
-// 					field["values"] = l.Fields[f].Selection
-// 				case "integer":
-// 					values := []string{}
-// 					for _, value := range l.Fields[f].Integer {
-// 						values = append(values, strconv.FormatInt(value, 10))
-// 					}
-// 					field["values"] = values
-// 				}
-// 				fields = append(fields, field)
-// 			}
-// 		}
-// 	}
-// 	e := <-err
-// 	if e != nil {
-// 		return e
-// 	}
-// 	d.Set("field", fields)
-// 	return nil
-// }
+type gdriveLabelAssignmentFieldModel struct {
+	FieldId   types.String `tfsdk:"field_id"`
+	ValueType types.String `tfsdk:"value_type"`
+	Values    types.Set    `tfsdk:"values"`
+}
 
-// func resourceDeleteLabelAssignment(d *schema.ResourceData, _ any) error {
-// 	fileID, labelID := splitId(d.Id())
-// 	_, err := gsmdrive.ModifyLabels(fileID, "", &drive.ModifyLabelsRequest{
-// 		LabelModifications: []*drive.LabelModification{
-// 			{
-// 				LabelId:     labelID,
-// 				RemoveLabel: true,
-// 			},
-// 		},
-// 	})
-// 	return err
-// }
+// gdriveLabelAssignmentResourceModel describes the resource data model.
+type gdriveLabelAssignmentResourceModel struct {
+	FileId  types.String                       `tfsdk:"file_id"`
+	LabelId types.String                       `tfsdk:"label_id"`
+	Id      types.String                       `tfsdk:"id"`
+	Field   []*gdriveLabelAssignmentFieldModel `tfsdk:"field"`
+}
 
-// func resourceExistsLabelAssignment(d *schema.ResourceData, _ any) (bool, error) {
-// 	fileID, labelID := splitId(d.Id())
-// 	r, err := gsmdrive.ListLabels(fileID, "", 1)
-// 	for l := range r {
-// 		if l.Id == labelID {
-// 			return true, nil
-// 		}
-// 	}
-// 	e := <-err
-// 	if e != nil {
-// 		return false, e
-// 	}
-// 	return false, nil
-// }
+func (r *gdriveLabelAssignmentResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_label_assignment"
+}
+
+func (r *gdriveLabelAssignmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Sets a label on a Drive object",
+		Attributes: map[string]schema.Attribute{
+			"file_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the file to assign the label to.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"label_id": schema.StringAttribute{
+				MarkdownDescription: "The ID of the label.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The ID of the label assignment (fileId/labelId)",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+		},
+		Blocks: map[string]schema.Block{
+			"field": schema.SetNestedBlock{
+				MarkdownDescription: `A field of the assigned label.
+This block may be used multiple times to set multiple fields of the same label.`,
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"field_id": schema.StringAttribute{
+							Required:    true,
+							Description: "The identifier of this field.",
+						},
+						"value_type": schema.StringAttribute{
+							Required: true,
+							Description: `The field type.
+While new values may be supported in the future, the following are currently allowed:
+- dateString
+- integer
+- selection
+- text
+- user`,
+						},
+						"values": schema.SetAttribute{
+							ElementType: types.StringType,
+							Required:    true,
+							Description: `The values that should be set.
+Must be compatible with the specified valueType.`,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func (r *gdriveLabelAssignmentResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	r.client = client
+}
+
+func (r *gdriveLabelAssignmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	plan := &gdriveLabelAssignmentResourceModel{}
+	diags := req.Plan.Get(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	labelID := plan.LabelId.ValueString()
+	fileID := plan.FileId.ValueString()
+	modLabelsReq := &drive.ModifyLabelsRequest{
+		LabelModifications: []*drive.LabelModification{
+			{
+				LabelId:            labelID,
+				FieldModifications: []*drive.LabelFieldModification{},
+			},
+		},
+	}
+	for i := range plan.Field {
+		valueType := plan.Field[i].ValueType.ValueString()
+		fieldMod := &drive.LabelFieldModification{
+			FieldId: plan.Field[i].FieldId.ValueString(),
+		}
+		switch valueType {
+		case "dateString":
+			diags = plan.Field[i].Values.ElementsAs(ctx, &fieldMod.SetDateValues, false)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		case "integer":
+			values := []string{}
+			diags = plan.Field[i].Values.ElementsAs(ctx, &values, false)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			for v := range values {
+				vi, err := strconv.ParseInt(values[v], 10, 64)
+				if err != nil {
+					resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value for an integer field, got error: %s", values[v], err))
+					return
+				}
+				fieldMod.SetIntegerValues = append(fieldMod.SetIntegerValues, vi)
+			}
+		case "selection":
+			diags = plan.Field[i].Values.ElementsAs(ctx, &fieldMod.SetSelectionValues, false)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		case "text":
+			diags = plan.Field[i].Values.ElementsAs(ctx, &fieldMod.SetTextValues, false)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		case "user":
+			diags = plan.Field[i].Values.ElementsAs(ctx, &fieldMod.SetUserValues, false)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		case "default":
+			resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value_type for field", valueType))
+			return
+		}
+		modLabelsReq.LabelModifications[0].FieldModifications = append(modLabelsReq.LabelModifications[0].FieldModifications, fieldMod)
+	}
+	_, err := gsmdrive.ModifyLabels(fileID, "", modLabelsReq)
+	if err != nil {
+		resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to create label assignment, got error: %s", err))
+		return
+	}
+	plan.Id = types.StringValue(combineId(fileID, labelID))
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *gdriveLabelAssignmentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	state := &gdriveLabelAssignmentResourceModel{}
+	diags := req.State.Get(ctx, state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	fileID := state.FileId.ValueString()
+	labelID := state.LabelId.ValueString()
+	state.Field = []*gdriveLabelAssignmentFieldModel{}
+	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
+	for l := range currentLabels {
+		if l.Id == labelID {
+			for f := range l.Fields {
+				field := &gdriveLabelAssignmentFieldModel{
+					ValueType: types.StringValue(l.Fields[f].ValueType),
+					FieldId:   types.StringValue(l.Fields[f].Id),
+				}
+				switch l.Fields[f].ValueType {
+				case "dateString":
+					field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].DateString)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+				case "text":
+					field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].Text)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+				case "user":
+					values := []string{}
+					for u := range l.Fields[f].User {
+						values = append(values, l.Fields[f].User[u].EmailAddress)
+					}
+					field.Values, diags = types.SetValueFrom(ctx, types.StringType, values)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+				case "selection":
+
+					field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].Selection)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+				case "integer":
+					values := []string{}
+					for _, value := range l.Fields[f].Integer {
+						values = append(values, strconv.FormatInt(value, 10))
+					}
+					field.Values, diags = types.SetValueFrom(ctx, types.StringType, values)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+				}
+				state.Field = append(state.Field, field)
+			}
+		}
+	}
+	e := <-err
+	if e != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to use list labels on file, got error: %s", e))
+		return
+	}
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+}
+
+func (label *gdriveLabelAssignmentResourceModel) toMap() map[string]*gdriveLabelAssignmentFieldModel {
+	m := map[string]*gdriveLabelAssignmentFieldModel{}
+	for i := range label.Field {
+		m[label.Field[i].FieldId.ValueString()] = label.Field[i]
+	}
+	return m
+}
+
+func (r *gdriveLabelAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var diags diag.Diagnostics
+	plan := &gdriveLabelAssignmentResourceModel{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	state := &gdriveLabelAssignmentResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	modLabelsReq := &drive.ModifyLabelsRequest{
+		LabelModifications: []*drive.LabelModification{
+			{
+				LabelId:            plan.LabelId.ValueString(),
+				FieldModifications: []*drive.LabelFieldModification{},
+			},
+		},
+	}
+	planMap := plan.toMap()
+	stateMap := state.toMap()
+	for i := range planMap {
+		_, fieldAlreadySet := stateMap[i]
+		if !fieldAlreadySet || (fieldAlreadySet && !planMap[i].Values.Equal(stateMap[i].Values)) {
+			fieldMod := &drive.LabelFieldModification{
+				FieldId: i,
+			}
+			if planMap[i].Values.IsNull() {
+				fieldMod.UnsetValues = true
+			} else {
+				valueType := planMap[i].ValueType.ValueString()
+				switch valueType {
+				case "dateString":
+					diags = planMap[i].Values.ElementsAs(ctx, &fieldMod.SetDateValues, false)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+				case "integer":
+					values := []string{}
+					diags = planMap[i].Values.ElementsAs(ctx, &values, false)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+					for v := range values {
+						vi, err := strconv.ParseInt(values[v], 10, 64)
+						if err != nil {
+							resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value for an integer field, got error: %s", values[v], err))
+							return
+						}
+						fieldMod.SetIntegerValues = append(fieldMod.SetIntegerValues, vi)
+					}
+				case "selection":
+					diags = planMap[i].Values.ElementsAs(ctx, &fieldMod.SetSelectionValues, false)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+				case "text":
+					diags = planMap[i].Values.ElementsAs(ctx, &fieldMod.SetTextValues, false)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+				case "user":
+					diags = planMap[i].Values.ElementsAs(ctx, &fieldMod.SetUserValues, false)
+					resp.Diagnostics.Append(diags...)
+					if resp.Diagnostics.HasError() {
+						return
+					}
+				case "default":
+					resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value_type for field", valueType))
+					return
+				}
+			}
+			modLabelsReq.LabelModifications[0].FieldModifications = append(modLabelsReq.LabelModifications[0].FieldModifications, fieldMod)
+		}
+	}
+	for i := range stateMap {
+		_, fieldStillExists := planMap[i]
+		if !fieldStillExists {
+			modLabelsReq.LabelModifications[0].FieldModifications = append(modLabelsReq.LabelModifications[0].FieldModifications, &drive.LabelFieldModification{
+				FieldId:     i,
+				UnsetValues: true,
+			})
+		}
+	}
+	_, err := gsmdrive.ModifyLabels(plan.FileId.ValueString(), "", modLabelsReq)
+	if err != nil {
+		resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to update label assignment, got error: %s", err))
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *gdriveLabelAssignmentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	state := &gdriveLabelAssignmentResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	_, err := gsmdrive.ModifyLabels(state.FileId.ValueString(), "", &drive.ModifyLabelsRequest{
+		LabelModifications: []*drive.LabelModification{
+			{
+				LabelId:     state.LabelId.ValueString(),
+				RemoveLabel: true,
+			}},
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to remove label assignment, got error: %s", err))
+		return
+	}
+}
+
+func (r *gdriveLabelAssignmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}

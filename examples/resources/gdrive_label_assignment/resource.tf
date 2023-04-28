@@ -1,4 +1,4 @@
-# Assign a label policy to a file
+# Assign a label to a file
 resource "gdrive_label_assignment" "label_assignment" {
   file_id  = "..."
   label_id = "..."

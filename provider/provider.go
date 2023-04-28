@@ -176,7 +176,7 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	for i := range retryOn {
 		gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i])
 	}
-	gsmhelpers.SetStandardRetrier(time.Duration(500 * time.Millisecond))
+	gsmhelpers.SetStandardRetrier(time.Duration(500*time.Millisecond), time.Duration(60*time.Second))
 }
 
 func (p *gdriveProvider) Resources(ctx context.Context) []func() resource.Resource {
@@ -185,6 +185,7 @@ func (p *gdriveProvider) Resources(ctx context.Context) []func() resource.Resour
 		newFile,
 		newPermission,
 		newPermissionPolicy,
+		newLabelAssignment,
 	}
 }
 
