@@ -126,8 +126,7 @@ func (r *gdriveFileResource) Configure(ctx context.Context, req resource.Configu
 
 func (r *gdriveFileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan := &gdriveFileResourceModel{}
-	diags := req.Plan.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -157,32 +156,33 @@ func (r *gdriveFileResource) Create(ctx context.Context, req resource.CreateRequ
 }
 
 func (r *gdriveFileResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	plan := &gdriveFileResourceModel{}
-	diags := req.State.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	state := &gdriveFileResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	f, err := gsmdrive.GetFile(plan.Id.ValueString(), fieldsFile, "")
+	f, err := gsmdrive.GetFile(state.Id.ValueString(), fieldsFile, "")
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get file, got error: %s", err))
 		return
 	}
 	if len(f.Parents) != 0 {
-		plan.Parent = types.StringValue(f.Parents[0])
+		state.Parent = types.StringValue(f.Parents[0])
 	}
 	if f.DriveId != "" {
-		plan.DriveId = types.StringValue(f.DriveId)
+		state.DriveId = types.StringValue(f.DriveId)
 	}
-	plan.Name = types.StringValue(f.Name)
-	plan.MimeType = types.StringValue(f.MimeType)
-	diags = resp.State.Set(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
+	state.Name = types.StringValue(f.Name)
+	state.MimeType = types.StringValue(f.MimeType)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *gdriveFileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	plan := &gdriveFileResourceModel{}
 	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	state := &gdriveFileResourceModel{}
 	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {

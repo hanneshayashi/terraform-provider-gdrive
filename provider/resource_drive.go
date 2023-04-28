@@ -175,20 +175,19 @@ This restriction may be overridden by other sharing policies controlled outside 
 				},
 			},
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				dataV0 := &gdriveDriveResourceModelV0{}
-				diags := req.State.Get(ctx, dataV0)
-				resp.Diagnostics.Append(diags...)
+				stateV0 := &gdriveDriveResourceModelV0{}
+				resp.Diagnostics.Append(req.State.Get(ctx, stateV0)...)
 				if resp.Diagnostics.HasError() {
 					return
 				}
-				dataV1 := &gdriveDriveResourceModelV1{
-					Name:                 dataV0.Name,
-					UseDomainAdminAccess: dataV0.UseDomainAdminAccess,
-					Id:                   dataV0.Id,
-					WaitAfterCreate:      dataV0.WaitAfterCreate,
-					Restrictions:         dataV0.Restrictions[0],
+				stateV1 := &gdriveDriveResourceModelV1{
+					Name:                 stateV0.Name,
+					UseDomainAdminAccess: stateV0.UseDomainAdminAccess,
+					Id:                   stateV0.Id,
+					WaitAfterCreate:      stateV0.WaitAfterCreate,
+					Restrictions:         stateV0.Restrictions[0],
 				}
-				resp.Diagnostics.Append(resp.State.Set(ctx, dataV1)...)
+				resp.Diagnostics.Append(resp.State.Set(ctx, stateV1)...)
 			},
 		},
 	}
@@ -216,8 +215,7 @@ func (r *gdriveDriveResource) Configure(ctx context.Context, req resource.Config
 
 func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan := &gdriveDriveResourceModelV1{}
-	diags := req.Plan.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -231,6 +229,9 @@ func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	plan.Id = types.StringValue(d.Id)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	if plan.Restrictions != nil {
 		driveReq = &drive.Drive{
 			Restrictions: &drive.DriveRestrictions{},
@@ -268,37 +269,38 @@ func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateReq
 }
 
 func (r *gdriveDriveResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	plan := &gdriveDriveResourceModelV1{}
-	diags := req.State.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	state := &gdriveDriveResourceModelV1{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	d, err := gsmdrive.GetDrive(plan.Id.ValueString(), fieldsDrive, plan.UseDomainAdminAccess.ValueBool())
+	d, err := gsmdrive.GetDrive(state.Id.ValueString(), fieldsDrive, state.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create drive, got error: %s", err))
 		return
 	}
-	plan.Name = types.StringValue(d.Name)
+	state.Name = types.StringValue(d.Name)
 	if d.Restrictions != nil && (d.Restrictions.AdminManagedRestrictions || d.Restrictions.CopyRequiresWriterPermission || d.Restrictions.DomainUsersOnly || d.Restrictions.DriveMembersOnly) {
 		adminManagedRestrictions := types.BoolValue(d.Restrictions.AdminManagedRestrictions)
 		copyRequiresWriterPermission := types.BoolValue(d.Restrictions.CopyRequiresWriterPermission)
 		domainUsersOnly := types.BoolValue(d.Restrictions.DomainUsersOnly)
 		driveMembersOnly := types.BoolValue(d.Restrictions.DriveMembersOnly)
-		plan.Restrictions = &restrictionsModel{
+		state.Restrictions = &restrictionsModel{
 			AdminManagedRestrictions:     adminManagedRestrictions,
 			CopyRequiresWriterPermission: copyRequiresWriterPermission,
 			DomainUsersOnly:              domainUsersOnly,
 			DriveMembersOnly:             driveMembersOnly,
 		}
 	}
-	diags = resp.State.Set(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *gdriveDriveResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	plan := &gdriveDriveResourceModelV1{}
 	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	state := &gdriveDriveResourceModelV1{}
 	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {

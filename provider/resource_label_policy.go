@@ -148,45 +148,53 @@ func (r *gdriveLabelPolicyResource) Configure(ctx context.Context, req resource.
 
 func (r *gdriveLabelPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan := &gdriveLabelPolicyResourceModel{}
-	diags := req.Plan.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	mockState := &gdriveLabelPolicyResourceModel{
 		FileId: plan.FileId,
 	}
-	diags = mockState.getCurrentLabels(ctx)
-	resp.Diagnostics.Append(diags...)
-	diags = setLabelDiffs(plan, mockState, ctx)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(mockState.getCurrentLabels(ctx)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(setLabelDiffs(plan, mockState, ctx)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	plan.Id = plan.FileId
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *gdriveLabelPolicyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	state := &gdriveLabelPolicyResourceModel{}
-	diags := req.State.Get(ctx, state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	diags = state.getCurrentLabels(ctx)
-	resp.Diagnostics.Append(diags...)
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(state.getCurrentLabels(ctx)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *gdriveLabelPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	plan := &gdriveLabelPolicyResourceModel{}
 	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	state := &gdriveLabelPolicyResourceModel{}
 	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	diags := setLabelDiffs(plan, state, ctx)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(setLabelDiffs(plan, state, ctx)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

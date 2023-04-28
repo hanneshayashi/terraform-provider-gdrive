@@ -189,8 +189,7 @@ func (r *gdrivePermissionPolicyResource) Configure(ctx context.Context, req reso
 
 func (r *gdrivePermissionPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan := &gdrivePermissionPolicyResourceModel{}
-	diags := req.Plan.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -204,8 +203,7 @@ func (r *gdrivePermissionPolicyResource) Create(ctx context.Context, req resourc
 
 func (r *gdrivePermissionPolicyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	state := &gdrivePermissionPolicyResourceModel{}
-	diags := req.State.Get(ctx, state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -225,14 +223,12 @@ func (r *gdrivePermissionPolicyResource) Read(ctx context.Context, req resource.
 		}
 	}
 	state.Permissions = currentP
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *gdrivePermissionPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	plan := &gdrivePermissionPolicyResourceModel{}
-	diags := req.Plan.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

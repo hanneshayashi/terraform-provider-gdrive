@@ -179,8 +179,7 @@ func (r *gdrivePermissionResource) Configure(ctx context.Context, req resource.C
 
 func (r *gdrivePermissionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan := &gdrivePermissionResourceModel{}
-	diags := req.Plan.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -202,32 +201,33 @@ func (r *gdrivePermissionResource) Create(ctx context.Context, req resource.Crea
 }
 
 func (r *gdrivePermissionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	plan := &gdrivePermissionResourceModel{}
-	diags := req.State.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	state := &gdrivePermissionResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	p, err := gsmdrive.GetPermission(plan.FileId.ValueString(), plan.PermissionId.ValueString(), fieldsPermission, plan.UseDomainAdminAccess.ValueBool())
+	p, err := gsmdrive.GetPermission(state.FileId.ValueString(), state.PermissionId.ValueString(), fieldsPermission, state.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read permission on file, got error: %s", err))
 		return
 	}
 	if p.EmailAddress != "" {
-		plan.EmailAddress = types.StringValue(p.EmailAddress)
+		state.EmailAddress = types.StringValue(p.EmailAddress)
 	}
 	if p.Domain != "" {
-		plan.Domain = types.StringValue(p.Domain)
+		state.Domain = types.StringValue(p.Domain)
 	}
-	plan.Role = types.StringValue(p.Role)
-	plan.Type = types.StringValue(p.Type)
-	diags = resp.State.Set(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
+	state.Role = types.StringValue(p.Role)
+	state.Type = types.StringValue(p.Type)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *gdrivePermissionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	plan := &gdrivePermissionResourceModel{}
 	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	state := &gdrivePermissionResourceModel{}
 	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {

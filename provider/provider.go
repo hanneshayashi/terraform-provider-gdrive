@@ -165,8 +165,7 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		gsmdrivelabels.SetClient(client)
 	}
 	var retryOn []int
-	diags := data.RetryOn.ElementsAs(ctx, &retryOn, false)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(data.RetryOn.ElementsAs(ctx, &retryOn, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

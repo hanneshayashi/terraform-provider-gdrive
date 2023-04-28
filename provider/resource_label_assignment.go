@@ -296,6 +296,9 @@ func (r *gdriveLabelAssignmentResource) Update(ctx context.Context, req resource
 	var diags diag.Diagnostics
 	plan := &gdriveLabelAssignmentResourceModel{}
 	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	state := &gdriveLabelAssignmentResourceModel{}
 	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {
