@@ -49,7 +49,7 @@ type gdriveDriveResource struct {
 	client *http.Client
 }
 
-type restrictionsModel struct {
+type driveRestrictionsModel struct {
 	AdminManagedRestrictions     types.Bool `tfsdk:"admin_managed_restrictions"`
 	CopyRequiresWriterPermission types.Bool `tfsdk:"copy_requires_writer_permission"`
 	DomainUsersOnly              types.Bool `tfsdk:"domain_users_only"`
@@ -58,20 +58,21 @@ type restrictionsModel struct {
 
 // gdriveDriveResourceModelV1 describes the resource data model V1.
 type gdriveDriveResourceModelV1 struct {
-	Name                 types.String       `tfsdk:"name"`
-	UseDomainAdminAccess types.Bool         `tfsdk:"use_domain_admin_access"`
-	Id                   types.String       `tfsdk:"id"`
-	WaitAfterCreate      types.Int64        `tfsdk:"wait_after_create"`
-	Restrictions         *restrictionsModel `tfsdk:"restrictions"`
+	Name                 types.String            `tfsdk:"name"`
+	UseDomainAdminAccess types.Bool              `tfsdk:"use_domain_admin_access"`
+	DriveId              types.String            `tfsdk:"drive_id"`
+	Id                   types.String            `tfsdk:"id"`
+	WaitAfterCreate      types.Int64             `tfsdk:"wait_after_create"`
+	Restrictions         *driveRestrictionsModel `tfsdk:"restrictions"`
 }
 
 // gdriveDriveResourceModelV0 describes the resource data model V0.
 type gdriveDriveResourceModelV0 struct {
-	Name                 types.String         `tfsdk:"name"`
-	UseDomainAdminAccess types.Bool           `tfsdk:"use_domain_admin_access"`
-	Id                   types.String         `tfsdk:"id"`
-	WaitAfterCreate      types.Int64          `tfsdk:"wait_after_create"`
-	Restrictions         []*restrictionsModel `tfsdk:"restrictions"`
+	Name                 types.String              `tfsdk:"name"`
+	UseDomainAdminAccess types.Bool                `tfsdk:"use_domain_admin_access"`
+	Id                   types.String              `tfsdk:"id"`
+	WaitAfterCreate      types.Int64               `tfsdk:"wait_after_create"`
+	Restrictions         []*driveRestrictionsModel `tfsdk:"restrictions"`
 }
 
 func (r *gdriveDriveResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -97,6 +98,13 @@ In order to prevent 404 errors after the creation of a Shared Drive, the provide
 This value is only used for the initial creation and not used for updates. Changing this value after the initial creation has no effect.`,
 				Optional:           true,
 				DeprecationMessage: "Remove this attribute's configuration as it no longer is used and the attribute will be removed in the next major version of the provider.",
+			},
+			"drive_id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The ID of the Shared Drive (driveId)",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -201,6 +209,7 @@ This restriction may be overridden by other sharing policies controlled outside 
 					Name:                 stateV0.Name,
 					UseDomainAdminAccess: stateV0.UseDomainAdminAccess,
 					Id:                   stateV0.Id,
+					DriveId:              stateV0.Id,
 					WaitAfterCreate:      stateV0.WaitAfterCreate,
 					Restrictions:         stateV0.Restrictions[0],
 				}
@@ -245,6 +254,7 @@ func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 	plan.Id = types.StringValue(d.Id)
+	plan.DriveId = types.StringValue(d.Id)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -267,23 +277,9 @@ func (r *gdriveDriveResource) Read(ctx context.Context, req resource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	d, err := gsmdrive.GetDrive(state.Id.ValueString(), fieldsDrive, state.UseDomainAdminAccess.ValueBool())
-	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get drive, got error: %s", err))
+	resp.Diagnostics.Append(state.getDriveDetails()...)
+	if resp.Diagnostics.HasError() {
 		return
-	}
-	state.Name = types.StringValue(d.Name)
-	if d.Restrictions != nil && (d.Restrictions.AdminManagedRestrictions || d.Restrictions.CopyRequiresWriterPermission || d.Restrictions.DomainUsersOnly || d.Restrictions.DriveMembersOnly) {
-		adminManagedRestrictions := types.BoolValue(d.Restrictions.AdminManagedRestrictions)
-		copyRequiresWriterPermission := types.BoolValue(d.Restrictions.CopyRequiresWriterPermission)
-		domainUsersOnly := types.BoolValue(d.Restrictions.DomainUsersOnly)
-		driveMembersOnly := types.BoolValue(d.Restrictions.DriveMembersOnly)
-		state.Restrictions = &restrictionsModel{
-			AdminManagedRestrictions:     adminManagedRestrictions,
-			CopyRequiresWriterPermission: copyRequiresWriterPermission,
-			DomainUsersOnly:              domainUsersOnly,
-			DriveMembersOnly:             driveMembersOnly,
-		}
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -308,19 +304,19 @@ func (r *gdriveDriveResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 	_, err := gsmdrive.UpdateDrive(plan.Id.ValueString(), fieldsDrive, plan.UseDomainAdminAccess.ValueBool(), driveReq)
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to updat drive, got error: %s", err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update drive, got error: %s", err))
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *gdriveDriveResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	plan := &gdriveDriveResourceModelV1{}
-	resp.Diagnostics.Append(req.State.Get(ctx, plan)...)
+	state := &gdriveDriveResourceModelV1{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	_, err := gsmdrive.DeleteDrive(plan.Id.ValueString(), plan.UseDomainAdminAccess.ValueBool())
+	_, err := gsmdrive.DeleteDrive(state.Id.ValueString(), state.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete drive, got error: %s", err))
 		return

@@ -18,10 +18,34 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"fmt"
+
+	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"google.golang.org/api/drive/v3"
 )
 
-func (restrictionsModel *restrictionsModel) toDriveRestrictions() *drive.DriveRestrictions {
+func (driveModel *gdriveDriveResourceModelV1) getDriveDetails() (diags diag.Diagnostics) {
+	d, err := gsmdrive.GetDrive(driveModel.DriveId.ValueString(), fieldsDrive, driveModel.UseDomainAdminAccess.ValueBool())
+	if err != nil {
+		diags.AddError("Client Error", fmt.Sprintf("Unable to get drive, got error: %s", err))
+		return
+	}
+	driveModel.Id = driveModel.DriveId
+	driveModel.Name = types.StringValue(d.Name)
+	if d.Restrictions != nil && (d.Restrictions.AdminManagedRestrictions || d.Restrictions.CopyRequiresWriterPermission || d.Restrictions.DomainUsersOnly || d.Restrictions.DriveMembersOnly) {
+		driveModel.Restrictions = &driveRestrictionsModel{
+			AdminManagedRestrictions:     types.BoolValue(d.Restrictions.AdminManagedRestrictions),
+			CopyRequiresWriterPermission: types.BoolValue(d.Restrictions.CopyRequiresWriterPermission),
+			DomainUsersOnly:              types.BoolValue(d.Restrictions.DomainUsersOnly),
+			DriveMembersOnly:             types.BoolValue(d.Restrictions.DriveMembersOnly),
+		}
+	}
+	return diags
+}
+
+func (restrictionsModel *driveRestrictionsModel) toDriveRestrictions() *drive.DriveRestrictions {
 	restrictions := &drive.DriveRestrictions{}
 	if !restrictionsModel.AdminManagedRestrictions.IsNull() {
 		restrictions.AdminManagedRestrictions = restrictionsModel.AdminManagedRestrictions.ValueBool()
