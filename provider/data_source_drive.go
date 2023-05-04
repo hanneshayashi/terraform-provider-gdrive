@@ -39,7 +39,7 @@ type driveDataSource struct {
 }
 
 func (d *driveDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_example"
+	resp.TypeName = req.ProviderTypeName + "_drive"
 }
 
 func (d *driveDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
@@ -118,6 +118,7 @@ func (ds *driveDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	config.Id = config.DriveId
 	resp.Diagnostics.Append(config.getDriveDetails()...)
 	if resp.Diagnostics.HasError() {
 		return

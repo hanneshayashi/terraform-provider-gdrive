@@ -27,12 +27,11 @@ import (
 )
 
 func (driveModel *gdriveDriveResourceModelV1) getDriveDetails() (diags diag.Diagnostics) {
-	d, err := gsmdrive.GetDrive(driveModel.DriveId.ValueString(), fieldsDrive, driveModel.UseDomainAdminAccess.ValueBool())
+	d, err := gsmdrive.GetDrive(driveModel.Id.ValueString(), fieldsDrive, driveModel.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		diags.AddError("Client Error", fmt.Sprintf("Unable to get drive, got error: %s", err))
 		return
 	}
-	driveModel.Id = driveModel.DriveId
 	driveModel.Name = types.StringValue(d.Name)
 	if d.Restrictions != nil && (d.Restrictions.AdminManagedRestrictions || d.Restrictions.CopyRequiresWriterPermission || d.Restrictions.DomainUsersOnly || d.Restrictions.DriveMembersOnly) {
 		driveModel.Restrictions = &driveRestrictionsModel{
