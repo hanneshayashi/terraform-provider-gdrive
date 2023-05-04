@@ -17,78 +17,110 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package provider
 
-// import (
-// 	"github.com/hanneshayashi/gsm/gsmdrive"
-// 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-// )
+import (
+	"context"
+	"fmt"
+	"net/http"
 
-// func dataSourceDrive() *schema.Resource {
-// 	return &schema.Resource{
-// 		Description: "Gets a Shared Drive and returns its metadata",
-// 		Schema: map[string]*schema.Schema{
-// 			"drive_id": {
-// 				Type:        schema.TypeString,
-// 				Required:    true,
-// 				Description: "ID of the Shared Drive",
-// 			},
-// 			"use_domain_admin_access": {
-// 				Type:        schema.TypeBool,
-// 				Optional:    true,
-// 				Description: "Use domain admin access",
-// 			},
-// 			"name": {
-// 				Type:        schema.TypeString,
-// 				Computed:    true,
-// 				Description: "The name of this shared drive.",
-// 			},
-// 			"restrictions": {
-// 				Type:        schema.TypeList,
-// 				Computed:    true,
-// 				Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
-// 				Elem: &schema.Resource{
-// 					Schema: map[string]*schema.Schema{
-// 						"admin_managed_restrictions": {
-// 							Type:        schema.TypeBool,
-// 							Computed:    true,
-// 							Description: "Whether administrative privileges on this shared drive are required to modify restrictions.",
-// 						},
-// 						"copy_requires_writer_permission": {
-// 							Type:     schema.TypeBool,
-// 							Computed: true,
-// 							Description: `Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
-// When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.`,
-// 						},
-// 						"domain_users_only": {
-// 							Type:     schema.TypeBool,
-// 							Computed: true,
-// 							Description: `Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
-// This restriction may be overridden by other sharing policies controlled outside of this shared drive.	`,
-// 						},
-// 						"drive_members_only": {
-// 							Type:        schema.TypeBool,
-// 							Computed:    true,
-// 							Description: "Whether access to items inside this shared drive is restricted to its members.	",
-// 						},
-// 					},
-// 				},
-// 			},
-// 		},
-// 		Read: dataSourceReadDrive,
-// 	}
-// }
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+)
 
-// func dataSourceReadDrive(d *schema.ResourceData, _ any) error {
-// 	driveID := d.Get("drive_id").(string)
-// 	r, err := gsmdrive.GetDrive(driveID, "*", d.Get("use_domain_admin_access").(bool))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	d.SetId(driveID)
-// 	d.Set("name", r.Name)
-// 	restrictions := make([]map[string]bool, 1)
-// 	if r.Restrictions != nil {
-// 		restrictions[0] = getRestrictions(r)
-// 	}
-// 	d.Set("restrictions", restrictions)
-// 	return nil
-// }
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ datasource.DataSource = &driveDataSource{}
+
+func newDriveDataSource() datasource.DataSource {
+	return &driveDataSource{}
+}
+
+// driveDataSource defines the data source implementation.
+type driveDataSource struct {
+	client *http.Client
+}
+
+func (d *driveDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_example"
+}
+
+func (d *driveDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		// This description is used by the documentation generator and the language server.
+		MarkdownDescription: "Gets a Shared Drive and returns its metadata",
+		Attributes: map[string]schema.Attribute{
+			"drive_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the Shared Drive",
+				Required:            true,
+			},
+			"use_domain_admin_access": schema.BoolAttribute{
+				Optional:    true,
+				Description: "Use domain admin access",
+			},
+			"name": schema.StringAttribute{
+				Computed:    true,
+				Description: "The name of this shared drive.",
+			},
+			"id": schema.StringAttribute{
+				MarkdownDescription: "ID of the Shared Drive",
+				Computed:            true,
+			},
+		},
+		Blocks: map[string]schema.Block{
+			"restrictions": schema.SingleNestedBlock{
+				Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
+				Attributes: map[string]schema.Attribute{
+					"admin_managed_restrictions": schema.BoolAttribute{
+						Computed:    true,
+						Description: "Whether administrative privileges on this shared drive are required to modify restrictions.",
+					},
+					"copy_requires_writer_permission": schema.BoolAttribute{
+						Computed: true,
+						Description: `Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
+When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.`,
+					},
+					"domain_users_only": schema.BoolAttribute{
+						Computed: true,
+						Description: `Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
+This restriction may be overridden by other sharing policies controlled outside of this shared drive.	`,
+					},
+					"drive_members_only": schema.BoolAttribute{
+						Computed:    true,
+						Description: "Whether access to items inside this shared drive is restricted to its members.	",
+					},
+				},
+			},
+		},
+	}
+}
+
+func (d *driveDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
+func (ds *driveDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	config := &gdriveDriveResourceModelV1{}
+	resp.Diagnostics.Append(req.Config.Get(ctx, config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(config.getDriveDetails()...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
+}

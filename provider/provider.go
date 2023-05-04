@@ -208,7 +208,7 @@ func (p *gdriveProvider) Resources(ctx context.Context) []func() resource.Resour
 
 func (p *gdriveProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		// NewExampleDataSource,
+		newDriveDataSource,
 	}
 }
 
