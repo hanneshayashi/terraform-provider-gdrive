@@ -251,31 +251,7 @@ func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	if plan.Restrictions != nil {
 		driveReq = &drive.Drive{
-			Restrictions: &drive.DriveRestrictions{},
-		}
-		if !plan.Restrictions.AdminManagedRestrictions.IsNull() {
-			driveReq.Restrictions.AdminManagedRestrictions = plan.Restrictions.AdminManagedRestrictions.ValueBool()
-			if !driveReq.Restrictions.AdminManagedRestrictions {
-				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "AdminManagedRestrictions")
-			}
-		}
-		if !plan.Restrictions.CopyRequiresWriterPermission.IsNull() {
-			driveReq.Restrictions.CopyRequiresWriterPermission = plan.Restrictions.CopyRequiresWriterPermission.ValueBool()
-			if !driveReq.Restrictions.CopyRequiresWriterPermission {
-				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "CopyRequiresWriterPermission")
-			}
-		}
-		if !plan.Restrictions.DomainUsersOnly.IsNull() {
-			driveReq.Restrictions.DomainUsersOnly = plan.Restrictions.DomainUsersOnly.ValueBool()
-			if !driveReq.Restrictions.DomainUsersOnly {
-				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "DomainUsersOnly")
-			}
-		}
-		if !plan.Restrictions.DriveMembersOnly.IsNull() {
-			driveReq.Restrictions.DriveMembersOnly = plan.Restrictions.DriveMembersOnly.ValueBool()
-			if !driveReq.Restrictions.DriveMembersOnly {
-				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "DriveMembersOnly")
-			}
+			Restrictions: plan.Restrictions.toDriveRestrictions(),
 		}
 		_, err = gsmdrive.UpdateDrive(d.Id, fieldsDrive, plan.UseDomainAdminAccess.ValueBool(), driveReq)
 		if err != nil {
@@ -293,7 +269,7 @@ func (r *gdriveDriveResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 	d, err := gsmdrive.GetDrive(state.Id.ValueString(), fieldsDrive, state.UseDomainAdminAccess.ValueBool())
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create drive, got error: %s", err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get drive, got error: %s", err))
 		return
 	}
 	state.Name = types.StringValue(d.Name)
@@ -328,35 +304,11 @@ func (r *gdriveDriveResource) Update(ctx context.Context, req resource.UpdateReq
 		driveReq.Name = plan.Name.ValueString()
 	}
 	if plan.Restrictions != nil {
-		driveReq.Restrictions = &drive.DriveRestrictions{}
-		if !plan.Restrictions.AdminManagedRestrictions.IsNull() {
-			driveReq.Restrictions.AdminManagedRestrictions = plan.Restrictions.AdminManagedRestrictions.ValueBool()
-			if !driveReq.Restrictions.AdminManagedRestrictions {
-				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "AdminManagedRestrictions")
-			}
-		}
-		if !plan.Restrictions.CopyRequiresWriterPermission.IsNull() {
-			driveReq.Restrictions.CopyRequiresWriterPermission = plan.Restrictions.CopyRequiresWriterPermission.ValueBool()
-			if !driveReq.Restrictions.CopyRequiresWriterPermission {
-				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "CopyRequiresWriterPermission")
-			}
-		}
-		if !plan.Restrictions.DomainUsersOnly.IsNull() {
-			driveReq.Restrictions.DomainUsersOnly = plan.Restrictions.DomainUsersOnly.ValueBool()
-			if !driveReq.Restrictions.DomainUsersOnly {
-				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "DomainUsersOnly")
-			}
-		}
-		if !plan.Restrictions.DriveMembersOnly.IsNull() {
-			driveReq.Restrictions.DriveMembersOnly = plan.Restrictions.DriveMembersOnly.ValueBool()
-			if !driveReq.Restrictions.DriveMembersOnly {
-				driveReq.Restrictions.ForceSendFields = append(driveReq.Restrictions.ForceSendFields, "DriveMembersOnly")
-			}
-		}
+		driveReq.Restrictions = plan.Restrictions.toDriveRestrictions()
 	}
 	_, err := gsmdrive.UpdateDrive(plan.Id.ValueString(), fieldsDrive, plan.UseDomainAdminAccess.ValueBool(), driveReq)
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set drive restrictions, got error: %s", err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to updat drive, got error: %s", err))
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)

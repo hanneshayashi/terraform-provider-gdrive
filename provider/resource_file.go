@@ -120,7 +120,6 @@ func (r *gdriveFileResource) Configure(ctx context.Context, req resource.Configu
 
 		return
 	}
-
 	r.client = client
 }
 
