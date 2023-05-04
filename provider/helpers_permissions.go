@@ -22,19 +22,19 @@ import (
 	"fmt"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"google.golang.org/api/drive/v3"
 )
 
-func (permissionPolicyModel *gdrivePermissionPolicyResourceModel) getCurrentPermissions(ctx context.Context) ([]*gdrivePermissionPolicyPermissionResourceModel, error) {
+func (permissionPolicyModel *gdrivePermissionPolicyResourceModel) getCurrentPermissions(ctx context.Context) (diags diag.Diagnostics) {
 	currentP, err := gsmdrive.ListPermissions(permissionPolicyModel.FileId.ValueString(), "", fmt.Sprintf("permissions(%s),nextPageToken", fieldsPermission), permissionPolicyModel.UseDomainAdminAccess.ValueBool(), 1)
-	permissions := []*gdrivePermissionPolicyPermissionResourceModel{}
 	for i := range currentP {
 		if i.PermissionDetails != nil && i.PermissionDetails[0].Inherited {
 			continue
 		}
-		permissions = append(permissions, &gdrivePermissionPolicyPermissionResourceModel{
+		permissionPolicyModel.Permissions = append(permissionPolicyModel.Permissions, &gdrivePermissionPolicyPermissionResourceModel{
 			PermissionId: types.StringValue(i.Id),
 			Type:         types.StringValue(i.Type),
 			Domain:       types.StringValue(i.Domain),
@@ -44,72 +44,62 @@ func (permissionPolicyModel *gdrivePermissionPolicyResourceModel) getCurrentPerm
 	}
 	e := <-err
 	if e != nil {
-		return nil, fmt.Errorf("Unable to read current permissions on file, got error: %s", e)
+		diags.AddError("Client Error", fmt.Sprintf("Unable to list permissions on file, got error: %s", e))
 	}
-	return permissions, nil
+	return diags
 }
 
-func permissionsToMap(permissions []*gdrivePermissionPolicyPermissionResourceModel) map[string]*gdrivePermissionPolicyPermissionResourceModel {
+func (permissionsPolicyModel *gdrivePermissionPolicyResourceModel) toMap() map[string]*gdrivePermissionPolicyPermissionResourceModel {
 	m := map[string]*gdrivePermissionPolicyPermissionResourceModel{}
-	for i := range permissions {
-		m[combineId(permissions[i].Domain.ValueString(), permissions[i].EmailAddress.ValueString())] = permissions[i]
+	for i := range permissionsPolicyModel.Permissions {
+		m[combineId(permissionsPolicyModel.Permissions[i].Domain.ValueString(), permissionsPolicyModel.Permissions[i].EmailAddress.ValueString())] = permissionsPolicyModel.Permissions[i]
 	}
 	return m
 }
 
-func (permissionPolicyModel *gdrivePermissionPolicyResourceModel) setPermissionPolicy(ctx context.Context) error {
-	fileID := permissionPolicyModel.FileId.ValueString()
-	useDomAccess := permissionPolicyModel.UseDomainAdminAccess.ValueBool()
-	currentP, err := permissionPolicyModel.getCurrentPermissions(ctx)
-	if err != nil {
-		return err
+func (permissionModel *gdrivePermissionPolicyPermissionResourceModel) toPermissionRequest() *drive.Permission {
+	return &drive.Permission{
+		Domain:       permissionModel.Domain.ValueString(),
+		EmailAddress: permissionModel.EmailAddress.ValueString(),
+		Role:         permissionModel.Role.ValueString(),
+		Type:         permissionModel.Type.ValueString(),
 	}
-	currentPMap := permissionsToMap(currentP)
-	plannedPMap := map[string]*gdrivePermissionPolicyPermissionResourceModel{}
-	for i := range permissionPolicyModel.Permissions {
-		role := permissionPolicyModel.Permissions[i].Role.ValueString()
-		mapID := combineId(permissionPolicyModel.Permissions[i].Domain.ValueString(), permissionPolicyModel.Permissions[i].EmailAddress.ValueString())
-		plannedPMap[mapID] = permissionPolicyModel.Permissions[i]
-		_, ok := currentPMap[mapID]
-		if ok {
-			tflog.Debug(ctx, fmt.Sprintf("ZZZ found %s on %s", permissionPolicyModel.Permissions[i].PermissionId.ValueString(), permissionPolicyModel.FileId.ValueString()))
-			if !permissionPolicyModel.Permissions[i].Role.Equal(currentPMap[mapID].Role) {
-				tflog.Debug(ctx, fmt.Sprintf("QQQ I will %s on %s from %s to %s", permissionPolicyModel.Permissions[i].PermissionId.ValueString(), permissionPolicyModel.FileId.ValueString(), currentPMap[mapID].Role.ValueString(), permissionPolicyModel.Permissions[i].PermissionId.ValueString()))
-				permissionReq := &drive.Permission{
-					Role: role,
-				}
-				p, err := gsmdrive.UpdatePermission(fileID, currentPMap[mapID].PermissionId.ValueString(), fieldsPermission, useDomAccess, false, permissionReq)
-				if err != nil {
-					return fmt.Errorf("Unable to update permission on file, got error: %s", err)
-				}
-				permissionPolicyModel.Permissions[i].PermissionId = types.StringValue(p.Id)
-			} else {
-				permissionPolicyModel.Permissions[i].PermissionId = currentPMap[mapID].PermissionId
-			}
-			delete(currentPMap, mapID)
-		} else {
-			permissionReq := &drive.Permission{
-				Domain:       permissionPolicyModel.Permissions[i].Domain.ValueString(),
-				EmailAddress: permissionPolicyModel.Permissions[i].EmailAddress.ValueString(),
-				Role:         role,
-				Type:         permissionPolicyModel.Permissions[i].Type.ValueString(),
-			}
-			p, err := gsmdrive.CreatePermission(fileID, permissionPolicyModel.Permissions[i].EmailMessage.ValueString(), fieldsPermission, useDomAccess, permissionPolicyModel.Permissions[i].SendNotificationEmail.ValueBool(), permissionPolicyModel.Permissions[i].TransferOwnership.ValueBool(), permissionPolicyModel.Permissions[i].MoveToNewOwnersRoot.ValueBool(), permissionReq)
+}
+
+func setPermissionDiffs(plan, state *gdrivePermissionPolicyResourceModel, ctx context.Context) (diags diag.Diagnostics) {
+	fileId := plan.FileId.ValueString()
+	useDomAccess := plan.UseDomainAdminAccess.ValueBool()
+	planPermissions := plan.toMap()
+	statePermissions := state.toMap()
+	for i := range planPermissions {
+		_, permissionAlreadyExists := statePermissions[i]
+		if permissionAlreadyExists && !planPermissions[i].Role.Equal(statePermissions[i].Role) {
+			permissionID := statePermissions[i].PermissionId.ValueString()
+			tflog.Debug(ctx, fmt.Sprintf("Permission with ID %s found on file %s, but roles differ. Updating...", permissionID, fileId))
+			_, err := gsmdrive.UpdatePermission(fileId, permissionID, fieldsPermission, useDomAccess, false, planPermissions[i].toPermissionRequest())
 			if err != nil {
-				return fmt.Errorf("Unable to set permission on file, got error: %s", err)
+				diags.AddError("Client Error", fmt.Sprintf("Unable to update permission on file, got error: %s", err))
+				return
 			}
-			permissionPolicyModel.Permissions[i].PermissionId = types.StringValue(p.Id)
-		}
-	}
-	for i := range currentPMap {
-		_, ok := plannedPMap[i]
-		if !ok {
-			_, err := gsmdrive.DeletePermission(fileID, currentPMap[i].PermissionId.ValueString(), useDomAccess)
+		} else if !permissionAlreadyExists {
+			tflog.Debug(ctx, fmt.Sprintf("No permission found on file %s for %s. Creating...", fileId, i))
+			_, err := gsmdrive.CreatePermission(fileId, planPermissions[i].EmailMessage.ValueString(), fieldsPermission, useDomAccess, planPermissions[i].SendNotificationEmail.ValueBool(), planPermissions[i].TransferOwnership.ValueBool(), planPermissions[i].MoveToNewOwnersRoot.ValueBool(), planPermissions[i].toPermissionRequest())
 			if err != nil {
-				return fmt.Errorf("Unable to remove permission from file, got error: %s", err)
+				diags.AddError("Client Error", fmt.Sprintf("Unable to create permission on file, got error: %s", err))
+				return
 			}
 		}
 	}
-	permissionPolicyModel.Id = types.StringValue(fileID)
-	return nil
+	for i := range statePermissions {
+		_, permissionStillPlanned := statePermissions[i]
+		if !permissionStillPlanned {
+			tflog.Debug(ctx, fmt.Sprintf("Permission found on file %s for %s, but no longer in plan. Deleting...", fileId, i))
+			_, err := gsmdrive.DeletePermission(fileId, statePermissions[i].PermissionId.ValueString(), useDomAccess)
+			if err != nil {
+				diags.AddError("Client Error", fmt.Sprintf("Unable to delete permission from file, got error: %s", err))
+				return
+			}
+		}
+	}
+	return diags
 }

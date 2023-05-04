@@ -193,11 +193,18 @@ func (r *gdrivePermissionPolicyResource) Create(ctx context.Context, req resourc
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	err := plan.setPermissionPolicy(ctx)
-	if err != nil {
-		resp.Diagnostics.AddError("Client Error", err.Error())
+	mockState := &gdrivePermissionPolicyResourceModel{
+		FileId: plan.FileId,
+	}
+	resp.Diagnostics.Append(mockState.getCurrentPermissions(ctx)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
+	resp.Diagnostics.Append(setPermissionDiffs(plan, mockState, ctx)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.Id = plan.FileId
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -207,22 +214,20 @@ func (r *gdrivePermissionPolicyResource) Read(ctx context.Context, req resource.
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	currentP, err := state.getCurrentPermissions(ctx)
-	if err != nil {
-		resp.Diagnostics.AddError("Client Error", err.Error())
+	resp.Diagnostics.Append(state.getCurrentPermissions(ctx)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	statePermissionsMap := permissionsToMap(state.Permissions)
-	for i := range currentP {
-		sP, ok := statePermissionsMap[combineId(currentP[i].Domain.ValueString(), currentP[i].EmailAddress.ValueString())]
+	currentPermissionsMap := state.toMap()
+	for i := range currentPermissionsMap {
+		sP, ok := currentPermissionsMap[combineId(currentPermissionsMap[i].Domain.ValueString(), currentPermissionsMap[i].EmailAddress.ValueString())]
 		if ok {
-			currentP[i].EmailMessage = sP.EmailMessage
-			currentP[i].MoveToNewOwnersRoot = sP.MoveToNewOwnersRoot
-			currentP[i].SendNotificationEmail = sP.SendNotificationEmail
-			currentP[i].TransferOwnership = sP.TransferOwnership
+			currentPermissionsMap[i].EmailMessage = sP.EmailMessage
+			currentPermissionsMap[i].MoveToNewOwnersRoot = sP.MoveToNewOwnersRoot
+			currentPermissionsMap[i].SendNotificationEmail = sP.SendNotificationEmail
+			currentPermissionsMap[i].TransferOwnership = sP.TransferOwnership
 		}
 	}
-	state.Permissions = currentP
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -232,9 +237,13 @@ func (r *gdrivePermissionPolicyResource) Update(ctx context.Context, req resourc
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	err := plan.setPermissionPolicy(ctx)
-	if err != nil {
-		resp.Diagnostics.AddError("Client Error", err.Error())
+	state := &gdrivePermissionPolicyResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(setPermissionDiffs(plan, state, ctx)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)

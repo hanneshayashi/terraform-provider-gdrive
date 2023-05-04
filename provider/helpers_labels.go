@@ -144,8 +144,7 @@ func setFieldDiffs(plan, state *gdriveLabelAssignmentResourceModel, ctx context.
 	return
 }
 
-func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Context) diag.Diagnostics {
-	var diags diag.Diagnostics
+func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Context) (diags diag.Diagnostics) {
 	planLabels := plan.toMap()
 	stateLabels := state.toMap()
 	modLabelsReq := &drive.ModifyLabelsRequest{
@@ -286,7 +285,7 @@ func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) getCurrentLabelD
 	}
 	e := <-err
 	if e != nil {
-		diags.AddError("Client Error", fmt.Sprintf("Unable to use list labels on file, got error: %s", e))
+		diags.AddError("Client Error", fmt.Sprintf("Unable to list labels on file, got error: %s", e))
 		return diags
 	}
 	return diags
