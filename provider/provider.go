@@ -37,7 +37,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"golang.org/x/exp/slices"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -90,7 +89,8 @@ You can also use the "SUBJECT" environment variable.`,
 			"retry_on": schema.ListAttribute{
 				Optional: true,
 				MarkdownDescription: `A list of HTTP error codes you want the provider to retry on.
-The provider will always retry on rate limiting errors and 404 using an exponential backoff strategy.`,
+If this is unset, the provider will retry on 404 using an exponential backoff strategy. If you DON'T want the provider to retry on 404, set this to an empty list.
+The provider will always retry on rate limiting errors.`,
 				ElementType: types.Int64Type,
 			},
 			"use_cloud_identity_api": schema.BoolAttribute{
@@ -182,12 +182,13 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		gsmdrivelabels.SetClient(client)
 	}
 	var retryOn []int
-	resp.Diagnostics.Append(data.RetryOn.ElementsAs(ctx, &retryOn, false)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	if !slices.Contains(retryOn, 404) {
-		retryOn = append(retryOn, 404)
+	if data.RetryOn.IsNull() {
+		retryOn = []int{404}
+	} else {
+		resp.Diagnostics.Append(data.RetryOn.ElementsAs(ctx, &retryOn, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 	for i := range retryOn {
 		gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i])
