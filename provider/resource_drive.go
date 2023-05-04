@@ -62,7 +62,6 @@ type gdriveDriveResourceModelV1 struct {
 	UseDomainAdminAccess types.Bool              `tfsdk:"use_domain_admin_access"`
 	DriveId              types.String            `tfsdk:"drive_id"`
 	Id                   types.String            `tfsdk:"id"`
-	WaitAfterCreate      types.Int64             `tfsdk:"wait_after_create"`
 	Restrictions         *driveRestrictionsModel `tfsdk:"restrictions"`
 }
 
@@ -91,13 +90,6 @@ func (r *gdriveDriveResource) Schema(ctx context.Context, req resource.SchemaReq
 			"use_domain_admin_access": schema.BoolAttribute{
 				MarkdownDescription: "Use domain admin access",
 				Optional:            true,
-			},
-			"wait_after_create": schema.Int64Attribute{
-				MarkdownDescription: `The Drive API returns a Shared Drive object immediately after creation, even though it is often not ready or visibile in other APIs.
-In order to prevent 404 errors after the creation of a Shared Drive, the provider will wait the specified number of seconds after the creation of a Shared Drive and before returning or attempting further operations.
-This value is only used for the initial creation and not used for updates. Changing this value after the initial creation has no effect.`,
-				Optional:           true,
-				DeprecationMessage: "Remove this attribute's configuration as it no longer is used and the attribute will be removed in the next major version of the provider.",
 			},
 			"drive_id": schema.StringAttribute{
 				Computed:            true,
@@ -210,7 +202,6 @@ This restriction may be overridden by other sharing policies controlled outside 
 					UseDomainAdminAccess: stateV0.UseDomainAdminAccess,
 					Id:                   stateV0.Id,
 					DriveId:              stateV0.Id,
-					WaitAfterCreate:      stateV0.WaitAfterCreate,
 					Restrictions:         stateV0.Restrictions[0],
 				}
 				resp.Diagnostics.Append(resp.State.Set(ctx, stateV1)...)
@@ -277,6 +268,7 @@ func (r *gdriveDriveResource) Read(ctx context.Context, req resource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	state.DriveId = state.Id
 	resp.Diagnostics.Append(state.getDriveDetails()...)
 	if resp.Diagnostics.HasError() {
 		return
