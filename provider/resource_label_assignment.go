@@ -21,10 +21,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -146,154 +144,40 @@ func (r *gdriveLabelAssignmentResource) Configure(ctx context.Context, req resou
 
 func (r *gdriveLabelAssignmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	plan := &gdriveLabelAssignmentResourceModel{}
-	diags := req.Plan.Get(ctx, plan)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	labelID := plan.LabelId.ValueString()
-	fileID := plan.FileId.ValueString()
-	modLabelsReq := &drive.ModifyLabelsRequest{
-		LabelModifications: []*drive.LabelModification{
-			{
-				LabelId:            labelID,
-				FieldModifications: []*drive.LabelFieldModification{},
-			},
-		},
+	mockState := &gdriveLabelAssignmentResourceModel{
+		FileId:  plan.FileId,
+		LabelId: plan.LabelId,
 	}
-	for i := range plan.Field {
-		valueType := plan.Field[i].ValueType.ValueString()
-		fieldMod := &drive.LabelFieldModification{
-			FieldId: plan.Field[i].FieldId.ValueString(),
-		}
-		switch valueType {
-		case "dateString":
-			diags = plan.Field[i].Values.ElementsAs(ctx, &fieldMod.SetDateValues, false)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		case "integer":
-			values := []string{}
-			diags = plan.Field[i].Values.ElementsAs(ctx, &values, false)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-			for v := range values {
-				vi, err := strconv.ParseInt(values[v], 10, 64)
-				if err != nil {
-					resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value for an integer field, got error: %s", values[v], err))
-					return
-				}
-				fieldMod.SetIntegerValues = append(fieldMod.SetIntegerValues, vi)
-			}
-		case "selection":
-			diags = plan.Field[i].Values.ElementsAs(ctx, &fieldMod.SetSelectionValues, false)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		case "text":
-			diags = plan.Field[i].Values.ElementsAs(ctx, &fieldMod.SetTextValues, false)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		case "user":
-			diags = plan.Field[i].Values.ElementsAs(ctx, &fieldMod.SetUserValues, false)
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		case "default":
-			resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value_type for field", valueType))
-			return
-		}
-		modLabelsReq.LabelModifications[0].FieldModifications = append(modLabelsReq.LabelModifications[0].FieldModifications, fieldMod)
-	}
-	_, err := gsmdrive.ModifyLabels(fileID, "", modLabelsReq)
-	if err != nil {
-		resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to create label assignment, got error: %s", err))
+	resp.Diagnostics.Append(mockState.getCurrentLabelDetails(ctx)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	plan.Id = types.StringValue(combineId(fileID, labelID))
+	resp.Diagnostics.Append(setFieldDiffs(plan, mockState, ctx)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.Id = types.StringValue(combineId(plan.FileId.ValueString(), plan.LabelId.ValueString()))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *gdriveLabelAssignmentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	state := &gdriveLabelAssignmentResourceModel{}
-	diags := req.State.Get(ctx, state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	fileID := state.FileId.ValueString()
-	labelID := state.LabelId.ValueString()
-	state.Field = []*gdriveLabelFieldModel{}
-	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
-	for l := range currentLabels {
-		if l.Id == labelID {
-			for f := range l.Fields {
-				field := &gdriveLabelFieldModel{
-					ValueType: types.StringValue(l.Fields[f].ValueType),
-					FieldId:   types.StringValue(l.Fields[f].Id),
-				}
-				switch l.Fields[f].ValueType {
-				case "dateString":
-					field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].DateString)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-				case "text":
-					field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].Text)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-				case "user":
-					values := []string{}
-					for u := range l.Fields[f].User {
-						values = append(values, l.Fields[f].User[u].EmailAddress)
-					}
-					field.Values, diags = types.SetValueFrom(ctx, types.StringType, values)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-				case "selection":
-					field.Values, diags = types.SetValueFrom(ctx, types.StringType, l.Fields[f].Selection)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-				case "integer":
-					values := []string{}
-					for _, value := range l.Fields[f].Integer {
-						values = append(values, strconv.FormatInt(value, 10))
-					}
-					field.Values, diags = types.SetValueFrom(ctx, types.StringType, values)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-				}
-				state.Field = append(state.Field, field)
-			}
-		}
-	}
-	e := <-err
-	if e != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to use list labels on file, got error: %s", e))
+	resp.Diagnostics.Append(state.getCurrentLabelDetails(ctx)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *gdriveLabelAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var diags diag.Diagnostics
 	plan := &gdriveLabelAssignmentResourceModel{}
 	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
 	if resp.Diagnostics.HasError() {
@@ -304,86 +188,8 @@ func (r *gdriveLabelAssignmentResource) Update(ctx context.Context, req resource
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	modLabelsReq := &drive.ModifyLabelsRequest{
-		LabelModifications: []*drive.LabelModification{
-			{
-				LabelId:            plan.LabelId.ValueString(),
-				FieldModifications: []*drive.LabelFieldModification{},
-			},
-		},
-	}
-	planMap := plan.toMap()
-	stateMap := state.toMap()
-	for i := range planMap {
-		_, fieldAlreadySet := stateMap[i]
-		if !fieldAlreadySet || (fieldAlreadySet && !planMap[i].Values.Equal(stateMap[i].Values)) {
-			fieldMod := &drive.LabelFieldModification{
-				FieldId: i,
-			}
-			if planMap[i].Values.IsNull() {
-				fieldMod.UnsetValues = true
-			} else {
-				valueType := planMap[i].ValueType.ValueString()
-				switch valueType {
-				case "dateString":
-					diags = planMap[i].Values.ElementsAs(ctx, &fieldMod.SetDateValues, false)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-				case "integer":
-					values := []string{}
-					diags = planMap[i].Values.ElementsAs(ctx, &values, false)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-					for v := range values {
-						vi, err := strconv.ParseInt(values[v], 10, 64)
-						if err != nil {
-							resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value for an integer field, got error: %s", values[v], err))
-							return
-						}
-						fieldMod.SetIntegerValues = append(fieldMod.SetIntegerValues, vi)
-					}
-				case "selection":
-					diags = planMap[i].Values.ElementsAs(ctx, &fieldMod.SetSelectionValues, false)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-				case "text":
-					diags = planMap[i].Values.ElementsAs(ctx, &fieldMod.SetTextValues, false)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-				case "user":
-					diags = planMap[i].Values.ElementsAs(ctx, &fieldMod.SetUserValues, false)
-					resp.Diagnostics.Append(diags...)
-					if resp.Diagnostics.HasError() {
-						return
-					}
-				case "default":
-					resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to use %s as a value_type for field", valueType))
-					return
-				}
-			}
-			modLabelsReq.LabelModifications[0].FieldModifications = append(modLabelsReq.LabelModifications[0].FieldModifications, fieldMod)
-		}
-	}
-	for i := range stateMap {
-		_, fieldStillExists := planMap[i]
-		if !fieldStillExists {
-			modLabelsReq.LabelModifications[0].FieldModifications = append(modLabelsReq.LabelModifications[0].FieldModifications, &drive.LabelFieldModification{
-				FieldId:     i,
-				UnsetValues: true,
-			})
-		}
-	}
-	_, err := gsmdrive.ModifyLabels(plan.FileId.ValueString(), "", modLabelsReq)
-	if err != nil {
-		resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to update label assignment, got error: %s", err))
+	resp.Diagnostics.Append(setFieldDiffs(plan, state, ctx)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)

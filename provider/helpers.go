@@ -109,6 +109,45 @@ func (fieldModel *gdriveLabelFieldModel) toFieldModification(ctx context.Context
 	return fieldMod, diags
 }
 
+func setFieldDiffs(plan, state *gdriveLabelAssignmentResourceModel, ctx context.Context) (diags diag.Diagnostics) {
+	modLabelsReq := &drive.ModifyLabelsRequest{
+		LabelModifications: []*drive.LabelModification{
+			{
+				LabelId:            plan.LabelId.ValueString(),
+				FieldModifications: []*drive.LabelFieldModification{},
+			},
+		},
+	}
+	planMap := plan.toMap()
+	stateMap := state.toMap()
+	for i := range planMap {
+		_, fieldAlreadySet := stateMap[i]
+		if !fieldAlreadySet || (fieldAlreadySet && !planMap[i].Values.Equal(stateMap[i].Values)) {
+			var fieldMod *drive.LabelFieldModification
+			fieldMod, diags = planMap[i].toFieldModification(ctx)
+			if diags.HasError() {
+				return diags
+			}
+			modLabelsReq.LabelModifications[0].FieldModifications = append(modLabelsReq.LabelModifications[0].FieldModifications, fieldMod)
+		}
+	}
+	for i := range stateMap {
+		_, fieldStillExists := planMap[i]
+		if !fieldStillExists {
+			modLabelsReq.LabelModifications[0].FieldModifications = append(modLabelsReq.LabelModifications[0].FieldModifications, &drive.LabelFieldModification{
+				FieldId:     i,
+				UnsetValues: true,
+			})
+		}
+	}
+	_, err := gsmdrive.ModifyLabels(plan.FileId.ValueString(), "", modLabelsReq)
+	if err != nil {
+		diags.AddError("Configuration Error", fmt.Sprintf("Unable to update label assignment, got error: %s", err))
+		return
+	}
+	return
+}
+
 func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Context) diag.Diagnostics {
 	var diags diag.Diagnostics
 	planLabels := plan.toMap()
@@ -189,10 +228,78 @@ func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Cont
 	return diags
 }
 
-func (state *gdriveLabelPolicyResourceModel) getCurrentLabels(ctx context.Context) diag.Diagnostics {
+func driveLabelFieldToFieldModel(field drive.LabelField, ctx context.Context) (fieldModel *gdriveLabelFieldModel, diags diag.Diagnostics) {
+	fieldModel = &gdriveLabelFieldModel{
+		ValueType: types.StringValue(field.ValueType),
+		FieldId:   types.StringValue(field.Id),
+	}
+	switch field.ValueType {
+	case "dateString":
+		fieldModel.Values, diags = types.SetValueFrom(ctx, types.StringType, field.DateString)
+		if diags.HasError() {
+			return nil, diags
+		}
+	case "text":
+		fieldModel.Values, diags = types.SetValueFrom(ctx, types.StringType, field.Text)
+		if diags.HasError() {
+			return nil, diags
+		}
+	case "user":
+		values := []string{}
+		for u := range field.User {
+			values = append(values, field.User[u].EmailAddress)
+		}
+		fieldModel.Values, diags = types.SetValueFrom(ctx, types.StringType, values)
+		if diags.HasError() {
+			return nil, diags
+		}
+	case "selection":
+		fieldModel.Values, diags = types.SetValueFrom(ctx, types.StringType, field.Selection)
+		if diags.HasError() {
+			return nil, diags
+		}
+	case "integer":
+		values := []string{}
+		for _, value := range field.Integer {
+			values = append(values, strconv.FormatInt(value, 10))
+		}
+		fieldModel.Values, diags = types.SetValueFrom(ctx, types.StringType, values)
+		if diags.HasError() {
+			return nil, diags
+		}
+	}
+	return fieldModel, diags
+}
+
+func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) getCurrentLabelDetails(ctx context.Context) (diags diag.Diagnostics) {
+	fileID := labelAssignmentModel.FileId.ValueString()
+	labelID := labelAssignmentModel.LabelId.ValueString()
+	labelAssignmentModel.Field = []*gdriveLabelFieldModel{}
+	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
+	for l := range currentLabels {
+		if l.Id == labelID {
+			for f := range l.Fields {
+				var field *gdriveLabelFieldModel
+				field, diags = driveLabelFieldToFieldModel(l.Fields[f], ctx)
+				if diags.HasError() {
+					return diags
+				}
+				labelAssignmentModel.Field = append(labelAssignmentModel.Field, field)
+			}
+		}
+	}
+	e := <-err
+	if e != nil {
+		diags.AddError("Client Error", fmt.Sprintf("Unable to use list labels on file, got error: %s", e))
+		return diags
+	}
+	return diags
+}
+
+func (labelPolicyModel *gdriveLabelPolicyResourceModel) getCurrentLabels(ctx context.Context) diag.Diagnostics {
 	var diags diag.Diagnostics
-	state.Label = []*gdriveLabelPolicyLabelModel{}
-	fileID := state.FileId.ValueString()
+	labelPolicyModel.Label = []*gdriveLabelPolicyLabelModel{}
+	fileID := labelPolicyModel.FileId.ValueString()
 	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
 	for l := range currentLabels {
 		label := &gdriveLabelPolicyLabelModel{
@@ -241,7 +348,7 @@ func (state *gdriveLabelPolicyResourceModel) getCurrentLabels(ctx context.Contex
 			}
 			label.Field = append(label.Field, field)
 		}
-		state.Label = append(state.Label, label)
+		labelPolicyModel.Label = append(labelPolicyModel.Label, label)
 	}
 	e := <-err
 	if e != nil {
