@@ -212,6 +212,7 @@ func (p *gdriveProvider) DataSources(ctx context.Context) []func() datasource.Da
 	return []func() datasource.DataSource{
 		newDriveDataSource,
 		newDrivesDataSource,
+		newfileDataSource,
 	}
 }
 
