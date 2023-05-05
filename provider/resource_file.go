@@ -30,7 +30,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"google.golang.org/api/drive/v3"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -68,7 +67,7 @@ func (r *gdriveFileResource) Schema(ctx context.Context, req resource.SchemaRequ
 		MarkdownDescription: "Creates a file or folder with the given MIME type and optionally uploads a local file",
 		Attributes: map[string]schema.Attribute{
 			"parent": schema.StringAttribute{
-				MarkdownDescription: "fileId of the parent",
+				MarkdownDescription: "The fileId of the parent",
 				Required:            true,
 			},
 			"name": schema.StringAttribute{
@@ -84,11 +83,11 @@ func (r *gdriveFileResource) Schema(ctx context.Context, req resource.SchemaRequ
 				Optional:            true,
 			},
 			"drive_id": schema.StringAttribute{
-				MarkdownDescription: "driveId of the Shared Drive",
+				MarkdownDescription: "ID of the Shared Drive",
 				Optional:            true,
 			},
 			"content": schema.StringAttribute{
-				MarkdownDescription: `path to a file to upload.
+				MarkdownDescription: `Path to a file to upload.
 The provider does not check the content of the file for updates.
 If you need to upload a new version of a file, you need to supply a different file name.`,
 				Optional: true,
@@ -129,21 +128,12 @@ func (r *gdriveFileResource) Create(ctx context.Context, req resource.CreateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	fileReq := &drive.File{
-		MimeType: plan.MimeType.ValueString(),
-		Name:     plan.Name.ValueString(),
-		DriveId:  plan.DriveId.ValueString(),
-		Parents:  []string{plan.Parent.ValueString()},
-	}
-	var err error
-	var content *os.File
-	if !plan.Content.IsNull() {
-		content, err = os.Open(plan.Content.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to open local file (content), got error: %s", err))
-			return
-		}
-		defer content.Close()
+	fileReq := plan.toRequest()
+	fileReq.Parents = []string{plan.Parent.ValueString()}
+	content, diags := plan.getContent()
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 	f, err := gsmdrive.CreateFile(fileReq, content, false, false, false, "", "", plan.MimeTypeSource.ValueString(), fieldsFile)
 	if err != nil {
@@ -190,11 +180,7 @@ func (r *gdriveFileResource) Update(ctx context.Context, req resource.UpdateRequ
 	var addParents string
 	var removeParents string
 	var err error
-	fileReq := &drive.File{
-		MimeType: plan.MimeType.ValueString(),
-		Name:     plan.Name.ValueString(),
-		DriveId:  plan.DriveId.ValueString(),
-	}
+	fileReq := plan.toRequest()
 	if !plan.Parent.Equal(state.Parent) {
 		removeParents = state.Parent.ValueString()
 		addParents = plan.Parent.ValueString()
