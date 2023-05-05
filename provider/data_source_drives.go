@@ -41,7 +41,7 @@ type drivesDataSource struct {
 }
 
 // gdriveDriveResourceModelV1 describes the resource data model V1.
-type gdriveDrivesDriveDataSourceModel struct {
+type gdriveDrivesDataSourceDriveModel struct {
 	Name         types.String            `tfsdk:"name"`
 	Id           types.String            `tfsdk:"id"`
 	DriveId      types.String            `tfsdk:"drive_id"`
@@ -54,7 +54,7 @@ type gdriveDrivesDataSourceModel struct {
 	UseDomainAdminAccess types.Bool                          `tfsdk:"use_domain_admin_access"`
 	Name                 types.String                        `tfsdk:"name"`
 	Id                   types.String                        `tfsdk:"id"`
-	Drives               []*gdriveDrivesDriveDataSourceModel `tfsdk:"drives"`
+	Drives               []*gdriveDrivesDataSourceDriveModel `tfsdk:"drives"`
 }
 
 func (d *drivesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -86,6 +86,7 @@ See the https://developers.google.com/drive/api/v3/search-shareddrives for suppo
 		},
 		Blocks: map[string]schema.Block{
 			"drives": schema.SetNestedBlock{
+				MarkdownDescription: "A set of Shared Drives that match the specified query.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"drive_id": schema.StringAttribute{
@@ -159,9 +160,9 @@ func (ds *drivesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 	query := config.Query.ValueString()
-	r, err := gsmdrive.ListDrives(query, "drives(name,id,restrictions),nextPageToken", config.UseDomainAdminAccess.ValueBool(), 1)
+	r, err := gsmdrive.ListDrives(query, fmt.Sprintf("permissions(%s),nextPageToken", fieldsDrive), config.UseDomainAdminAccess.ValueBool(), 1)
 	for d := range r {
-		config.Drives = append(config.Drives, &gdriveDrivesDriveDataSourceModel{
+		config.Drives = append(config.Drives, &gdriveDrivesDataSourceDriveModel{
 			Name:    types.StringValue(d.Name),
 			Id:      types.StringValue(d.Id),
 			DriveId: types.StringValue(d.Id),

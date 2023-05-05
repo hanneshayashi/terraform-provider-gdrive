@@ -17,99 +17,176 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package provider
 
-// import (
-// 	"github.com/hanneshayashi/gsm/gsmdrive"
-// 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-// )
+import (
+	"context"
+	"fmt"
+	"net/http"
 
-// func dataSourceFiles() *schema.Resource {
-// 	return &schema.Resource{
-// 		Description: "Returns a list of files that match the given query",
-// 		Schema: map[string]*schema.Schema{
-// 			"query": {
-// 				Type:     schema.TypeString,
-// 				Required: true,
-// 				Description: `A query for filtering the file results.
-// See the https://developers.google.com/drive/api/v3/search-files for the supported syntax.`,
-// 			},
-// 			"spaces": {
-// 				Type:     schema.TypeString,
-// 				Optional: true,
-// 				Description: `A comma-separated list of spaces to query within the corpus.
-// Supported values are 'drive', 'appDataFolder' and 'photos'.`,
-// 			},
-// 			"corpora": {
-// 				Type:     schema.TypeString,
-// 				Optional: true,
-// 				Description: `Groupings of files to which the query applies.
-// Supported groupings are:
-// 'user' (files created by, opened by, or shared directly with the user)
-// 'drive' (files in the specified shared drive as indicated by the 'driveId')
-// 'domain' (files shared to the user's domain)
-// 'allDrives' (A combination of 'user' and 'drive' for all drives where the user is a member).
-// When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.`,
-// 			},
-// 			"drive_id": {
-// 				Type:        schema.TypeString,
-// 				Optional:    true,
-// 				Description: `ID of the shared drive.`,
-// 			},
-// 			"include_items_from_all_drives": {
-// 				Type:        schema.TypeBool,
-// 				Optional:    true,
-// 				Description: `Whether both My Drive and shared drive items should be included in results.`,
-// 			},
-// 			"files": {
-// 				Type:     schema.TypeList,
-// 				Computed: true,
-// 				Elem: &schema.Resource{
-// 					Schema: map[string]*schema.Schema{
-// 						"file_id": {
-// 							Type:     schema.TypeString,
-// 							Computed: true,
-// 						},
-// 						"name": {
-// 							Type:     schema.TypeString,
-// 							Computed: true,
-// 						},
-// 						"mime_type": {
-// 							Type:     schema.TypeString,
-// 							Computed: true,
-// 						},
-// 						"drive_id": {
-// 							Type:     schema.TypeString,
-// 							Computed: true,
-// 						},
-// 						"parent": {
-// 							Type:     schema.TypeString,
-// 							Computed: true,
-// 						},
-// 					},
-// 				},
-// 			},
-// 		},
-// 		Read: dataSourceReadFiles,
-// 	}
-// }
+	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
 
-// func dataSourceReadFiles(d *schema.ResourceData, _ any) error {
-// 	query := d.Get("query").(string)
-// 	files := make([]map[string]any, 0)
-// 	r, err := gsmdrive.ListFiles(query, d.Get("drive_id").(string), d.Get("corpora").(string), "", "", d.Get("spaces").(string), "files(id,name,parents,mimeType,driveId),nextPageToken", d.Get("include_items_from_all_drives").(bool), 1)
-// 	for f := range r {
-// 		files = append(files, map[string]any{
-// 			"file_id":   f.Id,
-// 			"name":      f.Name,
-// 			"mime_type": f.MimeType,
-// 			"drive_id":  f.DriveId,
-// 			"parent":    getParent(f),
-// 		})
-// 	}
-// 	e := <-err
-// 	if e != nil {
-// 		return e
-// 	}
-// 	d.Set("files", files)
-// 	d.SetId(query)
-// 	return nil
-// }
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ datasource.DataSource = &filesDataSource{}
+
+func newFilesDataSource() datasource.DataSource {
+	return &filesDataSource{}
+}
+
+// filesDataSource defines the data source implementation.
+type filesDataSource struct {
+	client *http.Client
+}
+
+// gdriveDriveResourceModelV1 describes the resource data model V1.
+type gdriveFilesDataSourceFileModel struct {
+	Name     types.String `tfsdk:"name"`
+	Parent   types.String `tfsdk:"parent"`
+	FileId   types.String `tfsdk:"file_id"`
+	Id       types.String `tfsdk:"id"`
+	DriveId  types.String `tfsdk:"drive_id"`
+	MimeType types.String `tfsdk:"mime_type"`
+}
+
+// gdriveDriveResourceModelV1 describes the resource data model V1.
+type gdriveFilesDataSourceModel struct {
+	Id                        types.String                      `tfsdk:"id"`
+	Query                     types.String                      `tfsdk:"query"`
+	Spaces                    types.String                      `tfsdk:"spaces"`
+	Corpora                   types.String                      `tfsdk:"corpora"`
+	DriveId                   types.String                      `tfsdk:"drive_id"`
+	IncludeItemsFromAllDrives types.Bool                        `tfsdk:"include_items_from_all_drives"`
+	Files                     []*gdriveFilesDataSourceFileModel `tfsdk:"files"`
+}
+
+func (d *filesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_files"
+}
+
+func (d *filesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		// This description is used by the documentation generator and the language server.
+		MarkdownDescription: "Returns a list of Shared Drives that match the given query",
+		Attributes: map[string]schema.Attribute{
+			"query": schema.StringAttribute{
+				Required: true,
+				Description: `A query for filtering the file results.
+See the https://developers.google.com/drive/api/v3/search-files for the supported syntax.`,
+			},
+			"spaces": schema.StringAttribute{
+				Optional: true,
+				Description: `A comma-separated list of spaces to query within the corpus.
+Supported values are 'drive', 'appDataFolder' and 'photos'.`,
+			},
+			"corpora": schema.StringAttribute{
+				Optional: true,
+				Description: `Groupings of files to which the query applies.
+Supported groupings are:
+'user' (files created by, opened by, or shared directly with the user)
+'drive' (files in the specified shared drive as indicated by the 'driveId')
+'domain' (files shared to the user's domain)
+'allDrives' (A combination of 'user' and 'drive' for all drives where the user is a member).
+When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.`,
+			},
+			"drive_id": schema.StringAttribute{
+				Optional:    true,
+				Description: `ID of the shared drive.`,
+			},
+			"include_items_from_all_drives": schema.BoolAttribute{
+				Optional:    true,
+				Description: `Whether both My Drive and shared drive items should be included in results.`,
+			},
+			"id": schema.StringAttribute{
+				MarkdownDescription: "ID of the resource (the query)",
+				Computed:            true,
+			},
+		},
+		Blocks: map[string]schema.Block{
+			"files": schema.SetNestedBlock{
+				MarkdownDescription: "A set of files that match the specified query.",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"file_id": schema.StringAttribute{
+							MarkdownDescription: "The ID of the file.",
+							Computed:            true,
+						},
+						"id": schema.StringAttribute{
+							MarkdownDescription: "The ID of the file.",
+							Computed:            true,
+						},
+						"name": schema.StringAttribute{
+							MarkdownDescription: "The name of the file.",
+							Computed:            true,
+						},
+						"mime_type": schema.StringAttribute{
+							MarkdownDescription: "The MIME type of the file",
+							Computed:            true,
+						},
+						"drive_id": schema.StringAttribute{
+							MarkdownDescription: "The ID of the Shared Drive the file is located in. Only present if the file is located in a Shared Drive.",
+							Computed:            true,
+						},
+						"parent": schema.StringAttribute{
+							MarkdownDescription: "The ID of the file's parent.",
+							Computed:            true,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func (d *filesDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
+func (ds *filesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	config := &gdriveFilesDataSourceModel{}
+	resp.Diagnostics.Append(req.Config.Get(ctx, config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	query := config.Query.ValueString()
+	r, err := gsmdrive.ListFiles(query, config.DriveId.ValueString(), config.Corpora.ValueString(), "", "", config.Spaces.ValueString(), fmt.Sprintf("files(%s),nextPageToken", fieldsFile), config.IncludeItemsFromAllDrives.ValueBool(), 1)
+	for f := range r {
+		fileModel := &gdriveFilesDataSourceFileModel{
+			Name:     types.StringValue(f.Name),
+			Id:       types.StringValue(f.Id),
+			FileId:   types.StringValue(f.Id),
+			MimeType: types.StringValue(f.MimeType),
+		}
+		if len(f.Parents) > 0 {
+			fileModel.Parent = types.StringValue(f.Parents[0])
+		}
+		if f.DriveId != "" {
+			fileModel.DriveId = types.StringValue(f.DriveId)
+		}
+		config.Files = append(config.Files, fileModel)
+	}
+	e := <-err
+	if e != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list files, got error: %s", e))
+		return
+	}
+	config.Id = config.Query
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
+}
