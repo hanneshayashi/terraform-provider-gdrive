@@ -130,10 +130,15 @@ func (r *gdriveFileResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 	fileReq := plan.toRequest()
 	fileReq.Parents = []string{plan.Parent.ValueString()}
-	content, diags := plan.getContent()
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	var content *os.File
+	var err error
+	if !plan.Content.IsNull() {
+		content, err = os.Open(plan.Content.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to open local file (content), got error: %s", err))
+			return
+		}
+		defer content.Close()
 	}
 	f, err := gsmdrive.CreateFile(fileReq, content, false, false, false, "", "", plan.MimeTypeSource.ValueString(), fieldsFile)
 	if err != nil {
