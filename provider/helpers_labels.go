@@ -266,7 +266,7 @@ func driveLabelFieldToFieldModel(field drive.LabelField, ctx context.Context) (f
 	return fieldModel, diags
 }
 
-func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) getCurrentLabelDetails(ctx context.Context) (diags diag.Diagnostics) {
+func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) populate(ctx context.Context) (diags diag.Diagnostics) {
 	fileID := labelAssignmentModel.FileId.ValueString()
 	labelID := labelAssignmentModel.LabelId.ValueString()
 	labelAssignmentModel.Field = []*gdriveLabelFieldModel{}
@@ -291,7 +291,7 @@ func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) getCurrentLabelD
 	return diags
 }
 
-func (labelPolicyModel *gdriveLabelPolicyResourceModel) getCurrentLabels(ctx context.Context) diag.Diagnostics {
+func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Context) diag.Diagnostics {
 	var diags diag.Diagnostics
 	labelPolicyModel.Label = []*gdriveLabelPolicyLabelModel{}
 	fileID := labelPolicyModel.FileId.ValueString()
@@ -347,7 +347,7 @@ func (labelPolicyModel *gdriveLabelPolicyResourceModel) getCurrentLabels(ctx con
 	}
 	e := <-err
 	if e != nil {
-		diags.AddError("Client Error", fmt.Sprintf("Unable to use list labels on file, got error: %s", e))
+		diags.AddError("Client Error", fmt.Sprintf("Unable to list labels on file, got error: %s", e))
 		return diags
 	}
 	return diags

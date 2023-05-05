@@ -196,7 +196,7 @@ func (r *gdrivePermissionPolicyResource) Create(ctx context.Context, req resourc
 	mockState := &gdrivePermissionPolicyResourceModel{
 		FileId: plan.FileId,
 	}
-	resp.Diagnostics.Append(mockState.getCurrentPermissions(ctx)...)
+	resp.Diagnostics.Append(mockState.populate(ctx)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -214,7 +214,7 @@ func (r *gdrivePermissionPolicyResource) Read(ctx context.Context, req resource.
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(state.getCurrentPermissions(ctx)...)
+	resp.Diagnostics.Append(state.populate(ctx)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

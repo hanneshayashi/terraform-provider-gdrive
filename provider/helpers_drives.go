@@ -26,7 +26,7 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
-func (driveModel *gdriveDriveResourceModelV1) getDriveDetails() (diags diag.Diagnostics) {
+func (driveModel *gdriveDriveResourceModelV1) populate() (diags diag.Diagnostics) {
 	d, err := gsmdrive.GetDrive(driveModel.Id.ValueString(), fieldsDrive, driveModel.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		diags.AddError("Client Error", fmt.Sprintf("Unable to get drive, got error: %s", err))

@@ -119,7 +119,7 @@ func (ds *driveDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 	config.Id = config.DriveId
-	resp.Diagnostics.Append(config.getDriveDetails()...)
+	resp.Diagnostics.Append(config.populate()...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

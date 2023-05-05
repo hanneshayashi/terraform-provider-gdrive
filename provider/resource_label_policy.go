@@ -155,7 +155,7 @@ func (r *gdriveLabelPolicyResource) Create(ctx context.Context, req resource.Cre
 	mockState := &gdriveLabelPolicyResourceModel{
 		FileId: plan.FileId,
 	}
-	resp.Diagnostics.Append(mockState.getCurrentLabels(ctx)...)
+	resp.Diagnostics.Append(mockState.populate(ctx)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -173,7 +173,7 @@ func (r *gdriveLabelPolicyResource) Read(ctx context.Context, req resource.ReadR
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(state.getCurrentLabels(ctx)...)
+	resp.Diagnostics.Append(state.populate(ctx)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

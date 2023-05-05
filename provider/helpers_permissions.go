@@ -28,7 +28,7 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
-func (permissionPolicyModel *gdrivePermissionPolicyResourceModel) getCurrentPermissions(ctx context.Context) (diags diag.Diagnostics) {
+func (permissionPolicyModel *gdrivePermissionPolicyResourceModel) populate(ctx context.Context) (diags diag.Diagnostics) {
 	currentP, err := gsmdrive.ListPermissions(permissionPolicyModel.FileId.ValueString(), "", fmt.Sprintf("permissions(%s),nextPageToken", fieldsPermission), permissionPolicyModel.UseDomainAdminAccess.ValueBool(), 1)
 	for i := range currentP {
 		if i.PermissionDetails != nil && i.PermissionDetails[0].Inherited {
@@ -57,7 +57,7 @@ func (permissionsPolicyModel *gdrivePermissionPolicyResourceModel) toMap() map[s
 	return m
 }
 
-func (permissionModel *gdrivePermissionPolicyPermissionResourceModel) toPermissionRequest() *drive.Permission {
+func (permissionModel *gdrivePermissionPolicyPermissionResourceModel) toRequest() *drive.Permission {
 	return &drive.Permission{
 		Domain:       permissionModel.Domain.ValueString(),
 		EmailAddress: permissionModel.EmailAddress.ValueString(),
@@ -76,14 +76,14 @@ func setPermissionDiffs(plan, state *gdrivePermissionPolicyResourceModel, ctx co
 		if permissionAlreadyExists && !planPermissions[i].Role.Equal(statePermissions[i].Role) {
 			permissionID := statePermissions[i].PermissionId.ValueString()
 			tflog.Debug(ctx, fmt.Sprintf("Permission with ID %s found on file %s, but roles differ. Updating...", permissionID, fileId))
-			_, err := gsmdrive.UpdatePermission(fileId, permissionID, fieldsPermission, useDomAccess, false, planPermissions[i].toPermissionRequest())
+			_, err := gsmdrive.UpdatePermission(fileId, permissionID, fieldsPermission, useDomAccess, false, planPermissions[i].toRequest())
 			if err != nil {
 				diags.AddError("Client Error", fmt.Sprintf("Unable to update permission on file, got error: %s", err))
 				return
 			}
 		} else if !permissionAlreadyExists {
 			tflog.Debug(ctx, fmt.Sprintf("No permission found on file %s for %s. Creating...", fileId, i))
-			_, err := gsmdrive.CreatePermission(fileId, planPermissions[i].EmailMessage.ValueString(), fieldsPermission, useDomAccess, planPermissions[i].SendNotificationEmail.ValueBool(), planPermissions[i].TransferOwnership.ValueBool(), planPermissions[i].MoveToNewOwnersRoot.ValueBool(), planPermissions[i].toPermissionRequest())
+			_, err := gsmdrive.CreatePermission(fileId, planPermissions[i].EmailMessage.ValueString(), fieldsPermission, useDomAccess, planPermissions[i].SendNotificationEmail.ValueBool(), planPermissions[i].TransferOwnership.ValueBool(), planPermissions[i].MoveToNewOwnersRoot.ValueBool(), planPermissions[i].toRequest())
 			if err != nil {
 				diags.AddError("Client Error", fmt.Sprintf("Unable to create permission on file, got error: %s", err))
 				return

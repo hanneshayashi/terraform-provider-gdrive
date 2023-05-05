@@ -152,7 +152,7 @@ func (r *gdriveLabelAssignmentResource) Create(ctx context.Context, req resource
 		FileId:  plan.FileId,
 		LabelId: plan.LabelId,
 	}
-	resp.Diagnostics.Append(mockState.getCurrentLabelDetails(ctx)...)
+	resp.Diagnostics.Append(mockState.populate(ctx)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -170,7 +170,7 @@ func (r *gdriveLabelAssignmentResource) Read(ctx context.Context, req resource.R
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(state.getCurrentLabelDetails(ctx)...)
+	resp.Diagnostics.Append(state.populate(ctx)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

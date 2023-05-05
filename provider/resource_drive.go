@@ -269,7 +269,7 @@ func (r *gdriveDriveResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 	state.DriveId = state.Id
-	resp.Diagnostics.Append(state.getDriveDetails()...)
+	resp.Diagnostics.Append(state.populate()...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
