@@ -17,96 +17,145 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package provider
 
-// import (
-// 	"encoding/json"
-// 	"strings"
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"strings"
 
-// 	"github.com/hanneshayashi/gsm/gsmcibeta"
-// 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-// 	cibeta "google.golang.org/api/cloudidentity/v1beta1"
-// )
+	"github.com/hanneshayashi/gsm/gsmcibeta"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
 
-// func resourceDriveOuMembership() *schema.Resource {
-// 	return &schema.Resource{
-// 		Description: `BEWARE! THE API AND THIS RESOURCE ARE IN BETA AND MAY BREAK WITHOUT WARNING!
-// Sets the membership of a Shared Drive in an organizational unit.
-// This resource requires additional setup:
-// 1. Enable the Cloud Identity API in your GCP project
-// 2. Add 'https://www.googleapis.com/auth/cloud-identity.orgunits' as a scope to your Domain Wide Delegation config
-// 3. Set 'use_cloud_identity_api' to 'true' in your provider configuration
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ resource.Resource = &gdriveOrgUnitMembershipResource{}
+var _ resource.ResourceWithImportState = &gdriveOrgUnitMembershipResource{}
 
-// The resource will move the Shared Drive to the specified OU in your Admin Console.
+const fieldsOrgUnitMembership = "parents,mimeType,driveId,name,id"
 
-// Some things to note:
-// - You need to specify the ID of the OU (NOT THE PATH!)
-//   - You can find the ID via the Admin SDK (or https://gsm.hayashi-ke.online/gsm/orgunits/list/)
-// - If you move the Shared Drive outside of Terraform, the resource will be re-created
-// - A destroy of this resource will not do anything`,
-// 		Schema: map[string]*schema.Schema{
-// 			"drive_id": {
-// 				Type:        schema.TypeString,
-// 				Required:    true,
-// 				Description: "driveId of the Shared Drive",
-// 			},
-// 			"parent": {
-// 				Type:        schema.TypeString,
-// 				Required:    true,
-// 				Description: "ID of the organizational unit (NOT the path!)",
-// 			},
-// 		},
-// 		Create: resourceCreateDriveOuMembership,
-// 		Read:   resourceReadDriveOuMembership,
-// 		Update: resourceCreateDriveOuMembership,
-// 		Delete: resourceDeleteDriveOuMembership,
-// 		Exists: resourceExistsDriveOuMembership,
-// 		Importer: &schema.ResourceImporter{
-// 			StateContext: schema.ImportStatePassthroughContext,
-// 		},
-// 	}
-// }
+func newOrgUnitMembership() resource.Resource {
+	return &gdriveOrgUnitMembershipResource{}
+}
 
-// func resourceCreateDriveOuMembership(d *schema.ResourceData, _ any) error {
-// 	moveOrgMembershipRequest := &cibeta.MoveOrgMembershipRequest{
-// 		Customer:           "customers/my_customer",
-// 		DestinationOrgUnit: "orgUnits/" + d.Get("parent").(string),
-// 	}
-// 	r, err := gsmcibeta.MoveOrgUnitMemberships("orgUnits/-/memberships/shared_drive;"+d.Get("drive_id").(string), "", moveOrgMembershipRequest)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	var m map[string]string
-// 	j, err := r.MarshalJSON()
-// 	json.Unmarshal(j, &m)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	d.SetId(m["name"])
-// 	return nil
-// }
+// gdriveOrgUnitMembershipResource defines the resource implementation.
+type gdriveOrgUnitMembershipResource struct {
+	client *http.Client
+}
 
-// func resourceReadDriveOuMembership(d *schema.ResourceData, _ any) error {
-// 	_, err := resourceExistsDriveOuMembership(d, nil)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
+// gdriveOrgUnitMembershipResourceModel describes the resource data model.
+type gdriveOrgUnitMembershipResourceModel struct {
+	Parent  types.String `tfsdk:"parent"`
+	Id      types.String `tfsdk:"id"`
+	DriveId types.String `tfsdk:"drive_id"`
+}
 
-// func resourceDeleteDriveOuMembership(d *schema.ResourceData, _ any) error {
-// 	return nil
-// }
+func (r *gdriveOrgUnitMembershipResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_drive_ou_membership"
+}
 
-// func resourceExistsDriveOuMembership(d *schema.ResourceData, _ any) (bool, error) {
-// 	name := d.Id()[0:strings.Index(d.Id(), "/memberships")]
-// 	r, err := gsmcibeta.ListOrgUnitMemberships(name, "customers/my_customer", "", "", 1)
-// 	for i := range r {
-// 		if i.Name == d.Id() {
-// 			return true, nil
-// 		}
-// 	}
-// 	e := <-err
-// 	if e != nil {
-// 		return false, e
-// 	}
-// 	return false, nil
-// }
+func (r *gdriveOrgUnitMembershipResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Creates a OrgUnit or folder with the given MIME type and optionally uploads a local OrgUnit",
+		Attributes: map[string]schema.Attribute{
+			"drive_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the Shared Drive",
+				Required:            true,
+			},
+			"parent": schema.StringAttribute{
+				MarkdownDescription: "ID of the organizational unit (NOT the path!)",
+				Required:            true,
+			},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The ID of the OrgUnit (OrgUnitId)",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+		},
+	}
+}
+
+func (r *gdriveOrgUnitMembershipResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+	r.client = client
+}
+
+func (r *gdriveOrgUnitMembershipResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	plan := &gdriveOrgUnitMembershipResourceModel{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(plan.move()...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *gdriveOrgUnitMembershipResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	state := &gdriveOrgUnitMembershipResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	id := state.Id.ValueString()
+	found := false
+	memberships, err := gsmcibeta.ListOrgUnitMemberships(id[0:strings.Index(id, "/memberships")], "customers/my_customer", "", "", 1)
+	for i := range memberships {
+		if i.Name == id {
+			found = true
+			break
+		}
+	}
+	e := <-err
+	if e != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to list Org Unit memberships, got error: %s", e))
+		return
+	}
+	if !found {
+		state.Parent = types.StringUnknown()
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func (r *gdriveOrgUnitMembershipResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	plan := &gdriveOrgUnitMembershipResourceModel{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(plan.move()...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *gdriveOrgUnitMembershipResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	return
+}
+
+func (r *gdriveOrgUnitMembershipResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
