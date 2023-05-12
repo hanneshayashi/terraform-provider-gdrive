@@ -23,6 +23,7 @@ import (
 	"strconv"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -351,4 +352,56 @@ func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Con
 		return diags
 	}
 	return diags
+}
+
+func dateFieldDS() schema.SingleNestedBlock {
+	return schema.SingleNestedBlock{
+		Attributes: map[string]schema.Attribute{
+			"day": schema.Int64Attribute{
+				Computed:    true,
+				Description: `Day of a month.`,
+			},
+			"month": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Month of a year.",
+			},
+			"year": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Year of the date.",
+			},
+		},
+		MarkdownDescription: "Maximum valid value (year, month, day).",
+	}
+}
+
+func lifecycle() schema.SingleNestedBlock {
+	return schema.SingleNestedBlock{
+		MarkdownDescription: `The lifecycle state of an object, such as label, field, or choice.
+
+The lifecycle enforces the following transitions:
+UNPUBLISHED_DRAFT (starting state)
+UNPUBLISHED_DRAFT -> PUBLISHED
+UNPUBLISHED_DRAFT -> (Deleted)
+PUBLISHED -> DISABLED
+DISABLED -> PUBLISHED
+DISABLED -> (Deleted)`,
+		Attributes: map[string]schema.Attribute{
+			"state": schema.StringAttribute{
+				Description: "The state of the object associated with this lifecycle.",
+				Computed:    true,
+			},
+		},
+	}
+}
+
+func listOptions() schema.SingleNestedBlock {
+	return schema.SingleNestedBlock{
+		MarkdownDescription: "List options",
+		Attributes: map[string]schema.Attribute{
+			"max_entries": schema.Int64Attribute{
+				Description: "Maximum number of entries permitted.",
+				Computed:    true,
+			},
+		},
+	}
 }
