@@ -44,7 +44,6 @@ func (d *driveDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 
 func (d *driveDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		// This description is used by the documentation generator and the language server.
 		MarkdownDescription: "Gets a Shared Drive and returns its metadata",
 		Attributes: map[string]schema.Attribute{
 			"drive_id": schema.StringAttribute{
