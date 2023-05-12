@@ -31,7 +31,7 @@ import (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &fileDataSource{}
 
-func newfileDataSource() datasource.DataSource {
+func newFileDataSource() datasource.DataSource {
 	return &fileDataSource{}
 }
 
@@ -59,7 +59,6 @@ func (d *fileDataSource) Metadata(ctx context.Context, req datasource.MetadataRe
 
 func (d *fileDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		// This description is used by the documentation generator and the language server.
 		MarkdownDescription: "Gets a Shared file and returns its metadata",
 		Attributes: map[string]schema.Attribute{
 			"file_id": schema.StringAttribute{
