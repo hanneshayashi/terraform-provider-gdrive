@@ -133,6 +133,11 @@ This resource requires additional setup:
 2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
 3. Set 'use_labels_api' to 'true' in your provider configuration`,
 		Attributes: map[string]schema.Attribute{
+			"id": dsId(),
+			"label_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the label",
+				Computed:            true,
+			},
 			"name": schema.StringAttribute{
 				Required: true,
 				Description: `Label resource name.
@@ -170,14 +175,6 @@ Reading other revisions may require addtional permissions and / or setting the '
 			"title": schema.StringAttribute{
 				Computed:    true,
 				Description: `Title of the label.`,
-			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of the label",
-				Computed:            true,
-			},
-			"label_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the label",
-				Computed:            true,
 			},
 		},
 		Blocks: map[string]schema.Block{

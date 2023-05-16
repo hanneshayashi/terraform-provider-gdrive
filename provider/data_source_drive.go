@@ -46,6 +46,7 @@ func (d *driveDataSource) Schema(ctx context.Context, req datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Gets a Shared Drive and returns its metadata",
 		Attributes: map[string]schema.Attribute{
+			"id": dsId(),
 			"drive_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the Shared Drive",
 				Required:            true,
@@ -57,10 +58,6 @@ func (d *driveDataSource) Schema(ctx context.Context, req datasource.SchemaReque
 			"name": schema.StringAttribute{
 				Computed:    true,
 				Description: "The name of this shared drive.",
-			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of the Shared Drive",
-				Computed:            true,
 			},
 		},
 		Blocks: map[string]schema.Block{

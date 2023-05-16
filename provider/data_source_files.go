@@ -69,6 +69,7 @@ func (d *filesDataSource) Schema(ctx context.Context, req datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Returns a list of Shared Drives that match the given query",
 		Attributes: map[string]schema.Attribute{
+			"id": dsId(),
 			"query": schema.StringAttribute{
 				Required: true,
 				Description: `A query for filtering the file results.
@@ -97,22 +98,19 @@ When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.`,
 				Optional:    true,
 				Description: `Whether both My Drive and shared drive items should be included in results.`,
 			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of the resource (the query)",
-				Computed:            true,
-			},
 		},
 		Blocks: map[string]schema.Block{
 			"files": schema.SetNestedBlock{
 				MarkdownDescription: "A set of files that match the specified query.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
+						"id": dsId(),
 						"file_id": schema.StringAttribute{
 							MarkdownDescription: "The ID of the file.",
 							Computed:            true,
 						},
-						"id": schema.StringAttribute{
-							MarkdownDescription: "The ID of the file.",
+						"drive_id": schema.StringAttribute{
+							MarkdownDescription: "The ID of the Shared Drive the file is located in. Only present if the file is located in a Shared Drive.",
 							Computed:            true,
 						},
 						"name": schema.StringAttribute{
@@ -121,10 +119,6 @@ When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.`,
 						},
 						"mime_type": schema.StringAttribute{
 							MarkdownDescription: "The MIME type of the file",
-							Computed:            true,
-						},
-						"drive_id": schema.StringAttribute{
-							MarkdownDescription: "The ID of the Shared Drive the file is located in. Only present if the file is located in a Shared Drive.",
 							Computed:            true,
 						},
 						"parent": schema.StringAttribute{

@@ -71,7 +71,7 @@ This resource requires additional setup:
 2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
 3. Set 'use_labels_api' to 'true' in your provider configuration`,
 		Attributes: map[string]schema.Attribute{
-			"id": id(),
+			"id": dsId(),
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
 				Description: `Set to true in order to use the user's admin credentials.
@@ -108,10 +108,7 @@ APPLIER    - An applier can write associated metadata on Drive items in which th
 			"labels": schema.SetNestedBlock{
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
-						"id": schema.StringAttribute{
-							Computed:    true,
-							Description: `The id of this label.`,
-						},
+						"id": dsId(),
 						"label_id": schema.StringAttribute{
 							Computed:    true,
 							Description: `The id of this label.`,

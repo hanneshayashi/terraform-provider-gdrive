@@ -412,11 +412,7 @@ func fieldsDS() schema.ListNestedBlock {
 		MarkdownDescription: "The fields of this label.",
 		NestedObject: schema.NestedBlockObject{
 			Attributes: map[string]schema.Attribute{
-				"id": schema.StringAttribute{
-					Computed: true,
-					Description: `The key of a field, unique within a label or library.
-							Use this when referencing a field somewhere.`,
-				},
+				"id": dsId(),
 				"field_id": schema.StringAttribute{
 					Computed: true,
 					Description: `The key of a field, unique within a label or library.
@@ -459,11 +455,7 @@ func fieldsDS() schema.ListNestedBlock {
 						"choices": schema.SetNestedBlock{
 							NestedObject: schema.NestedBlockObject{
 								Attributes: map[string]schema.Attribute{
-									"id": schema.StringAttribute{
-										Computed: true,
-										Description: `The unique value of the choice.
-											Use this when referencing / setting a choice.`,
-									},
+									"id": dsId(),
 									"choice_id": schema.StringAttribute{
 										Computed: true,
 										Description: `The unique value of the choice.

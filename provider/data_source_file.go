@@ -61,6 +61,7 @@ func (d *fileDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Gets a Shared file and returns its metadata",
 		Attributes: map[string]schema.Attribute{
+			"id": dsId(),
 			"file_id": schema.StringAttribute{
 				Required:    true,
 				Description: "ID of the file",
@@ -101,10 +102,6 @@ For a list of supported MIME types see https://developers.google.com/file/api/v3
 			"local_file_path": schema.StringAttribute{
 				Computed:    true,
 				Description: "The path where the local copy or export of the file was created",
-			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of the file",
-				Computed:            true,
 			},
 		},
 	}

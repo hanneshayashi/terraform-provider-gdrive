@@ -53,6 +53,7 @@ type gdriveFileResourceModel struct {
 	Name           types.String `tfsdk:"name"`
 	MimeType       types.String `tfsdk:"mime_type"`
 	Id             types.String `tfsdk:"id"`
+	FileId         types.String `tfsdk:"file_id"`
 	MimeTypeSource types.String `tfsdk:"mime_type_source"`
 	DriveId        types.String `tfsdk:"drive_id"`
 	Content        types.String `tfsdk:"content"`
@@ -66,6 +67,14 @@ func (r *gdriveFileResource) Schema(ctx context.Context, req resource.SchemaRequ
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Creates a file or folder with the given MIME type and optionally uploads a local file",
 		Attributes: map[string]schema.Attribute{
+			"id": rsId(),
+			"file_id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The ID of the file (fileId)",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"parent": schema.StringAttribute{
 				MarkdownDescription: "The fileId of the parent",
 				Required:            true,
@@ -91,13 +100,6 @@ func (r *gdriveFileResource) Schema(ctx context.Context, req resource.SchemaRequ
 The provider does not check the content of the file for updates.
 If you need to upload a new version of a file, you need to supply a different file name.`,
 				Optional: true,
-			},
-			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "The ID of the file (fileId)",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 		},
 	}
@@ -146,6 +148,7 @@ func (r *gdriveFileResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 	plan.Id = types.StringValue(f.Id)
+	plan.FileId = plan.Id
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

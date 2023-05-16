@@ -65,6 +65,7 @@ func (d *drivesDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Returns a list of Shared Drives that match the given query",
 		Attributes: map[string]schema.Attribute{
+			"id": dsId(),
 			"query": schema.StringAttribute{
 				Required: true,
 				Description: `Query string for searching shared drives.
@@ -78,16 +79,13 @@ See the https://developers.google.com/drive/api/v3/search-shareddrives for suppo
 				Computed:    true,
 				Description: "The name of this shared drive.",
 			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "ID of the resource (the query)",
-				Computed:            true,
-			},
 		},
 		Blocks: map[string]schema.Block{
 			"drives": schema.SetNestedBlock{
 				MarkdownDescription: "A set of Shared Drives that match the specified query.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
+						"id": dsId(),
 						"drive_id": schema.StringAttribute{
 							MarkdownDescription: "ID of the Shared Drive",
 							Required:            true,
@@ -95,10 +93,6 @@ See the https://developers.google.com/drive/api/v3/search-shareddrives for suppo
 						"name": schema.StringAttribute{
 							Computed:    true,
 							Description: "The name of this shared drive.",
-						},
-						"id": schema.StringAttribute{
-							MarkdownDescription: "ID of the Shared Drive",
-							Computed:            true,
 						},
 					},
 					Blocks: map[string]schema.Block{

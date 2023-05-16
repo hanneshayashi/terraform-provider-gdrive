@@ -21,8 +21,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"google.golang.org/api/drive/v3"
 
@@ -60,12 +63,23 @@ func (membershipModel *gdriveOrgUnitMembershipResourceModel) move() (diags diag.
 		return
 	}
 	membershipModel.Id = types.StringValue(m["name"])
+	membershipModel.OrgUnitId = membershipModel.Id
 	return diags
 }
 
-func id() schema.StringAttribute {
-	return schema.StringAttribute{
+func dsId() dsschema.StringAttribute {
+	return dsschema.StringAttribute{
 		Computed:    true,
 		Description: "The unique ID of this resource.",
+	}
+}
+
+func rsId() rsschema.StringAttribute {
+	return rsschema.StringAttribute{
+		Computed:    true,
+		Description: "The unique ID of this resource.",
+		PlanModifiers: []planmodifier.String{
+			stringplanmodifier.UseStateForUnknown(),
+		},
 	}
 }

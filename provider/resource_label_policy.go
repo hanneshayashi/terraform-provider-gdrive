@@ -66,18 +66,12 @@ func (r *gdriveLabelPolicyResource) Schema(ctx context.Context, req resource.Sch
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Sets a label on a Drive object",
 		Attributes: map[string]schema.Attribute{
+			"id": rsId(),
 			"file_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the file to assign the label to.",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "The ID of the label policy (fileId/labelId)",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 		},

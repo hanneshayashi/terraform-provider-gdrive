@@ -36,6 +36,7 @@ func (permissionPolicyModel *gdrivePermissionPolicyResourceModel) populate(ctx c
 		}
 		permissionPolicyModel.Permissions = append(permissionPolicyModel.Permissions, &gdrivePermissionPolicyPermissionResourceModel{
 			PermissionId: types.StringValue(i.Id),
+			Id:           types.StringValue(i.Id),
 			Type:         types.StringValue(i.Type),
 			Domain:       types.StringValue(i.Domain),
 			EmailAddress: types.StringValue(i.EmailAddress),

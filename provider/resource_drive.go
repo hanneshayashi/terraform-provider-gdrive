@@ -83,14 +83,7 @@ func (r *gdriveDriveResource) Schema(ctx context.Context, req resource.SchemaReq
 		Version:             1,
 		MarkdownDescription: "Creates a Shared Drive",
 		Attributes: map[string]schema.Attribute{
-			"name": schema.StringAttribute{
-				MarkdownDescription: "Name of the Shared Drive",
-				Required:            true,
-			},
-			"use_domain_admin_access": schema.BoolAttribute{
-				MarkdownDescription: "Use domain admin access",
-				Optional:            true,
-			},
+			"id": rsId(),
 			"drive_id": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "The ID of the Shared Drive (driveId)",
@@ -98,12 +91,13 @@ func (r *gdriveDriveResource) Schema(ctx context.Context, req resource.SchemaReq
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "The ID of the Shared Drive (driveId)",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Name of the Shared Drive",
+				Required:            true,
+			},
+			"use_domain_admin_access": schema.BoolAttribute{
+				MarkdownDescription: "Use domain admin access",
+				Optional:            true,
 			},
 		},
 		Blocks: map[string]schema.Block{

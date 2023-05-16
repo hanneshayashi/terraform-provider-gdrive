@@ -67,6 +67,7 @@ func (r *gdriveLabelAssignmentResource) Schema(ctx context.Context, req resource
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Sets a label on a Drive object",
 		Attributes: map[string]schema.Attribute{
+			"id": rsId(),
 			"file_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the file to assign the label to.",
 				Required:            true,
@@ -79,13 +80,6 @@ func (r *gdriveLabelAssignmentResource) Schema(ctx context.Context, req resource
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "The ID of the label assignment (fileId/labelId)",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 		},

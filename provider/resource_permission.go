@@ -71,11 +71,19 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Creates a file or folder with the given MIME type and optionally uploads a local file",
 		Attributes: map[string]schema.Attribute{
+			"id": rsId(),
 			"file_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the file or Shared Drive",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"permission_id": schema.StringAttribute{
+				MarkdownDescription: "PermissionID of the trustee",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"email_message": schema.StringAttribute{
@@ -138,20 +146,6 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 			"move_to_new_owners_root": schema.BoolAttribute{
 				MarkdownDescription: "This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.",
 				Optional:            true,
-			},
-			"permission_id": schema.StringAttribute{
-				MarkdownDescription: "PermissionID of the trustee",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "The ID of the permission assignment (fileId/permissionId)",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 		},
 	}

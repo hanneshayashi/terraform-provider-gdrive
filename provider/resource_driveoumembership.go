@@ -49,9 +49,10 @@ type gdriveOrgUnitMembershipResource struct {
 
 // gdriveOrgUnitMembershipResourceModel describes the resource data model.
 type gdriveOrgUnitMembershipResourceModel struct {
-	Parent  types.String `tfsdk:"parent"`
-	Id      types.String `tfsdk:"id"`
-	DriveId types.String `tfsdk:"drive_id"`
+	Parent    types.String `tfsdk:"parent"`
+	Id        types.String `tfsdk:"id"`
+	OrgUnitId types.String `tfsdk:"org_unit_id"`
+	DriveId   types.String `tfsdk:"drive_id"`
 }
 
 func (r *gdriveOrgUnitMembershipResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -62,6 +63,14 @@ func (r *gdriveOrgUnitMembershipResource) Schema(ctx context.Context, req resour
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Creates a OrgUnit or folder with the given MIME type and optionally uploads a local OrgUnit",
 		Attributes: map[string]schema.Attribute{
+			"id": rsId(),
+			"org_unit_id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The ID of the OrgUnit (OrgUnitId)",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"drive_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the Shared Drive",
 				Required:            true,
@@ -69,13 +78,6 @@ func (r *gdriveOrgUnitMembershipResource) Schema(ctx context.Context, req resour
 			"parent": schema.StringAttribute{
 				MarkdownDescription: "ID of the organizational unit (NOT the path!)",
 				Required:            true,
-			},
-			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "The ID of the OrgUnit (OrgUnitId)",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 		},
 	}

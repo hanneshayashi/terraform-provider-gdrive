@@ -46,6 +46,7 @@ type gdrivePermissionPolicyResource struct {
 
 // gdrivePermissionPolicyResourceModel describes the resource data model.
 type gdrivePermissionPolicyPermissionResourceModel struct {
+	Id                    types.String `tfsdk:"id"`
 	PermissionId          types.String `tfsdk:"permission_id"`
 	EmailMessage          types.String `tfsdk:"email_message"`
 	Type                  types.String `tfsdk:"type"`
@@ -83,6 +84,7 @@ func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resourc
 
 // **Important**: On a *destroy*, this resource will preserve the owner and organizer permissions!`,
 		Attributes: map[string]schema.Attribute{
+			"id": rsId(),
 			"file_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the file or Shared Drive",
 				Required:            true,
@@ -94,13 +96,6 @@ func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resourc
 				Optional:    true,
 				Description: "Use domain admin access",
 			},
-			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "The ID of the permission assignment (fileId/permissionId)",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
 		},
 		Blocks: map[string]schema.Block{
 			"permissions": schema.SetNestedBlock{
@@ -108,6 +103,11 @@ func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resourc
 Multiple blocks can be defined to set multiple permissions.`,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
+						"id": rsId(),
+						"permission_id": schema.StringAttribute{
+							MarkdownDescription: "PermissionID of the trustee",
+							Computed:            true,
+						},
 						"email_message": schema.StringAttribute{
 							MarkdownDescription: "An optional email message that will be sent when the permission is created",
 							Optional:            true,
@@ -155,10 +155,6 @@ Multiple blocks can be defined to set multiple permissions.`,
 						"move_to_new_owners_root": schema.BoolAttribute{
 							MarkdownDescription: "This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.",
 							Optional:            true,
-						},
-						"permission_id": schema.StringAttribute{
-							MarkdownDescription: "PermissionID of the trustee",
-							Computed:            true,
 						},
 					},
 				},
