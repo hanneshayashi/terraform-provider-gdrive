@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/drivelabels/v2"
 )
 
 func fieldsToMap(fields []*gdriveLabelFieldModel) map[string]*gdriveLabelFieldModel {
@@ -404,4 +405,204 @@ func listOptions() schema.SingleNestedBlock {
 			},
 		},
 	}
+}
+
+func fieldsDS() schema.ListNestedBlock {
+	return schema.ListNestedBlock{
+		MarkdownDescription: "The fields of this label.",
+		NestedObject: schema.NestedBlockObject{
+			Attributes: map[string]schema.Attribute{
+				"id": schema.StringAttribute{
+					Computed: true,
+					Description: `The key of a field, unique within a label or library.
+							Use this when referencing a field somewhere.`,
+				},
+				"field_id": schema.StringAttribute{
+					Computed: true,
+					Description: `The key of a field, unique within a label or library.
+							Use this when referencing a field somewhere.`,
+				},
+				"query_key": schema.StringAttribute{
+					Computed: true,
+					Description: `The key to use when constructing Drive search queries to find labels based on values defined for this field on labels.
+						For example, "{queryKey} > 2001-01-01".`,
+				},
+				"value_type": schema.StringAttribute{
+					Computed: true,
+					Description: `The type of the field.
+							Use this when setting the values for a field.`,
+				},
+			},
+			Blocks: map[string]schema.Block{
+				"life_cycle": lifecycle(),
+				"date_options": schema.SingleNestedBlock{
+					Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
+					Attributes: map[string]schema.Attribute{
+						"date_format": schema.StringAttribute{
+							Computed:    true,
+							Description: "ICU date format.",
+						},
+						"date_format_type": schema.StringAttribute{
+							Computed:    true,
+							Description: "Localized date formatting option. Field values are rendered in this format according to their locale.",
+						},
+					},
+					Blocks: map[string]schema.Block{
+						"max_value": dateFieldDS(),
+						"min_value": dateFieldDS(),
+					},
+				},
+				"selection_options": schema.SingleNestedBlock{
+					Description: "Options for the selection field type.",
+					Blocks: map[string]schema.Block{
+						"list_options": listOptions(),
+						"choices": schema.SetNestedBlock{
+							NestedObject: schema.NestedBlockObject{
+								Attributes: map[string]schema.Attribute{
+									"id": schema.StringAttribute{
+										Computed: true,
+										Description: `The unique value of the choice.
+											Use this when referencing / setting a choice.`,
+									},
+									"choice_id": schema.StringAttribute{
+										Computed: true,
+										Description: `The unique value of the choice.
+											Use this when referencing / setting a choice.`,
+									},
+									"display_name": schema.StringAttribute{
+										Computed:    true,
+										Description: "The display text to show in the UI identifying this field.",
+									},
+								},
+								Blocks: map[string]schema.Block{
+									"life_cycle": lifecycle(),
+								},
+							},
+						},
+					},
+				},
+				"integer_options": schema.SingleNestedBlock{
+					Description: "Options for the Integer field type.",
+					Attributes: map[string]schema.Attribute{
+						"max_value": schema.Int64Attribute{
+							Computed:    true,
+							Description: "The maximum valid value for the integer field.",
+						},
+						"min_value": schema.Int64Attribute{
+							Computed:    true,
+							Description: "The minimum valid value for the integer field.",
+						},
+					},
+				},
+				"text_options": schema.SingleNestedBlock{
+					Description: "Options for the Text field type.",
+					Attributes: map[string]schema.Attribute{
+						"min_length": schema.Int64Attribute{
+							Computed:    true,
+							Description: "The minimum valid length of values for the text field.",
+						},
+						"max_length": schema.Int64Attribute{
+							Computed:    true,
+							Description: "The maximum valid length of values for the text field.",
+						},
+					},
+				},
+				"user_options": schema.SingleNestedBlock{
+					Description: "Options for the user field type.",
+					Blocks: map[string]schema.Block{
+						"list_options": listOptions(),
+					},
+				},
+				"properties": schema.SingleNestedBlock{
+					Description: "The basic properties of the field.",
+					Attributes: map[string]schema.Attribute{
+						"display_name": schema.StringAttribute{
+							Computed:    true,
+							Description: "The display text to show in the UI identifying this field.",
+						},
+						"required": schema.BoolAttribute{
+							Computed:    true,
+							Description: "Whether the field should be marked as required.",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func fieldsToModel(fields []*drivelabels.GoogleAppsDriveLabelsV2Field) (model []*gdriveLabelDataSourceFieldsModel) {
+	for i := range fields {
+		field := &gdriveLabelDataSourceFieldsModel{
+			Id:       types.StringValue(fields[i].Id),
+			FieldId:  types.StringValue(fields[i].Id),
+			QueryKey: types.StringValue(fields[i].QueryKey),
+		}
+		if fields[i].TextOptions != nil {
+			field.ValueType = types.StringValue("text")
+			field.TextOptions = &gdriveLabelTextOptionsModel{
+				MinLength: types.Int64Value(fields[i].TextOptions.MinLength),
+				MaxLength: types.Int64Value(fields[i].TextOptions.MaxLength),
+			}
+		} else if fields[i].IntegerOptions != nil {
+			field.ValueType = types.StringValue("integer")
+			field.IntegerOptions = &gdriveLabelIntegerOptionsModel{
+				MinValue: types.Int64Value(fields[i].IntegerOptions.MinValue),
+				MaxValue: types.Int64Value(fields[i].IntegerOptions.MaxValue),
+			}
+		} else if fields[i].UserOptions != nil {
+			field.ValueType = types.StringValue("user")
+			field.UserOptions = &gdriveLabelUserOptionseModel{}
+			if fields[i].UserOptions.ListOptions != nil {
+				field.UserOptions.ListOptions = &gdriveLabelListOptionsModel{
+					MaxEntries: types.Int64Value(fields[i].UserOptions.ListOptions.MaxEntries),
+				}
+			}
+		} else if fields[i].SelectionOptions != nil {
+			field.ValueType = types.StringValue("selection")
+			field.SelectionOptions = &gdriveLabelSelectionOptionsModel{}
+			if fields[i].SelectionOptions.ListOptions != nil {
+				field.SelectionOptions.ListOptions = &gdriveLabelListOptionsModel{
+					MaxEntries: types.Int64Value(fields[i].SelectionOptions.ListOptions.MaxEntries),
+				}
+			}
+			field.SelectionOptions.Choices = make([]*gdriveLabelChoicedModel, len(fields[i].SelectionOptions.Choices))
+			for j := range fields[i].SelectionOptions.Choices {
+				field.SelectionOptions.Choices[j] = &gdriveLabelChoicedModel{
+					Id:       types.StringValue(fields[i].SelectionOptions.Choices[j].Id),
+					ChoiceId: types.StringValue(fields[i].SelectionOptions.Choices[j].Id),
+				}
+				if fields[i].SelectionOptions.Choices[j].Properties != nil {
+					field.SelectionOptions.Choices[j].DisplayName = types.StringValue(fields[i].SelectionOptions.Choices[j].Properties.DisplayName)
+				}
+				if fields[i].SelectionOptions.Choices[j].Lifecycle != nil {
+					field.SelectionOptions.Choices[j].LifeCycle = &gdriveLabelLifeCycleModel{
+						State: types.StringValue(fields[i].SelectionOptions.Choices[j].Lifecycle.State),
+					}
+				}
+			}
+		} else if fields[i].DateOptions != nil {
+			field.ValueType = types.StringValue("dateString")
+			field.DateOptions = &gdriveLabelDateOptionsModel{
+				DateFormat:     types.StringValue(fields[i].DateOptions.DateFormat),
+				DateFormatType: types.StringValue(fields[i].DateOptions.DateFormatType),
+			}
+			if fields[i].DateOptions.MinValue != nil {
+				field.DateOptions.MinValue = &gdriveLabelDateFieldModel{
+					Day:   types.Int64Value(fields[i].DateOptions.MinValue.Day),
+					Month: types.Int64Value(fields[i].DateOptions.MinValue.Month),
+					Year:  types.Int64Value(fields[i].DateOptions.MinValue.Year),
+				}
+			}
+			if fields[i].DateOptions.MaxValue != nil {
+				field.DateOptions.MaxValue = &gdriveLabelDateFieldModel{
+					Day:   types.Int64Value(fields[i].DateOptions.MaxValue.Day),
+					Month: types.Int64Value(fields[i].DateOptions.MaxValue.Month),
+					Year:  types.Int64Value(fields[i].DateOptions.MaxValue.Year),
+				}
+			}
+		}
+		model = append(model, field)
+	}
+	return model
 }

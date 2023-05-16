@@ -111,13 +111,13 @@ type gdriveLabelDataSourceModel struct {
 	Id             types.String                        `tfsdk:"id"`
 	LabelId        types.String                        `tfsdk:"label_id"`
 	Name           types.String                        `tfsdk:"name"`
-	LifeCycle      *gdriveLabelLifeCycleModel          `tfsdk:"life_cycle"`
 	LanguageCode   types.String                        `tfsdk:"language_code"`
 	Revision       types.String                        `tfsdk:"revision"`
 	LabelType      types.String                        `tfsdk:"label_type"`
 	Description    types.String                        `tfsdk:"description"`
 	Title          types.String                        `tfsdk:"title"`
 	UseAdminAccess types.Bool                          `tfsdk:"use_admin_access"`
+	LifeCycle      *gdriveLabelLifeCycleModel          `tfsdk:"life_cycle"`
 	Fields         []*gdriveLabelDataSourceFieldsModel `tfsdk:"fields"`
 }
 
@@ -182,127 +182,7 @@ Reading other revisions may require addtional permissions and / or setting the '
 		},
 		Blocks: map[string]schema.Block{
 			"life_cycle": lifecycle(),
-			"fields": schema.SetNestedBlock{
-				MarkdownDescription: "A set of Shared Drives that match the specified query.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"id": schema.StringAttribute{
-							Computed: true,
-							Description: `The key of a field, unique within a label or library.
-							Use this when referencing a field somewhere.`,
-						},
-						"field_id": schema.StringAttribute{
-							Computed: true,
-							Description: `The key of a field, unique within a label or library.
-							Use this when referencing a field somewhere.`,
-						},
-						"query_key": schema.StringAttribute{
-							Computed: true,
-							Description: `The key to use when constructing Drive search queries to find labels based on values defined for this field on labels.
-						For example, "{queryKey} > 2001-01-01".`,
-						},
-						"value_type": schema.StringAttribute{
-							Computed: true,
-							Description: `The type of the field.
-							Use this when setting the values for a field.`,
-						},
-					},
-					Blocks: map[string]schema.Block{
-						"life_cycle": lifecycle(),
-						"date_options": schema.SingleNestedBlock{
-							Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
-							Attributes: map[string]schema.Attribute{
-								"date_format": schema.StringAttribute{
-									Computed:    true,
-									Description: "ICU date format.",
-								},
-								"date_format_type": schema.StringAttribute{
-									Computed:    true,
-									Description: "Localized date formatting option. Field values are rendered in this format according to their locale.",
-								},
-							},
-							Blocks: map[string]schema.Block{
-								"max_value": dateFieldDS(),
-								"min_value": dateFieldDS(),
-							},
-						},
-						"selection_options": schema.SingleNestedBlock{
-							Description: "Options for the selection field type.",
-							Blocks: map[string]schema.Block{
-								"list_options": listOptions(),
-								"choices": schema.SetNestedBlock{
-									NestedObject: schema.NestedBlockObject{
-										Attributes: map[string]schema.Attribute{
-											"id": schema.StringAttribute{
-												Computed: true,
-												Description: `The unique value of the choice.
-											Use this when referencing / setting a choice.`,
-											},
-											"choice_id": schema.StringAttribute{
-												Computed: true,
-												Description: `The unique value of the choice.
-											Use this when referencing / setting a choice.`,
-											},
-											"display_name": schema.StringAttribute{
-												Computed:    true,
-												Description: "The display text to show in the UI identifying this field.",
-											},
-										},
-										Blocks: map[string]schema.Block{
-											"life_cycle": lifecycle(),
-										},
-									},
-								},
-							},
-						},
-						"integer_options": schema.SingleNestedBlock{
-							Description: "Options for the Integer field type.",
-							Attributes: map[string]schema.Attribute{
-								"max_value": schema.Int64Attribute{
-									Computed:    true,
-									Description: "The maximum valid value for the integer field.",
-								},
-								"min_value": schema.Int64Attribute{
-									Computed:    true,
-									Description: "The minimum valid value for the integer field.",
-								},
-							},
-						},
-						"text_options": schema.SingleNestedBlock{
-							Description: "Options for the Text field type.",
-							Attributes: map[string]schema.Attribute{
-								"min_length": schema.Int64Attribute{
-									Computed:    true,
-									Description: "The minimum valid length of values for the text field.",
-								},
-								"max_length": schema.Int64Attribute{
-									Computed:    true,
-									Description: "The maximum valid length of values for the text field.",
-								},
-							},
-						},
-						"user_options": schema.SingleNestedBlock{
-							Description: "Options for the user field type.",
-							Blocks: map[string]schema.Block{
-								"list_options": listOptions(),
-							},
-						},
-						"properties": schema.SingleNestedBlock{
-							Description: "The basic properties of the field.",
-							Attributes: map[string]schema.Attribute{
-								"display_name": schema.StringAttribute{
-									Computed:    true,
-									Description: "The display text to show in the UI identifying this field.",
-								},
-								"required": schema.BoolAttribute{
-									Computed:    true,
-									Description: "Whether the field should be marked as required.",
-								},
-							},
-						},
-					},
-				},
-			},
+			"fields":     fieldsDS(),
 		},
 	}
 }
@@ -346,6 +226,7 @@ func (ds *labelDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	config.Id = types.StringValue(label.Id)
 	config.LabelType = types.StringValue(label.LabelType)
 	config.Revision = types.StringValue(label.RevisionId)
+	config.Fields = fieldsToModel(label.Fields)
 	if label.Properties != nil {
 		config.Title = types.StringValue(label.Properties.Title)
 		config.Description = types.StringValue(label.Properties.Description)
@@ -354,78 +235,6 @@ func (ds *labelDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		config.LifeCycle = &gdriveLabelLifeCycleModel{
 			State: types.StringValue(label.Lifecycle.State),
 		}
-	}
-	for i := range label.Fields {
-		field := &gdriveLabelDataSourceFieldsModel{
-			Id:       types.StringValue(label.Fields[i].Id),
-			FieldId:  types.StringValue(label.Fields[i].Id),
-			QueryKey: types.StringValue(label.Fields[i].QueryKey),
-		}
-		if label.Fields[i].TextOptions != nil {
-			field.ValueType = types.StringValue("text")
-			field.TextOptions = &gdriveLabelTextOptionsModel{
-				MinLength: types.Int64Value(label.Fields[i].TextOptions.MinLength),
-				MaxLength: types.Int64Value(label.Fields[i].TextOptions.MaxLength),
-			}
-		} else if label.Fields[i].IntegerOptions != nil {
-			field.ValueType = types.StringValue("integer")
-			field.IntegerOptions = &gdriveLabelIntegerOptionsModel{
-				MinValue: types.Int64Value(label.Fields[i].IntegerOptions.MinValue),
-				MaxValue: types.Int64Value(label.Fields[i].IntegerOptions.MaxValue),
-			}
-		} else if label.Fields[i].UserOptions != nil {
-			field.ValueType = types.StringValue("user")
-			field.UserOptions = &gdriveLabelUserOptionseModel{}
-			if label.Fields[i].UserOptions.ListOptions != nil {
-				field.UserOptions.ListOptions = &gdriveLabelListOptionsModel{
-					MaxEntries: types.Int64Value(label.Fields[i].UserOptions.ListOptions.MaxEntries),
-				}
-			}
-		} else if label.Fields[i].SelectionOptions != nil {
-			field.ValueType = types.StringValue("selection")
-			field.SelectionOptions = &gdriveLabelSelectionOptionsModel{}
-			if label.Fields[i].SelectionOptions.ListOptions != nil {
-				field.SelectionOptions.ListOptions = &gdriveLabelListOptionsModel{
-					MaxEntries: types.Int64Value(label.Fields[i].SelectionOptions.ListOptions.MaxEntries),
-				}
-			}
-			field.SelectionOptions.Choices = make([]*gdriveLabelChoicedModel, len(label.Fields[i].SelectionOptions.Choices))
-			for j := range label.Fields[i].SelectionOptions.Choices {
-				field.SelectionOptions.Choices[j] = &gdriveLabelChoicedModel{
-					Id:       types.StringValue(label.Fields[i].SelectionOptions.Choices[j].Id),
-					ChoiceId: types.StringValue(label.Fields[i].SelectionOptions.Choices[j].Id),
-				}
-				if label.Fields[i].SelectionOptions.Choices[j].Properties != nil {
-					field.SelectionOptions.Choices[j].DisplayName = types.StringValue(label.Fields[i].SelectionOptions.Choices[j].Properties.DisplayName)
-				}
-				if label.Fields[i].SelectionOptions.Choices[j].Lifecycle != nil {
-					field.SelectionOptions.Choices[j].LifeCycle = &gdriveLabelLifeCycleModel{
-						State: types.StringValue(label.Fields[i].SelectionOptions.Choices[j].Lifecycle.State),
-					}
-				}
-			}
-		} else if label.Fields[i].DateOptions != nil {
-			field.ValueType = types.StringValue("dateString")
-			field.DateOptions = &gdriveLabelDateOptionsModel{
-				DateFormat:     types.StringValue(label.Fields[i].DateOptions.DateFormat),
-				DateFormatType: types.StringValue(label.Fields[i].DateOptions.DateFormatType),
-			}
-			if label.Fields[i].DateOptions.MinValue != nil {
-				field.DateOptions.MinValue = &gdriveLabelDateFieldModel{
-					Day:   types.Int64Value(label.Fields[i].DateOptions.MinValue.Day),
-					Month: types.Int64Value(label.Fields[i].DateOptions.MinValue.Month),
-					Year:  types.Int64Value(label.Fields[i].DateOptions.MinValue.Year),
-				}
-			}
-			if label.Fields[i].DateOptions.MaxValue != nil {
-				field.DateOptions.MaxValue = &gdriveLabelDateFieldModel{
-					Day:   types.Int64Value(label.Fields[i].DateOptions.MaxValue.Day),
-					Month: types.Int64Value(label.Fields[i].DateOptions.MaxValue.Month),
-					Year:  types.Int64Value(label.Fields[i].DateOptions.MaxValue.Year),
-				}
-			}
-		}
-		config.Fields = append(config.Fields, field)
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"google.golang.org/api/drive/v3"
@@ -60,4 +61,11 @@ func (membershipModel *gdriveOrgUnitMembershipResourceModel) move() (diags diag.
 	}
 	membershipModel.Id = types.StringValue(m["name"])
 	return diags
+}
+
+func id() schema.StringAttribute {
+	return schema.StringAttribute{
+		Computed:    true,
+		Description: "The unique ID of this resource.",
+	}
 }

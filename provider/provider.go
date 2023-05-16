@@ -215,6 +215,7 @@ func (p *gdriveProvider) DataSources(ctx context.Context) []func() datasource.Da
 		newFileDataSource,
 		newFilesDataSource,
 		newLabelDataSource,
+		newLabelsDataSource,
 	}
 }
 
