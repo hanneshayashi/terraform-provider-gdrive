@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"google.golang.org/api/drive/v3"
@@ -71,4 +72,30 @@ func (restrictionsModel *driveRestrictionsModel) toDriveRestrictions() *drive.Dr
 		}
 	}
 	return restrictions
+}
+
+func dsDriveRestrictions() schema.SingleNestedBlock {
+	return schema.SingleNestedBlock{
+		Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
+		Attributes: map[string]schema.Attribute{
+			"admin_managed_restrictions": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether administrative privileges on this shared drive are required to modify restrictions.",
+			},
+			"copy_requires_writer_permission": schema.BoolAttribute{
+				Computed: true,
+				Description: `Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
+When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.`,
+			},
+			"domain_users_only": schema.BoolAttribute{
+				Computed: true,
+				Description: `Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
+This restriction may be overridden by other sharing policies controlled outside of this shared drive.`,
+			},
+			"drive_members_only": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether access to items inside this shared drive is restricted to its members.",
+			},
+		},
+	}
 }
