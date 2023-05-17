@@ -48,6 +48,7 @@ type gdriveLabelPolicyResource struct {
 
 type gdriveLabelPolicyLabelModel struct {
 	LabelId types.String             `tfsdk:"label_id"`
+	Id      types.String             `tfsdk:"id"`
 	Field   []*gdriveLabelFieldModel `tfsdk:"field"`
 }
 
@@ -66,7 +67,7 @@ func (r *gdriveLabelPolicyResource) Schema(ctx context.Context, req resource.Sch
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Sets a label on a Drive object",
 		Attributes: map[string]schema.Attribute{
-			"id": rsId(),
+			"id": rsId(true),
 			"file_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the file to assign the label to.",
 				Required:            true,
@@ -79,40 +80,14 @@ func (r *gdriveLabelPolicyResource) Schema(ctx context.Context, req resource.Sch
 			"label": schema.SetNestedBlock{
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
+						"id": rsId(false),
 						"label_id": schema.StringAttribute{
 							MarkdownDescription: "The ID of the label.",
 							Required:            true,
 						},
 					},
 					Blocks: map[string]schema.Block{
-						"field": schema.SetNestedBlock{
-							MarkdownDescription: `A field of the assigned label.
-This block may be used multiple times to set multiple fields of the same label.`,
-							NestedObject: schema.NestedBlockObject{
-								Attributes: map[string]schema.Attribute{
-									"field_id": schema.StringAttribute{
-										Required:    true,
-										Description: "The identifier of this field.",
-									},
-									"value_type": schema.StringAttribute{
-										Required: true,
-										Description: `The field type.
-While new values may be supported in the future, the following are currently allowed:
-- dateString
-- integer
-- selection
-- text
-- user`,
-									},
-									"values": schema.SetAttribute{
-										ElementType: types.StringType,
-										Required:    true,
-										Description: `The values that should be set.
-Must be compatible with the specified valueType.`,
-									},
-								},
-							},
-						},
+						"field": labelAssignmentField(),
 					},
 				},
 			},
