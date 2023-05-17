@@ -74,12 +74,15 @@ func dsId() dsschema.StringAttribute {
 	}
 }
 
-func rsId() rsschema.StringAttribute {
-	return rsschema.StringAttribute{
+func rsId(useStateForUnknown bool) rsschema.StringAttribute {
+	id := rsschema.StringAttribute{
 		Computed:    true,
 		Description: "The unique ID of this resource.",
-		PlanModifiers: []planmodifier.String{
-			stringplanmodifier.UseStateForUnknown(),
-		},
 	}
+	if useStateForUnknown {
+		id.PlanModifiers = []planmodifier.String{
+			stringplanmodifier.UseStateForUnknown(),
+		}
+	}
+	return id
 }
