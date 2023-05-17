@@ -67,7 +67,7 @@ func (r *gdriveFileResource) Schema(ctx context.Context, req resource.SchemaRequ
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Creates a file or folder with the given MIME type and optionally uploads a local file",
 		Attributes: map[string]schema.Attribute{
-			"id": rsId(true),
+			"id": rsId(),
 			"file_id": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "The ID of the file (fileId)",

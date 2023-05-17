@@ -302,14 +302,12 @@ func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Con
 	for l := range currentLabels {
 		label := &gdriveLabelPolicyLabelModel{
 			LabelId: types.StringValue(l.Id),
-			Id:      types.StringValue(l.Id),
 			Field:   []*gdriveLabelFieldModel{},
 		}
 		for f := range l.Fields {
 			field := &gdriveLabelFieldModel{
 				ValueType: types.StringValue(l.Fields[f].ValueType),
 				FieldId:   types.StringValue(l.Fields[f].Id),
-				Id:        types.StringValue(l.Fields[f].Id),
 			}
 			switch l.Fields[f].ValueType {
 			case "dateString":
@@ -608,7 +606,6 @@ func labelAssignmentField() rsschema.SetNestedBlock {
 This block may be used multiple times to set multiple fields of the same label.`,
 		NestedObject: rsschema.NestedBlockObject{
 			Attributes: map[string]rsschema.Attribute{
-				"id": rsId(false),
 				"field_id": rsschema.StringAttribute{
 					Required:    true,
 					Description: "The identifier of this field.",

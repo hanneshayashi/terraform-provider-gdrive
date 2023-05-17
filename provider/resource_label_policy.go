@@ -48,7 +48,6 @@ type gdriveLabelPolicyResource struct {
 
 type gdriveLabelPolicyLabelModel struct {
 	LabelId types.String             `tfsdk:"label_id"`
-	Id      types.String             `tfsdk:"id"`
 	Field   []*gdriveLabelFieldModel `tfsdk:"field"`
 }
 
@@ -67,7 +66,7 @@ func (r *gdriveLabelPolicyResource) Schema(ctx context.Context, req resource.Sch
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Sets a label on a Drive object",
 		Attributes: map[string]schema.Attribute{
-			"id": rsId(true),
+			"id": rsId(),
 			"file_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the file to assign the label to.",
 				Required:            true,
@@ -80,7 +79,6 @@ func (r *gdriveLabelPolicyResource) Schema(ctx context.Context, req resource.Sch
 			"label": schema.SetNestedBlock{
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
-						"id": rsId(false),
 						"label_id": schema.StringAttribute{
 							MarkdownDescription: "The ID of the label.",
 							Required:            true,

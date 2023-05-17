@@ -83,7 +83,7 @@ func (r *gdriveDriveResource) Schema(ctx context.Context, req resource.SchemaReq
 		Version:             1,
 		MarkdownDescription: "Creates a Shared Drive",
 		Attributes: map[string]schema.Attribute{
-			"id": rsId(true),
+			"id": rsId(),
 			"drive_id": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "The ID of the Shared Drive (driveId)",

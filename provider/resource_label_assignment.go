@@ -47,7 +47,6 @@ type gdriveLabelAssignmentResource struct {
 
 type gdriveLabelFieldModel struct {
 	FieldId   types.String `tfsdk:"field_id"`
-	Id        types.String `tfsdk:"id"`
 	ValueType types.String `tfsdk:"value_type"`
 	Values    types.Set    `tfsdk:"values"`
 }
@@ -68,7 +67,7 @@ func (r *gdriveLabelAssignmentResource) Schema(ctx context.Context, req resource
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Sets a label on a Drive object",
 		Attributes: map[string]schema.Attribute{
-			"id": rsId(true),
+			"id": rsId(),
 			"file_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the file to assign the label to.",
 				Required:            true,
