@@ -82,11 +82,11 @@ func (d *permissionsDataSource) Schema(ctx context.Context, req datasource.Schem
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"permission_id": schema.StringAttribute{
-							Optional:    true,
+							Computed:    true,
 							Description: "ID of the permission",
 						},
 						"display_name": schema.StringAttribute{
-							Optional: true,
+							Computed: true,
 							Description: `The "pretty" name of the value of the permission.
 The following is a list of examples for each type of permission:
 - user    - User's full name, as defined for their Google account, such as "Joe Smith."
@@ -95,28 +95,28 @@ The following is a list of examples for each type of permission:
 - anyone  - No displayName is present.`,
 						},
 						"domain": schema.StringAttribute{
-							Optional:    true,
+							Computed:    true,
 							Description: "The domain if the type of this permissions is 'domain'",
 						},
 						"deleted": schema.BoolAttribute{
-							Optional: true,
+							Computed: true,
 							Description: `Whether the account associated with this permission has been deleted.
 This field only pertains to user and group permissions.`,
 						},
 						"email_address": schema.StringAttribute{
-							Optional:    true,
+							Computed:    true,
 							Description: "The email address if the type of this permissions is 'user' or 'group'",
 						},
 						"expiration_time": schema.StringAttribute{
-							Optional:    true,
+							Computed:    true,
 							Description: "The time at which this permission will expire (RFC 3339 date-time)",
 						},
 						"role": schema.StringAttribute{
-							Optional:    true,
+							Computed:    true,
 							Description: "The role that this trustee is granted",
 						},
 						"type": schema.StringAttribute{
-							Optional:    true,
+							Computed:    true,
 							Description: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
 						},
 					},
