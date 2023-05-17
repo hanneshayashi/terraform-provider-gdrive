@@ -23,8 +23,9 @@ import (
 	"strconv"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"google.golang.org/api/drive/v3"
@@ -301,12 +302,14 @@ func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Con
 	for l := range currentLabels {
 		label := &gdriveLabelPolicyLabelModel{
 			LabelId: types.StringValue(l.Id),
+			Id:      types.StringValue(l.Id),
 			Field:   []*gdriveLabelFieldModel{},
 		}
 		for f := range l.Fields {
 			field := &gdriveLabelFieldModel{
 				ValueType: types.StringValue(l.Fields[f].ValueType),
 				FieldId:   types.StringValue(l.Fields[f].Id),
+				Id:        types.StringValue(l.Fields[f].Id),
 			}
 			switch l.Fields[f].ValueType {
 			case "dateString":
@@ -355,18 +358,18 @@ func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Con
 	return diags
 }
 
-func dateFieldDS() schema.SingleNestedBlock {
-	return schema.SingleNestedBlock{
-		Attributes: map[string]schema.Attribute{
-			"day": schema.Int64Attribute{
+func dateFieldDS() dsschema.SingleNestedBlock {
+	return dsschema.SingleNestedBlock{
+		Attributes: map[string]dsschema.Attribute{
+			"day": dsschema.Int64Attribute{
 				Computed:    true,
 				Description: `Day of a month.`,
 			},
-			"month": schema.Int64Attribute{
+			"month": dsschema.Int64Attribute{
 				Computed:    true,
 				Description: "Month of a year.",
 			},
-			"year": schema.Int64Attribute{
+			"year": dsschema.Int64Attribute{
 				Computed:    true,
 				Description: "Year of the date.",
 			},
@@ -375,8 +378,8 @@ func dateFieldDS() schema.SingleNestedBlock {
 	}
 }
 
-func lifecycle() schema.SingleNestedBlock {
-	return schema.SingleNestedBlock{
+func lifecycle() dsschema.SingleNestedBlock {
+	return dsschema.SingleNestedBlock{
 		MarkdownDescription: `The lifecycle state of an object, such as label, field, or choice.
 
 The lifecycle enforces the following transitions:
@@ -386,8 +389,8 @@ UNPUBLISHED_DRAFT -> (Deleted)
 PUBLISHED -> DISABLED
 DISABLED -> PUBLISHED
 DISABLED -> (Deleted)`,
-		Attributes: map[string]schema.Attribute{
-			"state": schema.StringAttribute{
+		Attributes: map[string]dsschema.Attribute{
+			"state": dsschema.StringAttribute{
 				Description: "The state of the object associated with this lifecycle.",
 				Computed:    true,
 			},
@@ -395,11 +398,11 @@ DISABLED -> (Deleted)`,
 	}
 }
 
-func listOptions() schema.SingleNestedBlock {
-	return schema.SingleNestedBlock{
+func listOptions() dsschema.SingleNestedBlock {
+	return dsschema.SingleNestedBlock{
 		MarkdownDescription: "List options",
-		Attributes: map[string]schema.Attribute{
-			"max_entries": schema.Int64Attribute{
+		Attributes: map[string]dsschema.Attribute{
+			"max_entries": dsschema.Int64Attribute{
 				Description: "Maximum number of entries permitted.",
 				Computed:    true,
 			},
@@ -407,112 +410,112 @@ func listOptions() schema.SingleNestedBlock {
 	}
 }
 
-func fieldsDS() schema.ListNestedBlock {
-	return schema.ListNestedBlock{
+func fieldsDS() dsschema.ListNestedBlock {
+	return dsschema.ListNestedBlock{
 		MarkdownDescription: "The fields of this label.",
-		NestedObject: schema.NestedBlockObject{
-			Attributes: map[string]schema.Attribute{
+		NestedObject: dsschema.NestedBlockObject{
+			Attributes: map[string]dsschema.Attribute{
 				"id": dsId(),
-				"field_id": schema.StringAttribute{
+				"field_id": dsschema.StringAttribute{
 					Computed: true,
 					Description: `The key of a field, unique within a label or library.
 							Use this when referencing a field somewhere.`,
 				},
-				"query_key": schema.StringAttribute{
+				"query_key": dsschema.StringAttribute{
 					Computed: true,
 					Description: `The key to use when constructing Drive search queries to find labels based on values defined for this field on labels.
 						For example, "{queryKey} > 2001-01-01".`,
 				},
-				"value_type": schema.StringAttribute{
+				"value_type": dsschema.StringAttribute{
 					Computed: true,
 					Description: `The type of the field.
 							Use this when setting the values for a field.`,
 				},
 			},
-			Blocks: map[string]schema.Block{
+			Blocks: map[string]dsschema.Block{
 				"life_cycle": lifecycle(),
-				"date_options": schema.SingleNestedBlock{
+				"date_options": dsschema.SingleNestedBlock{
 					Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
-					Attributes: map[string]schema.Attribute{
-						"date_format": schema.StringAttribute{
+					Attributes: map[string]dsschema.Attribute{
+						"date_format": dsschema.StringAttribute{
 							Computed:    true,
 							Description: "ICU date format.",
 						},
-						"date_format_type": schema.StringAttribute{
+						"date_format_type": dsschema.StringAttribute{
 							Computed:    true,
 							Description: "Localized date formatting option. Field values are rendered in this format according to their locale.",
 						},
 					},
-					Blocks: map[string]schema.Block{
+					Blocks: map[string]dsschema.Block{
 						"max_value": dateFieldDS(),
 						"min_value": dateFieldDS(),
 					},
 				},
-				"selection_options": schema.SingleNestedBlock{
+				"selection_options": dsschema.SingleNestedBlock{
 					Description: "Options for the selection field type.",
-					Blocks: map[string]schema.Block{
+					Blocks: map[string]dsschema.Block{
 						"list_options": listOptions(),
-						"choices": schema.SetNestedBlock{
-							NestedObject: schema.NestedBlockObject{
-								Attributes: map[string]schema.Attribute{
+						"choices": dsschema.SetNestedBlock{
+							NestedObject: dsschema.NestedBlockObject{
+								Attributes: map[string]dsschema.Attribute{
 									"id": dsId(),
-									"choice_id": schema.StringAttribute{
+									"choice_id": dsschema.StringAttribute{
 										Computed: true,
 										Description: `The unique value of the choice.
 											Use this when referencing / setting a choice.`,
 									},
-									"display_name": schema.StringAttribute{
+									"display_name": dsschema.StringAttribute{
 										Computed:    true,
 										Description: "The display text to show in the UI identifying this field.",
 									},
 								},
-								Blocks: map[string]schema.Block{
+								Blocks: map[string]dsschema.Block{
 									"life_cycle": lifecycle(),
 								},
 							},
 						},
 					},
 				},
-				"integer_options": schema.SingleNestedBlock{
+				"integer_options": dsschema.SingleNestedBlock{
 					Description: "Options for the Integer field type.",
-					Attributes: map[string]schema.Attribute{
-						"max_value": schema.Int64Attribute{
+					Attributes: map[string]dsschema.Attribute{
+						"max_value": dsschema.Int64Attribute{
 							Computed:    true,
 							Description: "The maximum valid value for the integer field.",
 						},
-						"min_value": schema.Int64Attribute{
+						"min_value": dsschema.Int64Attribute{
 							Computed:    true,
 							Description: "The minimum valid value for the integer field.",
 						},
 					},
 				},
-				"text_options": schema.SingleNestedBlock{
+				"text_options": dsschema.SingleNestedBlock{
 					Description: "Options for the Text field type.",
-					Attributes: map[string]schema.Attribute{
-						"min_length": schema.Int64Attribute{
+					Attributes: map[string]dsschema.Attribute{
+						"min_length": dsschema.Int64Attribute{
 							Computed:    true,
 							Description: "The minimum valid length of values for the text field.",
 						},
-						"max_length": schema.Int64Attribute{
+						"max_length": dsschema.Int64Attribute{
 							Computed:    true,
 							Description: "The maximum valid length of values for the text field.",
 						},
 					},
 				},
-				"user_options": schema.SingleNestedBlock{
+				"user_options": dsschema.SingleNestedBlock{
 					Description: "Options for the user field type.",
-					Blocks: map[string]schema.Block{
+					Blocks: map[string]dsschema.Block{
 						"list_options": listOptions(),
 					},
 				},
-				"properties": schema.SingleNestedBlock{
+				"properties": dsschema.SingleNestedBlock{
 					Description: "The basic properties of the field.",
-					Attributes: map[string]schema.Attribute{
-						"display_name": schema.StringAttribute{
+					Attributes: map[string]dsschema.Attribute{
+						"display_name": dsschema.StringAttribute{
 							Computed:    true,
 							Description: "The display text to show in the UI identifying this field.",
 						},
-						"required": schema.BoolAttribute{
+						"required": dsschema.BoolAttribute{
 							Computed:    true,
 							Description: "Whether the field should be marked as required.",
 						},
@@ -597,4 +600,36 @@ func fieldsToModel(fields []*drivelabels.GoogleAppsDriveLabelsV2Field) (model []
 		model = append(model, field)
 	}
 	return model
+}
+
+func labelAssignmentField() rsschema.SetNestedBlock {
+	return rsschema.SetNestedBlock{
+		MarkdownDescription: `A field of the assigned label.
+This block may be used multiple times to set multiple fields of the same label.`,
+		NestedObject: rsschema.NestedBlockObject{
+			Attributes: map[string]rsschema.Attribute{
+				"id": rsId(false),
+				"field_id": rsschema.StringAttribute{
+					Required:    true,
+					Description: "The identifier of this field.",
+				},
+				"value_type": rsschema.StringAttribute{
+					Required: true,
+					Description: `The field type.
+While new values may be supported in the future, the following are currently allowed:
+- dateString
+- integer
+- selection
+- text
+- user`,
+				},
+				"values": rsschema.SetAttribute{
+					ElementType: types.StringType,
+					Required:    true,
+					Description: `The values that should be set.
+Must be compatible with the specified valueType.`,
+				},
+			},
+		},
+	}
 }
