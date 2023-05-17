@@ -63,7 +63,7 @@ func (r *gdriveOrgUnitMembershipResource) Schema(ctx context.Context, req resour
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Creates a OrgUnit or folder with the given MIME type and optionally uploads a local OrgUnit",
 		Attributes: map[string]schema.Attribute{
-			"id": rsId(),
+			"id": rsId(true),
 			"org_unit_id": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "The ID of the OrgUnit (OrgUnitId)",

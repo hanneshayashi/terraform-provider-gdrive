@@ -84,7 +84,7 @@ func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resourc
 
 // **Important**: On a *destroy*, this resource will preserve the owner and organizer permissions!`,
 		Attributes: map[string]schema.Attribute{
-			"id": rsId(),
+			"id": rsId(true),
 			"file_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the file or Shared Drive",
 				Required:            true,
@@ -103,7 +103,7 @@ func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resourc
 Multiple blocks can be defined to set multiple permissions.`,
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
-						"id": rsId(),
+						"id": rsId(false),
 						"permission_id": schema.StringAttribute{
 							MarkdownDescription: "PermissionID of the trustee",
 							Computed:            true,
