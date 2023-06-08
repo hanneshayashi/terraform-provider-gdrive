@@ -54,8 +54,8 @@ type gdrivePermissionsDataSourcePermissionModel struct {
 type gdrivePermissionsDataSourceModel struct {
 	Id                   types.String                                  `tfsdk:"id"`
 	FileId               types.String                                  `tfsdk:"file_id"`
-	UseDomainAdminAccess types.Bool                                    `tfsdk:"use_domain_admin_access"`
 	Permissions          []*gdrivePermissionsDataSourcePermissionModel `tfsdk:"permissions"`
+	UseDomainAdminAccess types.Bool                                    `tfsdk:"use_domain_admin_access"`
 }
 
 func (d *permissionsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {

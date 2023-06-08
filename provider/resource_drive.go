@@ -58,20 +58,20 @@ type driveRestrictionsModel struct {
 
 // gdriveDriveResourceModelV1 describes the resource data model V1.
 type gdriveDriveResourceModelV1 struct {
+	Restrictions         *driveRestrictionsModel `tfsdk:"restrictions"`
 	Name                 types.String            `tfsdk:"name"`
-	UseDomainAdminAccess types.Bool              `tfsdk:"use_domain_admin_access"`
 	DriveId              types.String            `tfsdk:"drive_id"`
 	Id                   types.String            `tfsdk:"id"`
-	Restrictions         *driveRestrictionsModel `tfsdk:"restrictions"`
+	UseDomainAdminAccess types.Bool              `tfsdk:"use_domain_admin_access"`
 }
 
 // gdriveDriveResourceModelV0 describes the resource data model V0.
 type gdriveDriveResourceModelV0 struct {
 	Name                 types.String              `tfsdk:"name"`
-	UseDomainAdminAccess types.Bool                `tfsdk:"use_domain_admin_access"`
 	Id                   types.String              `tfsdk:"id"`
-	WaitAfterCreate      types.Int64               `tfsdk:"wait_after_create"`
 	Restrictions         []*driveRestrictionsModel `tfsdk:"restrictions"`
+	WaitAfterCreate      types.Int64               `tfsdk:"wait_after_create"`
+	UseDomainAdminAccess types.Bool                `tfsdk:"use_domain_admin_access"`
 }
 
 func (r *gdriveDriveResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

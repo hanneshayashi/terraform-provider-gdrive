@@ -54,9 +54,9 @@ type gdriveLabelsDataSourceModel struct {
 	Id             types.String                        `tfsdk:"id"`
 	LanguageCode   types.String                        `tfsdk:"language_code"`
 	MinumumRole    types.String                        `tfsdk:"minimum_role"`
+	Labels         []*gdriveLabelsDataSourceLabelModel `tfsdk:"labels"`
 	UseAdminAccess types.Bool                          `tfsdk:"use_admin_access"`
 	PublishedOnly  types.Bool                          `tfsdk:"published_only"`
-	Labels         []*gdriveLabelsDataSourceLabelModel `tfsdk:"labels"`
 }
 
 func (d *labelsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {

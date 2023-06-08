@@ -42,19 +42,19 @@ type drivesDataSource struct {
 
 // gdriveDriveResourceModelV1 describes the resource data model V1.
 type gdriveDrivesDataSourceDriveModel struct {
+	Restrictions *driveRestrictionsModel `tfsdk:"restrictions"`
 	Name         types.String            `tfsdk:"name"`
 	Id           types.String            `tfsdk:"id"`
 	DriveId      types.String            `tfsdk:"drive_id"`
-	Restrictions *driveRestrictionsModel `tfsdk:"restrictions"`
 }
 
 // gdriveDriveResourceModelV1 describes the resource data model V1.
 type gdriveDrivesDataSourceModel struct {
 	Query                types.String                        `tfsdk:"query"`
-	UseDomainAdminAccess types.Bool                          `tfsdk:"use_domain_admin_access"`
 	Name                 types.String                        `tfsdk:"name"`
 	Id                   types.String                        `tfsdk:"id"`
 	Drives               []*gdriveDrivesDataSourceDriveModel `tfsdk:"drives"`
+	UseDomainAdminAccess types.Bool                          `tfsdk:"use_domain_admin_access"`
 }
 
 func (d *drivesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {

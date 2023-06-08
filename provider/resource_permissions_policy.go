@@ -60,9 +60,9 @@ type gdrivePermissionPolicyPermissionResourceModel struct {
 // gdrivePermissionPolicyResourceModel describes the resource data model.
 type gdrivePermissionPolicyResourceModel struct {
 	FileId               types.String                                     `tfsdk:"file_id"`
-	UseDomainAdminAccess types.Bool                                       `tfsdk:"use_domain_admin_access"`
 	Id                   types.String                                     `tfsdk:"id"`
 	Permissions          []*gdrivePermissionPolicyPermissionResourceModel `tfsdk:"permissions"`
+	UseDomainAdminAccess types.Bool                                       `tfsdk:"use_domain_admin_access"`
 }
 
 func (r *gdrivePermissionPolicyResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

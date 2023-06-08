@@ -46,10 +46,10 @@ type gdriveLabelListOptionsModel struct {
 }
 
 type gdriveLabelChoicedModel struct {
+	LifeCycle   *gdriveLabelLifeCycleModel `tfsdk:"life_cycle"`
 	Id          types.String               `tfsdk:"id"`
 	ChoiceId    types.String               `tfsdk:"choice_id"`
 	DisplayName types.String               `tfsdk:"display_name"`
-	LifeCycle   *gdriveLabelLifeCycleModel `tfsdk:"life_cycle"`
 }
 
 type gdriveLabelDateFieldModel struct {
@@ -69,10 +69,10 @@ type gdriveLabelIntegerOptionsModel struct {
 }
 
 type gdriveLabelDateOptionsModel struct {
-	DateFormat     types.String               `tfsdk:"date_format"`
-	DateFormatType types.String               `tfsdk:"date_format_type"`
 	MinValue       *gdriveLabelDateFieldModel `tfsdk:"min_value"`
 	MaxValue       *gdriveLabelDateFieldModel `tfsdk:"max_value"`
+	DateFormat     types.String               `tfsdk:"date_format"`
+	DateFormatType types.String               `tfsdk:"date_format_type"`
 }
 
 type gdriveLabelUserOptionseModel struct {
@@ -94,10 +94,6 @@ type gdriveLabelFieldPropertieseModel struct {
 }
 
 type gdriveLabelDataSourceFieldsModel struct {
-	Id               types.String                      `tfsdk:"id"`
-	FieldId          types.String                      `tfsdk:"field_id"`
-	QueryKey         types.String                      `tfsdk:"query_key"`
-	ValueType        types.String                      `tfsdk:"value_type"`
 	LifeCycle        *gdriveLabelLifeCycleModel        `tfsdk:"life_cycle"`
 	DateOptions      *gdriveLabelDateOptionsModel      `tfsdk:"date_options"`
 	SelectionOptions *gdriveLabelSelectionOptionsModel `tfsdk:"selection_options"`
@@ -105,9 +101,14 @@ type gdriveLabelDataSourceFieldsModel struct {
 	TextOptions      *gdriveLabelTextOptionsModel      `tfsdk:"text_options"`
 	UserOptions      *gdriveLabelUserOptionseModel     `tfsdk:"user_options"`
 	Properties       *gdriveLabelFieldPropertieseModel `tfsdk:"properties"`
+	Id               types.String                      `tfsdk:"id"`
+	FieldId          types.String                      `tfsdk:"field_id"`
+	QueryKey         types.String                      `tfsdk:"query_key"`
+	ValueType        types.String                      `tfsdk:"value_type"`
 }
 
 type gdriveLabelDataSourceModel struct {
+	LifeCycle      *gdriveLabelLifeCycleModel          `tfsdk:"life_cycle"`
 	Id             types.String                        `tfsdk:"id"`
 	LabelId        types.String                        `tfsdk:"label_id"`
 	Name           types.String                        `tfsdk:"name"`
@@ -116,9 +117,8 @@ type gdriveLabelDataSourceModel struct {
 	LabelType      types.String                        `tfsdk:"label_type"`
 	Description    types.String                        `tfsdk:"description"`
 	Title          types.String                        `tfsdk:"title"`
-	UseAdminAccess types.Bool                          `tfsdk:"use_admin_access"`
-	LifeCycle      *gdriveLabelLifeCycleModel          `tfsdk:"life_cycle"`
 	Fields         []*gdriveLabelDataSourceFieldsModel `tfsdk:"fields"`
+	UseAdminAccess types.Bool                          `tfsdk:"use_admin_access"`
 }
 
 func (d *labelDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {

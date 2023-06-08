@@ -57,8 +57,8 @@ type gdriveFilesDataSourceModel struct {
 	Spaces                    types.String                      `tfsdk:"spaces"`
 	Corpora                   types.String                      `tfsdk:"corpora"`
 	DriveId                   types.String                      `tfsdk:"drive_id"`
-	IncludeItemsFromAllDrives types.Bool                        `tfsdk:"include_items_from_all_drives"`
 	Files                     []*gdriveFilesDataSourceFileModel `tfsdk:"files"`
+	IncludeItemsFromAllDrives types.Bool                        `tfsdk:"include_items_from_all_drives"`
 }
 
 func (d *filesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {

@@ -52,15 +52,15 @@ type gdrivePermissionResourceModel struct {
 	FileId                types.String `tfsdk:"file_id"`
 	PermissionId          types.String `tfsdk:"permission_id"`
 	EmailMessage          types.String `tfsdk:"email_message"`
-	SendNotificationEmail types.Bool   `tfsdk:"send_notification_email"`
-	UseDomainAdminAccess  types.Bool   `tfsdk:"use_domain_admin_access"`
-	TransferOwnership     types.Bool   `tfsdk:"transfer_ownership"`
-	MoveToNewOwnersRoot   types.Bool   `tfsdk:"move_to_new_owners_root"`
 	Id                    types.String `tfsdk:"id"`
 	Type                  types.String `tfsdk:"type"`
 	Domain                types.String `tfsdk:"domain"`
 	EmailAddress          types.String `tfsdk:"email_address"`
 	Role                  types.String `tfsdk:"role"`
+	SendNotificationEmail types.Bool   `tfsdk:"send_notification_email"`
+	UseDomainAdminAccess  types.Bool   `tfsdk:"use_domain_admin_access"`
+	TransferOwnership     types.Bool   `tfsdk:"transfer_ownership"`
+	MoveToNewOwnersRoot   types.Bool   `tfsdk:"move_to_new_owners_root"`
 }
 
 func (r *gdrivePermissionResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
