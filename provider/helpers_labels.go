@@ -48,6 +48,10 @@ func (labelModel *gdriveLabelResourceModel) populate(ctx context.Context) (diags
 		diags.AddError("Client Error", fmt.Sprintf("Unable to get label, got error: %s", err))
 		return
 	}
+	labelModel.LabelType = types.StringValue(l.LabelType)
+	labelModel.Id = types.StringValue(l.Id)
+	labelModel.Name = types.StringValue(l.Name)
+	labelModel.LabelId = labelModel.Id
 	if l.Properties != nil {
 		labelModel.Properties = &gdriveLabelResourcePropertiesRSModel{
 			Title:       types.StringValue(l.Properties.Title),
