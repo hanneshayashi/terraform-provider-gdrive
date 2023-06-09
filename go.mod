@@ -5,9 +5,8 @@ go 1.20
 require (
 	github.com/hanneshayashi/gsm v0.9.0
 	github.com/hashicorp/terraform-plugin-framework v1.3.0
-	github.com/hashicorp/terraform-plugin-framework-validators v0.10.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
-	google.golang.org/api v0.125.0
+	google.golang.org/api v0.126.0
 )
 
 require (
