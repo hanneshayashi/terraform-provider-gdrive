@@ -89,8 +89,9 @@ type gdriveLabelLifeCycleModel struct {
 }
 
 type gdriveLabelFieldPropertieseModel struct {
-	DisplayName types.String `tfsdk:"display_name"`
-	Required    types.Bool   `tfsdk:"required"`
+	DisplayName       types.String `tfsdk:"display_name"`
+	InsertBeforeField types.String `tfsdk:"insert_before_field"`
+	Required          types.Bool   `tfsdk:"required"`
 }
 
 type gdriveLabelDataSourceFieldsModel struct {
