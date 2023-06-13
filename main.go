@@ -25,10 +25,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
+var version string = "dev"
+
 func main() {
 	err := providerserver.Serve(
 		context.Background(),
-		provider.New,
+		provider.New(version),
 		providerserver.ServeOpts{
 			Address: "registry.terraform.io/hanneshayashi/gdrive",
 		},
