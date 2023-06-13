@@ -37,7 +37,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"google.golang.org/api/drive/v3"
 )
 
 var _ provider.Provider = &gdriveProvider{}
@@ -48,13 +47,11 @@ type gdriveProvider struct {
 
 // gdriveProviderModel describes the provider data model.
 type gdriveProviderModel struct {
-	ServiceAccountKey   types.String `tfsdk:"service_account_key"`
-	ServiceAccount      types.String `tfsdk:"service_account"`
-	Subject             types.String `tfsdk:"subject"`
-	RetryOn             types.List   `tfsdk:"retry_on"`
-	UseCloudIdentityAPI types.Bool   `tfsdk:"use_cloud_identity_api"`
-	UseLabelsAPI        types.Bool   `tfsdk:"use_labels_api"`
-	UseLabelsAdminScope types.Bool   `tfsdk:"use_labels_admin_scope"`
+	ServiceAccountKey types.String `tfsdk:"service_account_key"`
+	ServiceAccount    types.String `tfsdk:"service_account"`
+	Subject           types.String `tfsdk:"subject"`
+	RetryOn           types.List   `tfsdk:"retry_on"`
+	Scopes            types.List   `tfsdk:"scopes"`
 }
 
 func (p *gdriveProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -64,12 +61,13 @@ func (p *gdriveProvider) Metadata(ctx context.Context, req provider.MetadataRequ
 
 func (p *gdriveProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "",
 		Attributes: map[string]schema.Attribute{
 			"service_account_key": schema.StringAttribute{
 				Optional:  true,
 				Sensitive: true,
 				MarkdownDescription: `The path to or the content of a key file for your Service Account.
-Leave empty if you want to use Application Default Credentials (ADC).<br>
+Leave empty if you want to use Application Default Credentials (ADC) (**recommended**).<br>
 You can also use the "SERVICE_ACCOUNT_KEY" environment variable to store either the path to the key file or the key itself (in JSON format).`,
 				// 				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT_KEY", ""),
 			},
@@ -78,13 +76,11 @@ You can also use the "SERVICE_ACCOUNT_KEY" environment variable to store either 
 				MarkdownDescription: `The email address of the Service Account you want to impersonate with Application Default Credentials (ADC).
 Leave empty if you want to use the Service Account of a GCP service (GCE, Cloud Run, Cloud Build, etc) directly.<br>
 You can also use the "SERVICE_ACCOUNT" environment variable.`,
-				// 				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT", ""),
 			},
 			"subject": schema.StringAttribute{
-				Required: true,
+				Optional: true,
 				MarkdownDescription: `The email address of the Workspace user you want to impersonate with Domain Wide Delegation (DWD).<br>
 You can also use the "SUBJECT" environment variable.`,
-				// 				DefaultFunc: schema.EnvDefaultFunc("SUBJECT", ""),
 			},
 			"retry_on": schema.ListAttribute{
 				Optional: true,
@@ -93,30 +89,15 @@ If this is unset, the provider will retry on 404 using an exponential backoff st
 The provider will always retry on rate limiting errors.`,
 				ElementType: types.Int64Type,
 			},
-			"use_cloud_identity_api": schema.BoolAttribute{
+			"scopes": schema.ListAttribute{
 				Optional: true,
-				MarkdownDescription: `Set this to true if you want to manage Shared Drives in organizational units.
-Adds the scope 'https://www.googleapis.com/auth/cloud-identity.orgunits' to the provider's http client.
-This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
-Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"`,
-				// 				DefaultFunc: schema.EnvDefaultFunc("USE_CLOUD_IDENTITY_API", false),
-			},
-			"use_labels_api": schema.BoolAttribute{
-				Optional: true,
-				MarkdownDescription: `Set this to true if you want to manage Drive labels.
-Adds the scope 'https://www.googleapis.com/auth/drive.labels' to the provider's http client.
-This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
-Can also be set with the environment variable "USE_LABELS_API"`,
-				// 				DefaultFunc: schema.EnvDefaultFunc("USE_LABELS_API", false),
-			},
-			"use_labels_admin_scope": schema.BoolAttribute{
-				Optional: true,
-				MarkdownDescription: `Set this to true if you want to manage Drive labels with the admin scope.
-Only has effect if 'use_labels_api' is also set to 'true'.
-Adds the scope 'https://www.googleapis.com/auth/drive.admin.labels' to the provider's http client.
-This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
-Can also be set with the environment variable "USE_LABELS_ADMIN_SCOPE"`,
-				// 				DefaultFunc: schema.EnvDefaultFunc("USE_LABELS_ADMIN_SCOPE", false),
+				MarkdownDescription: `List of scopes that the provider will add to the API client.
+If this is unset, the provider will use the following scopes that you must add to the Domain-Wide Delegation configuration in your Admin Console:
+* https://www.googleapis.com/auth/cloud-identity.orgunits
+* https://www.googleapis.com/auth/drive
+* https://www.googleapis.com/auth/drive.labels
+* https://www.googleapis.com/auth/drive.admin.labels`,
+				ElementType: types.StringType,
 			},
 		},
 	}
@@ -129,17 +110,33 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		return
 	}
 	serviceAccountKey := data.ServiceAccountKey.ValueString()
-	subject := data.Subject.ValueString()
-	scopes := []string{drive.DriveScope}
-	useCloudIdentityAPI := data.UseCloudIdentityAPI.ValueBool()
-	if useCloudIdentityAPI {
-		scopes = append(scopes, "https://www.googleapis.com/auth/cloud-identity.orgunits")
+	if serviceAccountKey == "" {
+		serviceAccountKey = os.Getenv("SERVICE_ACCOUNT_KEY")
 	}
-	useLabelsAPI := data.UseLabelsAPI.ValueBool()
-	if useLabelsAPI {
-		scopes = append(scopes, "https://www.googleapis.com/auth/drive.labels")
-		if data.UseLabelsAdminScope.ValueBool() {
-			scopes = append(scopes, "https://www.googleapis.com/auth/drive.admin.labels")
+	serviceAccount := data.ServiceAccount.ValueString()
+	if serviceAccount == "" {
+		serviceAccount = os.Getenv("SERVICE_ACCOUNT")
+	}
+	subject := data.Subject.ValueString()
+	if subject == "" {
+		subject = os.Getenv("SUBJECT")
+	}
+	if subject == "" {
+		resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Subject must be set"))
+		return
+	}
+	var scopes []string
+	if data.Scopes.IsNull() {
+		scopes = []string{
+			"https://www.googleapis.com/auth/cloud-identity.orgunits",
+			"https://www.googleapis.com/auth/drive",
+			"https://www.googleapis.com/auth/drive.labels",
+			"https://www.googleapis.com/auth/drive.admin.labels",
+		}
+	} else {
+		resp.Diagnostics.Append(data.Scopes.ElementsAs(ctx, &scopes, false)...)
+		if resp.Diagnostics.HasError() {
+			return
 		}
 	}
 	var client *http.Client
@@ -168,19 +165,15 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 			return
 		}
 	} else {
-		client, err = gsmauth.GetClientADC(subject, data.ServiceAccount.ValueString(), scopes...)
+		client, err = gsmauth.GetClientADC(subject, serviceAccount, scopes...)
 		if err != nil {
 			resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to get ADC client, got error: %s", err))
 			return
 		}
 	}
 	gsmdrive.SetClient(client)
-	if useCloudIdentityAPI {
-		gsmcibeta.SetClient(client)
-	}
-	if useLabelsAPI {
-		gsmdrivelabels.SetClient(client)
-	}
+	gsmcibeta.SetClient(client)
+	gsmdrivelabels.SetClient(client)
 	var retryOn []int
 	if data.RetryOn.IsNull() {
 		retryOn = []int{404}
@@ -228,6 +221,10 @@ func (p *gdriveProvider) DataSources(ctx context.Context) []func() datasource.Da
 	}
 }
 
-func New() provider.Provider {
-	return &gdriveProvider{}
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &gdriveProvider{
+			version: version,
+		}
+	}
 }
