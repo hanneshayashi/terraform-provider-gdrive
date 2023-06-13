@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/hanneshayashi/gsm/gsmdrivelabels"
 	"github.com/hanneshayashi/gsm/gsmhelpers"
@@ -47,6 +48,7 @@ type gdriveLabelIntegerFieldResource struct {
 }
 
 type gdriveLabelIntegerFieldResourceModel struct {
+	LifeCycle      *gdriveLabelLifeCycleModel        `tfsdk:"life_cycle"`
 	Properties     *gdriveLabelFieldPropertieseModel `tfsdk:"properties"`
 	Id             types.String                      `tfsdk:"id"`
 	FieldId        types.String                      `tfsdk:"field_id"`
@@ -60,10 +62,17 @@ func (fieldModel *gdriveLabelIntegerFieldResourceModel) toField() (field *drivel
 	field = &drivelabels.GoogleAppsDriveLabelsV2Field{
 		IntegerOptions: &drivelabels.GoogleAppsDriveLabelsV2FieldIntegerOptions{},
 	}
+	if fieldModel.LifeCycle != nil {
+		field.Lifecycle = fieldModel.LifeCycle.toLifecycle()
+	}
 	if fieldModel.Properties != nil {
 		field.Properties = fieldModel.Properties.toProperties()
 	}
 	return
+}
+
+func (fieldModel *gdriveLabelIntegerFieldResourceModel) setLifeCycle(lifecycle *gdriveLabelLifeCycleModel) {
+	fieldModel.LifeCycle = lifecycle
 }
 
 func (fieldModel *gdriveLabelIntegerFieldResourceModel) setProperties(properties *gdriveLabelFieldPropertieseModel) {
@@ -137,6 +146,7 @@ When not specified, values in the default configured language are used.`,
 			},
 		},
 		Blocks: map[string]schema.Block{
+			"life_cycle": lifeCycleRS(),
 			"properties": fieldProperties(),
 		},
 	}
@@ -201,11 +211,19 @@ func (r *gdriveLabelIntegerFieldResource) Update(ctx context.Context, req resour
 		return
 	}
 	updateLabelRequest := newUpdateFieldRequest(plan, state)
-	_, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.getLabelId(), "labels/"), "*", updateLabelRequest)
+	planField := plan.toField()
+	stateField := state.toField()
+	fieldId := plan.getId()
+	if !reflect.DeepEqual(planField.Lifecycle, stateField.Lifecycle) {
+		updateLifecycleRequest := getUpdateFieldLifecycleRequest(fieldId, planField.Lifecycle)
+		updateLabelRequest.Requests = append(updateLabelRequest.Requests, updateLifecycleRequest)
+	}
+	l, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.getLabelId(), "labels/"), "*", updateLabelRequest)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update integer field, got error: %s", err))
 		return
 	}
+	plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.UpdatedLabel.Lifecycle.HasUnpublishedChanges)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

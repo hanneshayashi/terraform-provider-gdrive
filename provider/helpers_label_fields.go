@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"google.golang.org/api/drivelabels/v2"
 )
 
@@ -35,8 +36,64 @@ type fieldInterface interface {
 	getUseAdminAccess() bool
 	getProperties() *gdriveLabelFieldPropertieseModel
 	setProperties(*gdriveLabelFieldPropertieseModel)
+	setLifeCycle(lifecycle *gdriveLabelLifeCycleModel)
 	setIds(string, string)
 	toField() *drivelabels.GoogleAppsDriveLabelsV2Field
+}
+
+func populateField(fieldModel fieldInterface) (field *drivelabels.GoogleAppsDriveLabelsV2Field, err error) {
+	l, err := gsmdrivelabels.GetLabel(gsmhelpers.EnsurePrefix(fieldModel.getLabelId(), "labels/"), fieldModel.getLanguageCode(), "LABEL_VIEW_FULL", "*", fieldModel.getUseAdminAccess())
+	if err != nil {
+		return nil, err
+	}
+	id := fieldModel.getId()
+	f := fieldModel.toField()
+	for i := range l.Fields {
+		if l.Fields[i].Id == id && l.Fields[i].Properties != nil {
+			properties := &gdriveLabelFieldPropertieseModel{
+				DisplayName: types.StringValue(l.Fields[i].Properties.DisplayName),
+				Required:    types.BoolValue(l.Fields[i].Properties.Required),
+			}
+			if i < len(l.Fields)-1 && f.Properties.InsertBeforeField != "" {
+				properties.InsertBeforeField = types.StringValue(l.Fields[i+1].Id)
+			}
+			fieldModel.setProperties(properties)
+			if l.Fields[i].Lifecycle != nil {
+				lifeCycle := &gdriveLabelLifeCycleModel{
+					State:                 types.StringValue(l.Fields[i].Lifecycle.State),
+					HasUnpublishedChanges: types.BoolValue(l.Fields[i].Lifecycle.HasUnpublishedChanges),
+				}
+				if l.Fields[i].Lifecycle.DisabledPolicy != nil && f.Lifecycle.DisabledPolicy != nil {
+					lifeCycle.DisabledPolicy = &gdriveLabelLifeCycleDisabledPolicyModel{
+						HideInSearch: types.BoolValue(l.Fields[i].Lifecycle.DisabledPolicy.HideInSearch),
+						ShowInApply:  types.BoolValue(l.Fields[i].Lifecycle.DisabledPolicy.ShowInApply),
+					}
+				}
+				fieldModel.setLifeCycle(lifeCycle)
+			}
+			return l.Fields[i], nil
+		}
+	}
+	return nil, fmt.Errorf("field not found")
+}
+
+func getUpdateFieldLifecycleRequest(id string, lifecycle *drivelabels.GoogleAppsDriveLabelsV2Lifecycle) (request *drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest) {
+	switch lifecycle.State {
+	case "PUBLISHED":
+		return &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
+			EnableField: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestEnableFieldRequest{
+				Id: id,
+			},
+		}
+	case "DISABLED":
+		return &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
+			DisableField: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestDisableFieldRequest{
+				Id:             id,
+				DisabledPolicy: lifecycle.DisabledPolicy,
+			},
+		}
+	}
+	return
 }
 
 func newUpdateFieldRequest(plan, state fieldInterface) *drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequest {
@@ -56,10 +113,11 @@ func newUpdateFieldRequest(plan, state fieldInterface) *drivelabels.GoogleAppsDr
 
 func createLabelField(plan fieldInterface) (diags diag.Diagnostics) {
 	updateLabelRequest := newUpdateLabelRequest(plan)
+	field := plan.toField()
 	updateLabelRequest.Requests = []*drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 		{
 			CreateField: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestCreateFieldRequest{
-				Field: plan.toField(),
+				Field: field,
 			},
 		},
 	}
@@ -79,6 +137,9 @@ func createLabelField(plan fieldInterface) (diags diag.Diagnostics) {
 			}
 		}
 	}
+	newField.Lifecycle.State = field.Lifecycle.State
+	lifecycle := toLifeCycleModel(newField.Lifecycle)
+	plan.setLifeCycle(lifecycle)
 	plan.setIds(newField.Id, newField.QueryKey)
 	return
 }

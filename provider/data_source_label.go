@@ -84,8 +84,15 @@ type gdriveLabelSelectionOptionsModel struct {
 	Choices     []*gdriveLabelChoicedModel   `tfsdk:"choices"`
 }
 
+type gdriveLabelLifeCycleDisabledPolicyModel struct {
+	HideInSearch types.Bool `tfsdk:"hide_in_search"`
+	ShowInApply  types.Bool `tfsdk:"show_in_apply"`
+}
+
 type gdriveLabelLifeCycleModel struct {
-	State types.String `tfsdk:"state"`
+	DisabledPolicy        *gdriveLabelLifeCycleDisabledPolicyModel `tfsdk:"disabled_policy"`
+	State                 types.String                             `tfsdk:"state"`
+	HasUnpublishedChanges types.Bool                               `tfsdk:"has_unpublished_changes"`
 }
 
 type gdriveLabelFieldPropertieseModel struct {
@@ -179,7 +186,7 @@ Reading other revisions may require addtional permissions and / or setting the '
 			},
 		},
 		Blocks: map[string]schema.Block{
-			"life_cycle": lifecycle(),
+			"life_cycle": lifecycleDS(),
 			"fields":     fieldsDS(),
 		},
 	}
@@ -215,23 +222,30 @@ func (ds *labelDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if !config.Revision.IsNull() {
 		labelID += "@" + config.Revision.ValueString()
 	}
-	label, err := gsmdrivelabels.GetLabel(labelID, config.LanguageCode.ValueString(), "LABEL_VIEW_FULL", "*", config.UseAdminAccess.ValueBool())
+	l, err := gsmdrivelabels.GetLabel(labelID, config.LanguageCode.ValueString(), "LABEL_VIEW_FULL", "*", config.UseAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get label, got error: %s", err))
 		return
 	}
-	config.LabelId = types.StringValue(label.Id)
-	config.Id = types.StringValue(label.Id)
-	config.LabelType = types.StringValue(label.LabelType)
-	config.Revision = types.StringValue(label.RevisionId)
-	config.Fields = fieldsToModel(label.Fields)
-	if label.Properties != nil {
-		config.Title = types.StringValue(label.Properties.Title)
-		config.Description = types.StringValue(label.Properties.Description)
+	config.LabelId = types.StringValue(l.Id)
+	config.Id = types.StringValue(l.Id)
+	config.LabelType = types.StringValue(l.LabelType)
+	config.Revision = types.StringValue(l.RevisionId)
+	config.Fields = fieldsToModel(l.Fields)
+	if l.Properties != nil {
+		config.Title = types.StringValue(l.Properties.Title)
+		config.Description = types.StringValue(l.Properties.Description)
 	}
-	if label.Lifecycle != nil {
+	if l.Lifecycle != nil {
 		config.LifeCycle = &gdriveLabelLifeCycleModel{
-			State: types.StringValue(label.Lifecycle.State),
+			State:                 types.StringValue(l.Lifecycle.State),
+			HasUnpublishedChanges: types.BoolValue(l.Lifecycle.HasUnpublishedChanges),
+		}
+		if l.Lifecycle.DisabledPolicy != nil {
+			config.LifeCycle.DisabledPolicy = &gdriveLabelLifeCycleDisabledPolicyModel{
+				HideInSearch: types.BoolValue(l.Lifecycle.DisabledPolicy.HideInSearch),
+				ShowInApply:  types.BoolValue(l.Lifecycle.DisabledPolicy.ShowInApply),
+			}
 		}
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)

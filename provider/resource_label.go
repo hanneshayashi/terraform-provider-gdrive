@@ -54,6 +54,7 @@ type gdriveLabelResourcePropertiesRSModel struct {
 // gdriveLabelResourceModel describes the resource data model.
 type gdriveLabelResourceModel struct {
 	Properties     *gdriveLabelResourcePropertiesRSModel `tfsdk:"properties"`
+	LifeCycle      *gdriveLabelLifeCycleModel            `tfsdk:"life_cycle"`
 	Id             types.String                          `tfsdk:"id"`
 	LabelId        types.String                          `tfsdk:"label_id"`
 	Name           types.String                          `tfsdk:"name"`
@@ -108,6 +109,7 @@ The following values are accepted:
 			},
 		},
 		Blocks: map[string]schema.Block{
+			"life_cycle": lifeCycleRS(),
 			"properties": schema.SingleNestedBlock{
 				MarkdownDescription: "Basic properties of the label.",
 				Attributes: map[string]schema.Attribute{
@@ -158,7 +160,15 @@ func (r *gdriveLabelResource) Create(ctx context.Context, req resource.CreateReq
 			Description: plan.Properties.Description.ValueString(),
 		},
 	}
-	l, err := gsmdrivelabels.CreateLabel(labelReq, plan.LanguageCode.ValueString(), "*", plan.UseAdminAccess.ValueBool())
+	lifecycle := plan.LifeCycle.toLifecycle()
+	if plan.LifeCycle.DisabledPolicy != nil {
+		labelReq.Lifecycle = &drivelabels.GoogleAppsDriveLabelsV2Lifecycle{
+			DisabledPolicy: lifecycle.DisabledPolicy,
+		}
+	}
+	languageCode := plan.LanguageCode.ValueString()
+	useAdminAccess := plan.UseAdminAccess.ValueBool()
+	l, err := gsmdrivelabels.CreateLabel(labelReq, languageCode, "*", useAdminAccess)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create label, got error: %s", err))
 		return
@@ -166,6 +176,34 @@ func (r *gdriveLabelResource) Create(ctx context.Context, req resource.CreateReq
 	plan.Name = types.StringValue(l.Name)
 	plan.LabelId = types.StringValue(l.Id)
 	plan.Id = plan.LabelId
+	if lifecycle.State == "PUBLISHED" || lifecycle.State == "DISABLED" {
+		publishReq := &drivelabels.GoogleAppsDriveLabelsV2PublishLabelRequest{
+			LanguageCode:   languageCode,
+			UseAdminAccess: useAdminAccess,
+		}
+		l, err = gsmdrivelabels.Publish(l.Name, "*", publishReq)
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to publish label, got error: %s", err))
+			return
+		}
+	}
+	if lifecycle.State == "DISABLED" {
+		disableReq := &drivelabels.GoogleAppsDriveLabelsV2DisableLabelRequest{
+			LanguageCode:   languageCode,
+			UseAdminAccess: useAdminAccess,
+			DisabledPolicy: lifecycle.DisabledPolicy,
+		}
+		l, err = gsmdrivelabels.Disable(l.Name, "*", disableReq)
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to disable label, got error: %s", err))
+			return
+		}
+	}
+	if l.Lifecycle != nil {
+		plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.Lifecycle.HasUnpublishedChanges)
+	} else {
+		plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -193,8 +231,10 @@ func (r *gdriveLabelResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plan.LifeCycle.HasUnpublishedChanges = state.LifeCycle.HasUnpublishedChanges
+	name := gsmhelpers.EnsurePrefix(plan.Id.ValueString(), "labels/")
 	updateLabelRequest := newUpdateLabelRequest(plan)
-	if plan.Properties != nil && state.Properties != nil && (!plan.Properties.Description.Equal(state.Properties.Description) || !plan.Properties.Title.Equal(state.Properties.Title)) {
+	if !plan.Properties.Description.Equal(state.Properties.Description) || !plan.Properties.Title.Equal(state.Properties.Title) {
 		req := &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 			UpdateLabel: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestUpdateLabelPropertiesRequest{
 				Properties: &drivelabels.GoogleAppsDriveLabelsV2LabelProperties{
@@ -210,105 +250,70 @@ func (r *gdriveLabelResource) Update(ctx context.Context, req resource.UpdateReq
 			req.UpdateLabel.Properties.ForceSendFields = append(req.UpdateLabel.Properties.ForceSendFields, "Title")
 		}
 		updateLabelRequest.Requests = append(updateLabelRequest.Requests, req)
-		_, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.Id.ValueString(), "labels/"), "*", updateLabelRequest)
+		updatedLabel, err := gsmdrivelabels.Delta(name, "*", updateLabelRequest)
 		if err != nil {
 			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update label, got error: %s", err))
 			return
 		}
+		if updatedLabel.UpdatedLabel.Lifecycle != nil {
+			plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(updatedLabel.UpdatedLabel.Lifecycle.HasUnpublishedChanges)
+		} else {
+			plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
+		}
 	}
-	// fieldsPlanM := make(map[string]*gdriveLabelResourceFieldsModel)
-	// fieldsStateM := make(map[string]*gdriveLabelResourceFieldsModel)
-	// for i := range plan.Field {
-	// 	tflog.Debug(ctx, fmt.Sprintf("planFieldXXX: %s", plan.Field[i].Id))
-	// 	if plan.Field[i].Id.IsUnknown() {
-	// 		req := &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
-	// 			CreateField: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestCreateFieldRequest{
-	// 				Field: plan.Field[i].toField(),
-	// 			},
-	// 		}
-	// 		createFieldsReq := newUpdateLabelRequest(plan)
-	// 		createFieldsReq.Requests = append(createFieldsReq.Requests, req)
-	// 		updatedLabel, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(labelId, "labels/"), "*", createFieldsReq)
-	// 		if err != nil {
-	// 			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update label (create new fields), got error: %s", err))
-	// 			return
-	// 		}
-	// 		newField := (updatedLabel.UpdatedLabel.Fields[len(updatedLabel.UpdatedLabel.Fields)-1])
-	// 		plan.Field[i].Id = types.StringValue(newField.Id)
-	// 		plan.Field[i].FieldId = plan.Field[i].Id
-	// 		plan.Field[i].QueryKey = types.StringValue(newField.QueryKey)
-	// 	} else {
-	// 		fieldsPlanM[plan.Field[i].Id.ValueString()] = plan.Field[i]
-	// 	}
-	// }
-	// deleteOldFieldsRequest := newUpdateLabelRequest(plan)
-	// for i := range state.Field {
-	// 	fieldsStateM[state.Field[i].FieldId.ValueString()] = state.Field[i]
-	// 	tflog.Debug(ctx, fmt.Sprintf("stateFieldXXX: %s", state.Field[i].Id))
-	// 	fieldId := state.Field[i].FieldId.ValueString()
-	// 	_, ok := fieldsPlanM[fieldId]
-	// 	if !ok {
-	// 		req := &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
-	// 			DeleteField: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestDeleteFieldRequest{
-	// 				Id: fieldId,
-	// 			},
-	// 		}
-	// 		deleteOldFieldsRequest.Requests = append(deleteOldFieldsRequest.Requests, req)
-	// 	}
-	// }
-	// if len(deleteOldFieldsRequest.Requests) > 0 {
-	// 	_, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(labelId, "labels/"), "*", deleteOldFieldsRequest)
-	// 	if err != nil {
-	// 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update label (delete old fields), got error: %s", err))
-	// 		return
-	// 	}
-	// }
-	// modFieldsRequest := newUpdateLabelRequest(plan)
-	// for i := range fieldsPlanM {
-	// 	if fieldsPlanM[i].DateOptions != nil && fieldsStateM[i].DateOptions != nil {
-	// 		if !fieldsPlanM[i].DateOptions.DateFormatType.Equal(fieldsStateM[i].DateOptions.DateFormatType) {
-	// 			modFieldsRequest.Requests = append(modFieldsRequest.Requests, &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
-	// 				UpdateFieldType: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestUpdateFieldTypeRequest{
-	// 					Id: fieldsPlanM[i].FieldId.ValueString(),
-	// 					DateOptions: &drivelabels.GoogleAppsDriveLabelsV2FieldDateOptions{
-	// 						DateFormatType: fieldsPlanM[i].DateOptions.DateFormatType.ValueString(),
-	// 					},
-	// 				},
-	// 			})
-	// 		}
-	// 	} else if fieldsPlanM[i].UserOptions != nil && fieldsPlanM[i].UserOptions.ListOptions != nil && fieldsStateM[i].UserOptions.ListOptions != nil {
-	// 		if fieldsPlanM[i].UserOptions.ListOptions.MaxEntries.Equal(fieldsStateM[i].UserOptions.ListOptions.MaxEntries) {
-
-	// 		}
-	// 	}
-	// }
-	// fixOrderReq := newUpdateLabelRequest(plan)
-	// for i := range plan.Field {
-	// 	req := &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
-	// 		UpdateField: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestUpdateFieldPropertiesRequest{
-	// 			Id: plan.Field[i].Id.ValueString(),
-	// 			Properties: &drivelabels.GoogleAppsDriveLabelsV2FieldProperties{
-	// 				DisplayName: plan.Field[i].Properties.DisplayName.ValueString(),
-	// 				Required:    plan.Field[i].Properties.Required.ValueBool(),
-	// 			},
-	// 		},
-	// 	}
-	// 	if i < len(plan.Field)-1 {
-	// 		req.UpdateField.Properties.InsertBeforeField = plan.Field[i+1].Id.ValueString()
-	// 	}
-	// 	fixOrderReq.Requests = append(fixOrderReq.Requests, req)
-	// }
-	// if len(fixOrderReq.Requests) > 0 {
-	// 	_, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(labelId, "labels/"), "*", fixOrderReq)
-	// 	if err != nil {
-	// 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update label (fix field order), got error: %s", err))
-	// 		return
-	// 	}
-	// }
-	// resp.Diagnostics.Append(plan.populate(ctx)...)
-	// if resp.Diagnostics.HasError() {
-	// 	return
-	// }
+	lifecyclePlan := plan.LifeCycle.toLifecycle()
+	lifecycleState := state.LifeCycle.toLifecycle()
+	if !plan.LifeCycle.State.Equal(state.LifeCycle.State) {
+		if lifecyclePlan.State == "PUBLISHED" && lifecycleState.State == "DISABLED" {
+			enableReq := &drivelabels.GoogleAppsDriveLabelsV2EnableLabelRequest{
+				LanguageCode:   plan.getLanguageCode(),
+				UseAdminAccess: plan.getUseAdminAccess(),
+			}
+			updatedLabel, err := gsmdrivelabels.Enable(name, "*", enableReq)
+			if err != nil {
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to enable label, got error: %s", err))
+				return
+			}
+			if updatedLabel.Lifecycle != nil {
+				plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(updatedLabel.Lifecycle.HasUnpublishedChanges)
+			} else {
+				plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
+			}
+		}
+		if lifecyclePlan.State == "PUBLISHED" {
+			publishReq := &drivelabels.GoogleAppsDriveLabelsV2PublishLabelRequest{
+				LanguageCode:   plan.getLanguageCode(),
+				UseAdminAccess: plan.getUseAdminAccess(),
+			}
+			updatedLabel, err := gsmdrivelabels.Publish(name, "*", publishReq)
+			if err != nil {
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to publish label, got error: %s", err))
+				return
+			}
+			if updatedLabel.Lifecycle != nil {
+				plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(updatedLabel.Lifecycle.HasUnpublishedChanges)
+			} else {
+				plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
+			}
+		}
+	}
+	if lifecyclePlan.State == "DISABLED" {
+		disable := &drivelabels.GoogleAppsDriveLabelsV2DisableLabelRequest{
+			LanguageCode:   plan.getLanguageCode(),
+			UseAdminAccess: plan.getUseAdminAccess(),
+			DisabledPolicy: lifecyclePlan.DisabledPolicy,
+		}
+		updatedLabel, err := gsmdrivelabels.Disable(name, "*", disable)
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to disable label, got error: %s", err))
+			return
+		}
+		if updatedLabel.Lifecycle != nil {
+			plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(updatedLabel.Lifecycle.HasUnpublishedChanges)
+		} else {
+			plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
+		}
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

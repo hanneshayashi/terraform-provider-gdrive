@@ -52,6 +52,7 @@ type gdriveLabelUserOptionsRSModel struct {
 }
 
 type gdriveLabelUserFieldResourceModel struct {
+	LifeCycle      *gdriveLabelLifeCycleModel        `tfsdk:"life_cycle"`
 	Properties     *gdriveLabelFieldPropertieseModel `tfsdk:"properties"`
 	UserOptions    *gdriveLabelUserOptionsRSModel    `tfsdk:"user_options"`
 	Id             types.String                      `tfsdk:"id"`
@@ -76,10 +77,17 @@ func (fieldModel *gdriveLabelUserFieldResourceModel) toField() (field *drivelabe
 			field.UserOptions.ListOptions.ForceSendFields = append(field.UserOptions.ListOptions.ForceSendFields, "MaxEntries")
 		}
 	}
+	if fieldModel.LifeCycle != nil {
+		field.Lifecycle = fieldModel.LifeCycle.toLifecycle()
+	}
 	if fieldModel.Properties != nil {
 		field.Properties = fieldModel.Properties.toProperties()
 	}
 	return
+}
+
+func (fieldModel *gdriveLabelUserFieldResourceModel) setLifeCycle(lifecycle *gdriveLabelLifeCycleModel) {
+	fieldModel.LifeCycle = lifecycle
 }
 
 func (fieldModel *gdriveLabelUserFieldResourceModel) setProperties(properties *gdriveLabelFieldPropertieseModel) {
@@ -153,6 +161,7 @@ When not specified, values in the default configured language are used.`,
 			},
 		},
 		Blocks: map[string]schema.Block{
+			"life_cycle": lifeCycleRS(),
 			"properties": fieldProperties(),
 			"user_options": schema.SingleNestedBlock{
 				MarkdownDescription: `User field options.`,
@@ -232,20 +241,26 @@ func (r *gdriveLabelUserFieldResource) Update(ctx context.Context, req resource.
 	updateLabelRequest := newUpdateFieldRequest(plan, state)
 	planField := plan.toField()
 	stateField := state.toField()
+	fieldId := plan.getId()
 	if !reflect.DeepEqual(planField.UserOptions, stateField.UserOptions) {
 		updateUserOptionsRequest := &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 			UpdateFieldType: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestUpdateFieldTypeRequest{
-				Id:          plan.getId(),
+				Id:          fieldId,
 				UserOptions: planField.UserOptions,
 			},
 		}
 		updateLabelRequest.Requests = append(updateLabelRequest.Requests, updateUserOptionsRequest)
 	}
-	_, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.getLabelId(), "labels/"), "*", updateLabelRequest)
+	if !reflect.DeepEqual(planField.Lifecycle, stateField.Lifecycle) {
+		updateLifecycleRequest := getUpdateFieldLifecycleRequest(fieldId, planField.Lifecycle)
+		updateLabelRequest.Requests = append(updateLabelRequest.Requests, updateLifecycleRequest)
+	}
+	l, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.getLabelId(), "labels/"), "*", updateLabelRequest)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update user field, got error: %s", err))
 		return
 	}
+	plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.UpdatedLabel.Lifecycle.HasUnpublishedChanges)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

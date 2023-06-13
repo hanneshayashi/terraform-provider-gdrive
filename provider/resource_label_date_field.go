@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/hanneshayashi/gsm/gsmdrivelabels"
 	"github.com/hanneshayashi/gsm/gsmhelpers"
@@ -51,6 +52,7 @@ type gdriveLabelDateOptionsRSModel struct {
 }
 
 type gdriveLabelDateFieldResourceModel struct {
+	LifeCycle      *gdriveLabelLifeCycleModel        `tfsdk:"life_cycle"`
 	Properties     *gdriveLabelFieldPropertieseModel `tfsdk:"properties"`
 	DateOptions    *gdriveLabelDateOptionsRSModel    `tfsdk:"date_options"`
 	Id             types.String                      `tfsdk:"id"`
@@ -68,6 +70,9 @@ func (fieldModel *gdriveLabelDateFieldResourceModel) toField() (field *drivelabe
 	if fieldModel.DateOptions != nil {
 		field.DateOptions = fieldModel.DateOptions.toDateOptions()
 	}
+	if fieldModel.LifeCycle != nil {
+		field.Lifecycle = fieldModel.LifeCycle.toLifecycle()
+	}
 	if fieldModel.Properties != nil {
 		field.Properties = fieldModel.Properties.toProperties()
 	}
@@ -84,9 +89,14 @@ func (dateOptionsModel *gdriveLabelDateOptionsRSModel) toDateOptions() (dateOpti
 	return
 }
 
+func (fieldModel *gdriveLabelDateFieldResourceModel) setLifeCycle(lifecycle *gdriveLabelLifeCycleModel) {
+	fieldModel.LifeCycle = lifecycle
+}
+
 func (fieldModel *gdriveLabelDateFieldResourceModel) setProperties(properties *gdriveLabelFieldPropertieseModel) {
 	fieldModel.Properties = properties
 }
+
 func (fieldModel *gdriveLabelDateFieldResourceModel) setIds(id, queryKey string) {
 	fieldModel.Id = types.StringValue(id)
 	fieldModel.FieldId = fieldModel.Id
@@ -154,6 +164,7 @@ When not specified, values in the default configured language are used.`,
 			},
 		},
 		Blocks: map[string]schema.Block{
+			"life_cycle": lifeCycleRS(),
 			"properties": fieldProperties(),
 			"date_options": schema.SingleNestedBlock{
 				MarkdownDescription: `Date field options.`,
@@ -235,10 +246,13 @@ func (r *gdriveLabelDateFieldResource) Update(ctx context.Context, req resource.
 		return
 	}
 	updateLabelRequest := newUpdateFieldRequest(plan, state)
-	if (plan.DateOptions == nil && state.DateOptions != nil) || (plan.DateOptions != nil && state.DateOptions == nil) || (plan.DateOptions != nil && state.DateOptions != nil && !plan.DateOptions.DateFormatType.Equal(state.DateOptions.DateFormatType)) {
+	planField := plan.toField()
+	stateField := state.toField()
+	fieldId := plan.getId()
+	if !reflect.DeepEqual(planField.DateOptions, stateField.DateOptions) {
 		updateDateOptionsRequest := &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 			UpdateFieldType: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestUpdateFieldTypeRequest{
-				Id:          plan.getId(),
+				Id:          fieldId,
 				DateOptions: &drivelabels.GoogleAppsDriveLabelsV2FieldDateOptions{},
 			},
 		}
@@ -247,11 +261,16 @@ func (r *gdriveLabelDateFieldResource) Update(ctx context.Context, req resource.
 		}
 		updateLabelRequest.Requests = append(updateLabelRequest.Requests, updateDateOptionsRequest)
 	}
-	_, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.getLabelId(), "labels/"), "*", updateLabelRequest)
+	if !reflect.DeepEqual(planField.Lifecycle, stateField.Lifecycle) {
+		updateLifecycleRequest := getUpdateFieldLifecycleRequest(fieldId, planField.Lifecycle)
+		updateLabelRequest.Requests = append(updateLabelRequest.Requests, updateLifecycleRequest)
+	}
+	l, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.getLabelId(), "labels/"), "*", updateLabelRequest)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update date field, got error: %s", err))
 		return
 	}
+	plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.UpdatedLabel.Lifecycle.HasUnpublishedChanges)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

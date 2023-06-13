@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/hanneshayashi/gsm/gsmdrivelabels"
 	"github.com/hanneshayashi/gsm/gsmhelpers"
@@ -67,6 +68,7 @@ type gdriveLabelChoicePropertiesRSModel struct {
 }
 
 type gdriveLabelSelectionChoiceResourceModel struct {
+	LifeCycle      *gdriveLabelLifeCycleModel          `tfsdk:"life_cycle"`
 	Properties     *gdriveLabelChoicePropertiesRSModel `tfsdk:"properties"`
 	Id             types.String                        `tfsdk:"id"`
 	ChoiceId       types.String                        `tfsdk:"choice_id"`
@@ -78,6 +80,7 @@ type gdriveLabelSelectionChoiceResourceModel struct {
 
 func (choiceModel *gdriveLabelSelectionChoiceResourceModel) toChoice() (choice *drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoice) {
 	choice = &drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoice{
+		Lifecycle: choiceModel.LifeCycle.toLifecycle(),
 		Properties: &drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoiceProperties{
 			DisplayName:        choiceModel.Properties.DisplayName.ValueString(),
 			InsertBeforeChoice: choiceModel.Properties.InsertBeforeChoice.ValueString(),
@@ -165,6 +168,7 @@ When not specified, values in the default configured language are used.`,
 			},
 		},
 		Blocks: map[string]schema.Block{
+			"life_cycle": lifeCycleRS(),
 			"properties": schema.SingleNestedBlock{
 				MarkdownDescription: "Basic properties of the choice.",
 				Attributes: map[string]schema.Attribute{
@@ -286,6 +290,8 @@ func (r *gdriveLabelSelectionChoiceResource) Create(ctx context.Context, req res
 			}
 		}
 	}
+	newChoice.Lifecycle.State = updateLabelRequest.Requests[0].CreateSelectionChoice.Choice.Lifecycle.State
+	plan.LifeCycle = toLifeCycleModel(newChoice.Lifecycle)
 	plan.Id = types.StringValue(newChoice.Id)
 	plan.ChoiceId = plan.Id
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -309,6 +315,14 @@ func (r *gdriveLabelSelectionChoiceResource) Read(ctx context.Context, req resou
 			if l.Fields[i].SelectionOptions != nil {
 				for j := range l.Fields[i].SelectionOptions.Choices {
 					if l.Fields[i].SelectionOptions.Choices[j].Id == choiceId {
+						if l.Fields[i].SelectionOptions.Choices[j].Lifecycle != nil {
+							state.LifeCycle.State = types.StringValue(l.Fields[i].SelectionOptions.Choices[j].Lifecycle.State)
+							state.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.Fields[i].SelectionOptions.Choices[j].Lifecycle.HasUnpublishedChanges)
+							if state.LifeCycle.DisabledPolicy != nil && l.Fields[i].SelectionOptions.Choices[j].Lifecycle.DisabledPolicy != nil {
+								state.LifeCycle.DisabledPolicy.HideInSearch = types.BoolValue(l.Fields[i].SelectionOptions.Choices[j].Lifecycle.DisabledPolicy.HideInSearch)
+								state.LifeCycle.DisabledPolicy.ShowInApply = types.BoolValue(l.Fields[i].SelectionOptions.Choices[j].Lifecycle.DisabledPolicy.ShowInApply)
+							}
+						}
 						if l.Fields[i].SelectionOptions.Choices[j].Properties != nil {
 							state.Properties = &gdriveLabelChoicePropertiesRSModel{
 								DisplayName: types.StringValue(l.Fields[i].SelectionOptions.Choices[j].Properties.DisplayName),
@@ -351,20 +365,44 @@ func (r *gdriveLabelSelectionChoiceResource) Update(ctx context.Context, req res
 		return
 	}
 	updateLabelRequest := newUpdateLabelRequest(plan)
-	updateLabelRequest.Requests = []*drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
-		{
+	planChoice := plan.toChoice()
+	stateChoice := state.toChoice()
+	fieldId := plan.FieldId.ValueString()
+	choiceId := plan.Id.ValueString()
+	if !reflect.DeepEqual(planChoice.Properties, stateChoice.Properties) {
+		updateLabelRequest.Requests = append(updateLabelRequest.Requests, &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 			UpdateSelectionChoiceProperties: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestUpdateSelectionChoicePropertiesRequest{
-				Id:         plan.Id.ValueString(),
-				FieldId:    plan.FieldId.ValueString(),
-				Properties: plan.toChoice().Properties,
+				Id:         choiceId,
+				FieldId:    fieldId,
+				Properties: planChoice.Properties,
 			},
-		},
+		})
 	}
-	_, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.LabelId.ValueString(), "labels/"), "*", updateLabelRequest)
+	if !reflect.DeepEqual(planChoice.Lifecycle, stateChoice.Lifecycle) {
+		switch planChoice.Lifecycle.State {
+		case "PUBLISHED":
+			updateLabelRequest.Requests = append(updateLabelRequest.Requests, &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
+				EnableSelectionChoice: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestEnableSelectionChoiceRequest{
+					Id:      choiceId,
+					FieldId: fieldId,
+				},
+			})
+		case "DISABLED":
+			updateLabelRequest.Requests = append(updateLabelRequest.Requests, &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
+				DisableSelectionChoice: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestDisableSelectionChoiceRequest{
+					Id:             choiceId,
+					FieldId:        fieldId,
+					DisabledPolicy: planChoice.Lifecycle.DisabledPolicy,
+				},
+			})
+		}
+	}
+	l, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.LabelId.ValueString(), "labels/"), "*", updateLabelRequest)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update selection choice, got error: %s", err))
 		return
 	}
+	plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.UpdatedLabel.Lifecycle.HasUnpublishedChanges)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

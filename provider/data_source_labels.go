@@ -127,7 +127,7 @@ APPLIER    - An applier can write associated metadata on Drive items in which th
 						},
 					},
 					Blocks: map[string]schema.Block{
-						"life_cycle": lifecycle(),
+						"life_cycle": lifecycleDS(),
 						"fields":     fieldsDS(),
 					},
 				},
@@ -176,7 +176,14 @@ func (ds *labelsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		}
 		if l.Lifecycle != nil {
 			label.LifeCycle = &gdriveLabelLifeCycleModel{
-				State: types.StringValue(l.Lifecycle.State),
+				State:                 types.StringValue(l.Lifecycle.State),
+				HasUnpublishedChanges: types.BoolValue(l.Lifecycle.HasUnpublishedChanges),
+			}
+			if l.Lifecycle.DisabledPolicy != nil {
+				label.LifeCycle.DisabledPolicy = &gdriveLabelLifeCycleDisabledPolicyModel{
+					HideInSearch: types.BoolValue(l.Lifecycle.DisabledPolicy.HideInSearch),
+					ShowInApply:  types.BoolValue(l.Lifecycle.DisabledPolicy.ShowInApply),
+				}
 			}
 		}
 		config.Labels = append(config.Labels, label)

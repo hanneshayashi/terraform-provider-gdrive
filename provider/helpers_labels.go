@@ -25,9 +25,49 @@ import (
 	"github.com/hanneshayashi/gsm/gsmhelpers"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"google.golang.org/api/drivelabels/v2"
 )
+
+const lifeCycleDefault = "UNPUBLISHED_DRAFT"
+
+func toLifeCycleModel(lifecycle *drivelabels.GoogleAppsDriveLabelsV2Lifecycle) (lifeCycleModel *gdriveLabelLifeCycleModel) {
+	if lifecycle != nil {
+		lifeCycleModel = &gdriveLabelLifeCycleModel{
+			State:                 types.StringValue(lifecycle.State),
+			HasUnpublishedChanges: types.BoolValue(lifecycle.HasUnpublishedChanges),
+		}
+		if lifecycle.DisabledPolicy != nil {
+			lifeCycleModel.DisabledPolicy = &gdriveLabelLifeCycleDisabledPolicyModel{
+				HideInSearch: types.BoolValue(lifecycle.DisabledPolicy.HideInSearch),
+				ShowInApply:  types.BoolValue(lifecycle.DisabledPolicy.ShowInApply),
+			}
+		}
+	}
+	return lifeCycleModel
+}
+
+func (lifecycleModel *gdriveLabelLifeCycleModel) toLifecycle() (lifecycle *drivelabels.GoogleAppsDriveLabelsV2Lifecycle) {
+	lifecycle = &drivelabels.GoogleAppsDriveLabelsV2Lifecycle{
+		State:                 lifecycleModel.State.ValueString(),
+		HasUnpublishedChanges: lifecycleModel.HasUnpublishedChanges.ValueBool(),
+	}
+	if lifecycleModel.DisabledPolicy != nil {
+		lifecycle.DisabledPolicy = &drivelabels.GoogleAppsDriveLabelsV2LifecycleDisabledPolicy{
+			HideInSearch: lifecycleModel.DisabledPolicy.HideInSearch.ValueBool(),
+			ShowInApply:  lifecycleModel.DisabledPolicy.ShowInApply.ValueBool(),
+		}
+		if !lifecycle.DisabledPolicy.HideInSearch {
+			lifecycle.DisabledPolicy.ForceSendFields = append(lifecycle.DisabledPolicy.ForceSendFields, "HideInSearch")
+		}
+		if !lifecycle.DisabledPolicy.ShowInApply {
+			lifecycle.DisabledPolicy.ForceSendFields = append(lifecycle.DisabledPolicy.ForceSendFields, "ShowInApply")
+		}
+	}
+	return
+}
 
 type labelInterface interface {
 	getLanguageCode() string
@@ -58,6 +98,20 @@ func (labelModel *gdriveLabelResourceModel) populate(ctx context.Context) (diags
 			Description: types.StringValue(l.Properties.Description),
 		}
 	}
+	if labelModel.LifeCycle != nil && l.Lifecycle != nil {
+		var state string
+		if l.Lifecycle.State == "PUBLISHED" && l.Lifecycle.HasUnpublishedChanges {
+			state = "PUBLISHED_WITH_PENDING_CHANGES"
+		} else {
+			state = l.Lifecycle.State
+		}
+		labelModel.LifeCycle.State = types.StringValue(state)
+		labelModel.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.Lifecycle.HasUnpublishedChanges)
+		if labelModel.LifeCycle.DisabledPolicy != nil && l.Lifecycle.DisabledPolicy != nil {
+			labelModel.LifeCycle.DisabledPolicy.HideInSearch = types.BoolValue(l.Lifecycle.DisabledPolicy.HideInSearch)
+			labelModel.LifeCycle.DisabledPolicy.ShowInApply = types.BoolValue(l.Lifecycle.DisabledPolicy.ShowInApply)
+		}
+	}
 	return
 }
 
@@ -81,7 +135,56 @@ func dateFieldDS() dsschema.SingleNestedBlock {
 	}
 }
 
-func lifecycle() dsschema.SingleNestedBlock {
+func lifeCycleRS() rsschema.SingleNestedBlock {
+	return rsschema.SingleNestedBlock{
+		MarkdownDescription: `The lifecycle state of an object, such as label, field, or choice.
+
+The lifecycle enforces the following transitions:
+UNPUBLISHED_DRAFT (starting state)
+UNPUBLISHED_DRAFT -> PUBLISHED
+UNPUBLISHED_DRAFT -> (Deleted)
+PUBLISHED -> DISABLED
+DISABLED -> PUBLISHED
+DISABLED -> (Deleted)`,
+		Attributes: map[string]rsschema.Attribute{
+			"state": rsschema.StringAttribute{
+				MarkdownDescription: "The state of the object associated with this lifecycle.",
+				Required:            true,
+			},
+			"has_unpublished_changes": rsschema.BoolAttribute{
+				MarkdownDescription: "Whether the object associated with this lifecycle has unpublished changes.",
+				Computed:            true,
+			},
+		},
+		Blocks: map[string]rsschema.Block{
+			"disabled_policy": rsschema.SingleNestedBlock{
+				MarkdownDescription: "The policy that governs how to show a disabled label, field, or selection choice.",
+				Attributes: map[string]rsschema.Attribute{
+					"hide_in_search": rsschema.BoolAttribute{
+						MarkdownDescription: `Whether to hide this disabled object in the search menu for Drive items.
+
+When false, the object is generally shown in the UI as disabled but it appears in the search results when searching for Drive items.
+When true, the object is generally hidden in the UI when searching for Drive items.`,
+						Optional: true,
+						Computed: true,
+						Default:  booldefault.StaticBool(false),
+					},
+					"show_in_apply": rsschema.BoolAttribute{
+						MarkdownDescription: `Whether to show this disabled object in the apply menu on Drive items.
+
+When true, the object is generally shown in the UI as disabled and is unselectable.
+When false, the object is generally hidden in the UI.`,
+						Optional: true,
+						Computed: true,
+						Default:  booldefault.StaticBool(true),
+					},
+				},
+			},
+		},
+	}
+}
+
+func lifecycleDS() dsschema.SingleNestedBlock {
 	return dsschema.SingleNestedBlock{
 		MarkdownDescription: `The lifecycle state of an object, such as label, field, or choice.
 
@@ -94,8 +197,33 @@ DISABLED -> PUBLISHED
 DISABLED -> (Deleted)`,
 		Attributes: map[string]dsschema.Attribute{
 			"state": dsschema.StringAttribute{
-				Description: "The state of the object associated with this lifecycle.",
-				Computed:    true,
+				MarkdownDescription: "The state of the object associated with this lifecycle.",
+				Computed:            true,
+			},
+			"has_unpublished_changes": dsschema.BoolAttribute{
+				MarkdownDescription: "Whether the object associated with this lifecycle has unpublished changes.",
+				Computed:            true,
+			},
+		},
+		Blocks: map[string]dsschema.Block{
+			"disabled_policy": dsschema.SingleNestedBlock{
+				MarkdownDescription: "The policy that governs how to show a disabled label, field, or selection choice.",
+				Attributes: map[string]dsschema.Attribute{
+					"hide_in_search": dsschema.BoolAttribute{
+						MarkdownDescription: `Whether to hide this disabled object in the search menu for Drive items.
+
+When false, the object is generally shown in the UI as disabled but it appears in the search results when searching for Drive items.
+When true, the object is generally hidden in the UI when searching for Drive items.`,
+						Computed: true,
+					},
+					"show_in_apply": dsschema.BoolAttribute{
+						MarkdownDescription: `Whether to show this disabled object in the apply menu on Drive items.
+
+When true, the object is generally shown in the UI as disabled and is unselectable.
+When false, the object is generally hidden in the UI.`,
+						Computed: true,
+					},
+				},
 			},
 		},
 	}
@@ -136,7 +264,7 @@ Use this when setting the values for a field.`,
 				},
 			},
 			Blocks: map[string]dsschema.Block{
-				"life_cycle": lifecycle(),
+				"life_cycle": lifecycleDS(),
 				"date_options": dsschema.SingleNestedBlock{
 					Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
 					Attributes: map[string]dsschema.Attribute{
@@ -173,7 +301,7 @@ Use this when setting the values for a field.`,
 									},
 								},
 								Blocks: map[string]dsschema.Block{
-									"life_cycle": lifecycle(),
+									"life_cycle": lifecycleDS(),
 								},
 							},
 						},
@@ -236,6 +364,18 @@ func fieldsToModel(fields []*drivelabels.GoogleAppsDriveLabelsV2Field) (model []
 			FieldId:  types.StringValue(fields[i].Id),
 			QueryKey: types.StringValue(fields[i].QueryKey),
 		}
+		if fields[i].Lifecycle != nil {
+			field.LifeCycle = &gdriveLabelLifeCycleModel{
+				State:                 types.StringValue(fields[i].Lifecycle.State),
+				HasUnpublishedChanges: types.BoolValue(fields[i].Lifecycle.HasUnpublishedChanges),
+			}
+			if fields[i].Lifecycle.DisabledPolicy != nil {
+				field.LifeCycle.DisabledPolicy = &gdriveLabelLifeCycleDisabledPolicyModel{
+					HideInSearch: types.BoolValue(fields[i].Lifecycle.DisabledPolicy.HideInSearch),
+					ShowInApply:  types.BoolValue(fields[i].Lifecycle.DisabledPolicy.ShowInApply),
+				}
+			}
+		}
 		if fields[i].TextOptions != nil {
 			field.ValueType = types.StringValue("text")
 			field.TextOptions = &gdriveLabelTextOptionsModel{
@@ -275,7 +415,14 @@ func fieldsToModel(fields []*drivelabels.GoogleAppsDriveLabelsV2Field) (model []
 				}
 				if fields[i].SelectionOptions.Choices[j].Lifecycle != nil {
 					field.SelectionOptions.Choices[j].LifeCycle = &gdriveLabelLifeCycleModel{
-						State: types.StringValue(fields[i].SelectionOptions.Choices[j].Lifecycle.State),
+						State:                 types.StringValue(fields[i].SelectionOptions.Choices[j].Lifecycle.State),
+						HasUnpublishedChanges: types.BoolValue(fields[i].SelectionOptions.Choices[j].Lifecycle.HasUnpublishedChanges),
+					}
+					if fields[i].SelectionOptions.Choices[j].Lifecycle.DisabledPolicy != nil {
+						field.SelectionOptions.Choices[j].LifeCycle.DisabledPolicy = &gdriveLabelLifeCycleDisabledPolicyModel{
+							HideInSearch: types.BoolValue(fields[i].SelectionOptions.Choices[j].Lifecycle.DisabledPolicy.HideInSearch),
+							ShowInApply:  types.BoolValue(fields[i].SelectionOptions.Choices[j].Lifecycle.DisabledPolicy.ShowInApply),
+						}
 					}
 				}
 			}
@@ -303,29 +450,6 @@ func fieldsToModel(fields []*drivelabels.GoogleAppsDriveLabelsV2Field) (model []
 		model = append(model, field)
 	}
 	return model
-}
-
-func populateField(fieldModel fieldInterface) (field *drivelabels.GoogleAppsDriveLabelsV2Field, err error) {
-	l, err := gsmdrivelabels.GetLabel(gsmhelpers.EnsurePrefix(fieldModel.getLabelId(), "labels/"), fieldModel.getLanguageCode(), "LABEL_VIEW_FULL", "*", fieldModel.getUseAdminAccess())
-	if err != nil {
-		return nil, err
-	}
-	properties := &gdriveLabelFieldPropertieseModel{}
-	id := fieldModel.getId()
-	for i := range l.Fields {
-		if l.Fields[i].Id == id && l.Fields[i].Properties != nil {
-			properties = &gdriveLabelFieldPropertieseModel{
-				DisplayName: types.StringValue(l.Fields[i].Properties.DisplayName),
-				Required:    types.BoolValue(l.Fields[i].Properties.Required),
-			}
-			if i < len(l.Fields)-1 {
-				properties.InsertBeforeField = types.StringValue(l.Fields[i+1].Id)
-			}
-			fieldModel.setProperties(properties)
-			return l.Fields[i], nil
-		}
-	}
-	return nil, fmt.Errorf("field not found")
 }
 
 func (propertiesModel *gdriveLabelFieldPropertieseModel) toProperties() *drivelabels.GoogleAppsDriveLabelsV2FieldProperties {
