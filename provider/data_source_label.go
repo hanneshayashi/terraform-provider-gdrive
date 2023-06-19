@@ -89,10 +89,15 @@ type gdriveLabelLifeCycleDisabledPolicyModel struct {
 	ShowInApply  types.Bool `tfsdk:"show_in_apply"`
 }
 
-type gdriveLabelLifeCycleModel struct {
+type gdriveLabelLifeCycleDSModel struct {
 	DisabledPolicy        *gdriveLabelLifeCycleDisabledPolicyModel `tfsdk:"disabled_policy"`
 	State                 types.String                             `tfsdk:"state"`
 	HasUnpublishedChanges types.Bool                               `tfsdk:"has_unpublished_changes"`
+}
+
+type gdriveLabelLifeCycleModel struct {
+	DisabledPolicy *gdriveLabelLifeCycleDisabledPolicyModel `tfsdk:"disabled_policy"`
+	State          types.String                             `tfsdk:"state"`
 }
 
 type gdriveLabelFieldPropertieseModel struct {
@@ -102,7 +107,7 @@ type gdriveLabelFieldPropertieseModel struct {
 }
 
 type gdriveLabelDataSourceFieldsModel struct {
-	LifeCycle        *gdriveLabelLifeCycleModel        `tfsdk:"life_cycle"`
+	LifeCycle        *gdriveLabelLifeCycleDSModel      `tfsdk:"life_cycle"`
 	DateOptions      *gdriveLabelDateOptionsModel      `tfsdk:"date_options"`
 	SelectionOptions *gdriveLabelSelectionOptionsModel `tfsdk:"selection_options"`
 	IntegerOptions   *gdriveLabelIntegerOptionsModel   `tfsdk:"integer_options"`
@@ -116,15 +121,14 @@ type gdriveLabelDataSourceFieldsModel struct {
 }
 
 type gdriveLabelDataSourceModel struct {
-	LifeCycle      *gdriveLabelLifeCycleModel          `tfsdk:"life_cycle"`
+	LifeCycle      *gdriveLabelLifeCycleDSModel        `tfsdk:"life_cycle"`
 	Id             types.String                        `tfsdk:"id"`
 	LabelId        types.String                        `tfsdk:"label_id"`
 	Name           types.String                        `tfsdk:"name"`
 	LanguageCode   types.String                        `tfsdk:"language_code"`
 	Revision       types.String                        `tfsdk:"revision"`
 	LabelType      types.String                        `tfsdk:"label_type"`
-	Description    types.String                        `tfsdk:"description"`
-	Title          types.String                        `tfsdk:"title"`
+	Properties     *gdriveLabelResourcePropertiesModel `tfsdk:"properties"`
 	Fields         []*gdriveLabelDataSourceFieldsModel `tfsdk:"fields"`
 	UseAdminAccess types.Bool                          `tfsdk:"use_admin_access"`
 }
@@ -158,8 +162,7 @@ May be any of:
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
 				Description: `Set to true in order to use the user's admin credentials.
-The server verifies that the user is an admin for the label before allowing access.
-Requires setting the 'use_labels_admin_scope' property to 'true' in the provider config.`,
+The server verifies that the user is an admin for the label before allowing access.`,
 			},
 			"language_code": schema.StringAttribute{
 				Optional: true,
@@ -176,18 +179,23 @@ Reading other revisions may require addtional permissions and / or setting the '
 				Computed:    true,
 				Description: `The type of this label.`,
 			},
-			"description": schema.StringAttribute{
-				Computed:    true,
-				Description: `The description of the label.`,
-			},
-			"title": schema.StringAttribute{
-				Computed:    true,
-				Description: `Title of the label.`,
-			},
 		},
 		Blocks: map[string]schema.Block{
 			"life_cycle": lifecycleDS(),
 			"fields":     fieldsDS(),
+			"properties": schema.SingleNestedBlock{
+				MarkdownDescription: "Basic properties of the label.",
+				Attributes: map[string]schema.Attribute{
+					"title": schema.StringAttribute{
+						Computed:            true,
+						MarkdownDescription: "Title of the label.",
+					},
+					"description": schema.StringAttribute{
+						Computed:            true,
+						MarkdownDescription: "The description of the label.",
+					},
+				},
+			},
 		},
 	}
 }
@@ -232,21 +240,9 @@ func (ds *labelDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	config.LabelType = types.StringValue(l.LabelType)
 	config.Revision = types.StringValue(l.RevisionId)
 	config.Fields = fieldsToModel(l.Fields)
-	if l.Properties != nil {
-		config.Title = types.StringValue(l.Properties.Title)
-		config.Description = types.StringValue(l.Properties.Description)
-	}
-	if l.Lifecycle != nil {
-		config.LifeCycle = &gdriveLabelLifeCycleModel{
-			State:                 types.StringValue(l.Lifecycle.State),
-			HasUnpublishedChanges: types.BoolValue(l.Lifecycle.HasUnpublishedChanges),
-		}
-		if l.Lifecycle.DisabledPolicy != nil {
-			config.LifeCycle.DisabledPolicy = &gdriveLabelLifeCycleDisabledPolicyModel{
-				HideInSearch: types.BoolValue(l.Lifecycle.DisabledPolicy.HideInSearch),
-				ShowInApply:  types.BoolValue(l.Lifecycle.DisabledPolicy.ShowInApply),
-			}
-		}
-	}
+	config.LifeCycle = &gdriveLabelLifeCycleDSModel{}
+	config.LifeCycle.populate(l.Lifecycle)
+	config.Properties = &gdriveLabelResourcePropertiesModel{}
+	config.Properties.populate(l.Properties)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

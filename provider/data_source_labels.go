@@ -41,13 +41,12 @@ type labelsDataSource struct {
 }
 
 type gdriveLabelsDataSourceLabelModel struct {
-	Id          types.String                        `tfsdk:"id"`
-	LabelId     types.String                        `tfsdk:"label_id"`
-	LabelType   types.String                        `tfsdk:"label_type"`
-	Description types.String                        `tfsdk:"description"`
-	Title       types.String                        `tfsdk:"title"`
-	LifeCycle   *gdriveLabelLifeCycleModel          `tfsdk:"life_cycle"`
-	Fields      []*gdriveLabelDataSourceFieldsModel `tfsdk:"fields"`
+	Id         types.String                        `tfsdk:"id"`
+	LabelId    types.String                        `tfsdk:"label_id"`
+	LabelType  types.String                        `tfsdk:"label_type"`
+	Properties *gdriveLabelResourcePropertiesModel `tfsdk:"properties"`
+	LifeCycle  *gdriveLabelLifeCycleDSModel        `tfsdk:"life_cycle"`
+	Fields     []*gdriveLabelDataSourceFieldsModel `tfsdk:"fields"`
 }
 
 type gdriveLabelsDataSourceModel struct {
@@ -75,8 +74,7 @@ This resource requires additional setup:
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
 				Description: `Set to true in order to use the user's admin credentials.
-The server verifies that the user is an admin for the label before allowing access.
-Requires setting the 'use_labels_admin_scope' property to 'true' in the provider config.`,
+The server verifies that the user is an admin for the label before allowing access.`,
 			},
 			"published_only": schema.BoolAttribute{
 				Optional: true,
@@ -165,27 +163,15 @@ func (ds *labelsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	r, err := gsmdrivelabels.ListLabels(config.LanguageCode.ValueString(), "LABEL_VIEW_FULL", config.MinumumRole.ValueString(), "*", config.UseAdminAccess.ValueBool(), config.PublishedOnly.ValueBool(), 1)
 	for l := range r {
 		label := &gdriveLabelsDataSourceLabelModel{
-			Id:        types.StringValue(l.Id),
-			LabelId:   types.StringValue(l.Id),
-			LabelType: types.StringValue(l.LabelType),
-			Fields:    fieldsToModel(l.Fields),
+			Id:         types.StringValue(l.Id),
+			LabelId:    types.StringValue(l.Id),
+			LabelType:  types.StringValue(l.LabelType),
+			Fields:     fieldsToModel(l.Fields),
+			LifeCycle:  &gdriveLabelLifeCycleDSModel{},
+			Properties: &gdriveLabelResourcePropertiesModel{},
 		}
-		if l.Properties != nil {
-			label.Description = types.StringValue(l.Properties.Description)
-			label.Title = types.StringValue(l.Properties.Title)
-		}
-		if l.Lifecycle != nil {
-			label.LifeCycle = &gdriveLabelLifeCycleModel{
-				State:                 types.StringValue(l.Lifecycle.State),
-				HasUnpublishedChanges: types.BoolValue(l.Lifecycle.HasUnpublishedChanges),
-			}
-			if l.Lifecycle.DisabledPolicy != nil {
-				label.LifeCycle.DisabledPolicy = &gdriveLabelLifeCycleDisabledPolicyModel{
-					HideInSearch: types.BoolValue(l.Lifecycle.DisabledPolicy.HideInSearch),
-					ShowInApply:  types.BoolValue(l.Lifecycle.DisabledPolicy.ShowInApply),
-				}
-			}
-		}
+		label.LifeCycle.populate(l.Lifecycle)
+		label.Properties.populate(l.Properties)
 		config.Labels = append(config.Labels, label)
 	}
 	e := <-err
