@@ -18,11 +18,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -35,6 +40,14 @@ import (
 
 func combineId(a, b string) string {
 	return fmt.Sprintf("%s/%s", a, b)
+}
+
+func splitId(id string) (string, string, error) {
+	s := strings.Split(id, "/")
+	if len(s) != 2 {
+		return "", "", fmt.Errorf("Not a valid id: %s", id)
+	}
+	return s[0], s[1], nil
 }
 
 func (fileModel *gdriveFileResourceModel) toRequest() *drive.File {
@@ -83,4 +96,26 @@ func rsId() rsschema.StringAttribute {
 		},
 	}
 	return id
+}
+
+func importSplitId(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse, adminAttribute, idAttribute string) (diags diag.Diagnostics) {
+	idParts := strings.Split(req.ID, ",")
+	if len(idParts) < 2 {
+		diags.AddError("Unexpected Import Identifier", fmt.Sprintf("Expected import identifier with format: '%s,%s'. Got: %q", adminAttribute, idAttribute, req.ID))
+		return
+	}
+	for i := range idParts {
+		if idParts[i] == "" {
+			diags.AddError("Unexpected Import Identifier", fmt.Sprintf("Expected import identifier with format: '%s,%s'. Got: %q", adminAttribute, idAttribute, req.ID))
+			return
+		}
+	}
+	useAdminAccess, err := strconv.ParseBool(idParts[0])
+	if err != nil {
+		diags.AddError("Unexpected Import Identifier", fmt.Sprintf("Unable to parse '%s' as bool: %v", idParts[0], err))
+		return
+	}
+	diags.Append(resp.State.SetAttribute(ctx, path.Root(adminAttribute), useAdminAccess)...)
+	diags.Append(resp.State.SetAttribute(ctx, path.Root("id"), strings.Join(idParts[1:], ""))...)
+	return diags
 }
