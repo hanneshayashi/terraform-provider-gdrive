@@ -19,6 +19,7 @@ package provider
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/hanneshayashi/gsm/gsmdrivelabels"
 	"github.com/hanneshayashi/gsm/gsmhelpers"
@@ -29,47 +30,47 @@ import (
 	"google.golang.org/api/drivelabels/v2"
 )
 
+type lifeCycleInterface interface {
+	populate(*drivelabels.GoogleAppsDriveLabelsV2Lifecycle)
+}
+
 type fieldInterface interface {
 	getLanguageCode() string
-	getLabelId() string
 	getId() string
+	getLabelId() string
+	getFieldId() string
 	getUseAdminAccess() bool
 	getProperties() *gdriveLabelFieldPropertieseModel
 	setProperties(*gdriveLabelFieldPropertieseModel)
-	setLifeCycle(lifecycle *gdriveLabelLifeCycleModel)
-	setIds(string, string)
+	getLifeCycle() (lifecycle lifeCycleInterface)
+	setIds(string, string, string)
 	toField() *drivelabels.GoogleAppsDriveLabelsV2Field
 }
 
 func populateField(fieldModel fieldInterface) (field *drivelabels.GoogleAppsDriveLabelsV2Field, err error) {
-	l, err := gsmdrivelabels.GetLabel(gsmhelpers.EnsurePrefix(fieldModel.getLabelId(), "labels/"), fieldModel.getLanguageCode(), "LABEL_VIEW_FULL", "*", fieldModel.getUseAdminAccess())
+	labelId, fieldId, err := splitId(fieldModel.getId())
 	if err != nil {
 		return nil, err
 	}
-	id := fieldModel.getId()
+	l, err := gsmdrivelabels.GetLabel(gsmhelpers.EnsurePrefix(labelId, "labels/"), fieldModel.getLanguageCode(), "LABEL_VIEW_FULL", "*", fieldModel.getUseAdminAccess())
+	if err != nil {
+		return nil, err
+	}
 	f := fieldModel.toField()
 	for i := range l.Fields {
-		if l.Fields[i].Id == id && l.Fields[i].Properties != nil {
+		if l.Fields[i].Id == fieldId && l.Fields[i].Properties != nil {
 			properties := &gdriveLabelFieldPropertieseModel{
 				DisplayName: types.StringValue(l.Fields[i].Properties.DisplayName),
 				Required:    types.BoolValue(l.Fields[i].Properties.Required),
 			}
-			if i < len(l.Fields)-1 && f.Properties.InsertBeforeField != "" {
+			fieldModel.setIds(labelId, fieldId, l.Fields[i].QueryKey)
+			if i < len(l.Fields)-1 && f.Properties != nil && f.Properties.InsertBeforeField != "" {
 				properties.InsertBeforeField = types.StringValue(l.Fields[i+1].Id)
 			}
 			fieldModel.setProperties(properties)
-			if l.Fields[i].Lifecycle != nil {
-				lifeCycle := &gdriveLabelLifeCycleModel{
-					State:                 types.StringValue(l.Fields[i].Lifecycle.State),
-					HasUnpublishedChanges: types.BoolValue(l.Fields[i].Lifecycle.HasUnpublishedChanges),
-				}
-				if l.Fields[i].Lifecycle.DisabledPolicy != nil && f.Lifecycle.DisabledPolicy != nil {
-					lifeCycle.DisabledPolicy = &gdriveLabelLifeCycleDisabledPolicyModel{
-						HideInSearch: types.BoolValue(l.Fields[i].Lifecycle.DisabledPolicy.HideInSearch),
-						ShowInApply:  types.BoolValue(l.Fields[i].Lifecycle.DisabledPolicy.ShowInApply),
-					}
-				}
-				fieldModel.setLifeCycle(lifeCycle)
+			lifeCycle := fieldModel.getLifeCycle()
+			if f.Lifecycle != nil && lifeCycle != nil {
+				lifeCycle.populate(l.Fields[i].Lifecycle)
 			}
 			return l.Fields[i], nil
 		}
@@ -98,15 +99,20 @@ func getUpdateFieldLifecycleRequest(id string, lifecycle *drivelabels.GoogleApps
 
 func newUpdateFieldRequest(plan, state fieldInterface) *drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequest {
 	updateLabelRequest := newUpdateLabelRequest(plan)
-	planProperties := plan.getProperties()
-	stateProperties := state.getProperties()
-	if !planProperties.DisplayName.Equal(stateProperties.DisplayName) || !planProperties.Required.Equal(stateProperties.Required) || !planProperties.InsertBeforeField.Equal(stateProperties.InsertBeforeField) {
+	fieldId := plan.getFieldId()
+	planField := plan.toField()
+	stateField := state.toField()
+	if planField.Properties != nil && !reflect.DeepEqual(planField.Properties, stateField.Properties) {
 		updateLabelRequest.Requests = append(updateLabelRequest.Requests, &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 			UpdateField: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestUpdateFieldPropertiesRequest{
-				Id:         plan.getId(),
+				Id:         fieldId,
 				Properties: plan.toField().Properties,
 			},
 		})
+	}
+	if planField.Lifecycle != nil && !reflect.DeepEqual(planField.Lifecycle, stateField.Lifecycle) {
+		updateLifecycleRequest := getUpdateFieldLifecycleRequest(fieldId, plan.toField().Lifecycle)
+		updateLabelRequest.Requests = append(updateLabelRequest.Requests, updateLifecycleRequest)
 	}
 	return updateLabelRequest
 }
@@ -114,6 +120,7 @@ func newUpdateFieldRequest(plan, state fieldInterface) *drivelabels.GoogleAppsDr
 func createLabelField(plan fieldInterface) (diags diag.Diagnostics) {
 	updateLabelRequest := newUpdateLabelRequest(plan)
 	field := plan.toField()
+	labelId := plan.getLabelId()
 	updateLabelRequest.Requests = []*drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 		{
 			CreateField: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestCreateFieldRequest{
@@ -121,7 +128,7 @@ func createLabelField(plan fieldInterface) (diags diag.Diagnostics) {
 			},
 		},
 	}
-	updatedLabel, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.getLabelId(), "labels/"), "*", updateLabelRequest)
+	updatedLabel, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(labelId, "labels/"), "*", updateLabelRequest)
 	if err != nil {
 		diags.AddError("Client Error", fmt.Sprintf("Unable to create field, got error: %s", err))
 		return diags
@@ -137,10 +144,7 @@ func createLabelField(plan fieldInterface) (diags diag.Diagnostics) {
 			}
 		}
 	}
-	newField.Lifecycle.State = field.Lifecycle.State
-	lifecycle := toLifeCycleModel(newField.Lifecycle)
-	plan.setLifeCycle(lifecycle)
-	plan.setIds(newField.Id, newField.QueryKey)
+	plan.setIds(labelId, newField.Id, newField.QueryKey)
 	return
 }
 
@@ -149,7 +153,7 @@ func deleteLabelField(state fieldInterface) (diags diag.Diagnostics) {
 	updateLabelRequest.Requests = []*drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 		{
 			DeleteField: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestDeleteFieldRequest{
-				Id: state.getId(),
+				Id: state.getFieldId(),
 			},
 		},
 	}
