@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	rsschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -152,7 +151,6 @@ func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Cont
 		LabelModifications: []*drive.LabelModification{},
 	}
 	for i := range planLabels {
-		tflog.Debug(ctx, fmt.Sprintf("Planned Label: %s", i))
 		_, labelAlreadyExists := stateLabels[i]
 		change := false
 		labelMod := &drive.LabelModification{
@@ -163,9 +161,7 @@ func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Cont
 			planFieldMap := planLabels[i].toMap()
 			stateFieldMap := stateLabels[i].toMap()
 			for f := range planFieldMap {
-				tflog.Debug(ctx, fmt.Sprintf("Planned Label %s already exists, so checking if planned Field %s already exists and if it has changed", i, planFieldMap[f].FieldId.ValueString()))
 				_, fieldAlreadyExists := stateFieldMap[f]
-				tflog.Debug(ctx, fmt.Sprintf("Planned Label %s; Field %s exists: %v", i, planFieldMap[f].FieldId.ValueString(), fieldAlreadyExists))
 				if !fieldAlreadyExists || (fieldAlreadyExists && !stateFieldMap[f].Values.Equal(planFieldMap[f].Values)) {
 					var fieldMod *drive.LabelFieldModification
 					fieldMod, diags = planFieldMap[f].toFieldModification(ctx)
@@ -177,10 +173,8 @@ func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Cont
 				}
 			}
 			for f := range stateFieldMap {
-				tflog.Debug(ctx, fmt.Sprintf("Planned Label %s already exists, so checking if state Field %s should still exists", i, stateFieldMap[f].FieldId.ValueString()))
 				_, fieldShouldStillExist := planFieldMap[f]
 				if !fieldShouldStillExist {
-					tflog.Debug(ctx, fmt.Sprintf("State Field %s is no longer planned for Label %s", f, i))
 					labelMod.FieldModifications = append(labelMod.FieldModifications, &drive.LabelFieldModification{
 						FieldId:     f,
 						UnsetValues: true,
@@ -189,9 +183,7 @@ func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Cont
 				}
 			}
 		} else {
-			tflog.Debug(ctx, fmt.Sprintf("Planned Label %s does not exist yet", i))
 			for f := range planLabels[i].Field {
-				tflog.Debug(ctx, fmt.Sprintf("Planned Label %s does not exist yet, so adding Field %s", i, planLabels[i].Field[f].FieldId.ValueString()))
 				var fieldMod *drive.LabelFieldModification
 				fieldMod, diags = planLabels[i].Field[f].toFieldModification(ctx)
 				if diags.HasError() {
@@ -206,10 +198,8 @@ func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Cont
 		}
 	}
 	for i := range stateLabels {
-		tflog.Debug(ctx, fmt.Sprintf("State Label %s", stateLabels[i].LabelId.ValueString()))
 		_, labelStillPlanned := planLabels[i]
 		if !labelStillPlanned {
-			tflog.Debug(ctx, fmt.Sprintf("State Label %s is no longer planned, so removing", stateLabels[i].LabelId.ValueString()))
 			modLabelsReq.LabelModifications = append(modLabelsReq.LabelModifications, &drive.LabelModification{
 				LabelId:     stateLabels[i].LabelId.ValueString(),
 				RemoveLabel: true,
@@ -268,8 +258,11 @@ func driveLabelFieldToFieldModel(field drive.LabelField, ctx context.Context) (f
 }
 
 func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) populate(ctx context.Context) (diags diag.Diagnostics) {
-	fileID := labelAssignmentModel.FileId.ValueString()
-	labelID := labelAssignmentModel.LabelId.ValueString()
+	fileID, labelID, e := splitId(labelAssignmentModel.Id.ValueString())
+	if e != nil {
+		diags.AddError("Config Error", fmt.Sprintf("Unable to use ID, got error: %s", e))
+		return diags
+	}
 	labelAssignmentModel.Field = []*gdriveLabelFieldModel{}
 	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
 	for l := range currentLabels {
@@ -284,17 +277,20 @@ func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) populate(ctx con
 			}
 		}
 	}
-	e := <-err
+	e = <-err
 	if e != nil {
 		diags.AddError("Client Error", fmt.Sprintf("Unable to list labels on file, got error: %s", e))
 		return diags
 	}
+	labelAssignmentModel.FileId = types.StringValue(fileID)
+	labelAssignmentModel.LabelId = types.StringValue(labelID)
 	return diags
 }
 
 func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Context) diag.Diagnostics {
 	var diags diag.Diagnostics
 	labelPolicyModel.Label = []*gdriveLabelPolicyLabelModel{}
+	labelPolicyModel.FileId = labelPolicyModel.Id
 	fileID := labelPolicyModel.FileId.ValueString()
 	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
 	for l := range currentLabels {
