@@ -59,7 +59,7 @@ func TestAccPermissionPolicy(t *testing.T) {
 			},
 			// 6 (Drive) - Create Files and assign Permissions
 			{
-				Config: testAccPermissionPolicyResourceConfig("file", "1", "FIRST_USER", "SECOND_USER", "reader", "writer"),
+				Config: testAccPermissionPolicyResourceConfig("drive", "1", "FIRST_USER", "SECOND_USER", "reader", "writer"),
 				Check:  resource.ComposeAggregateTestCheckFunc(
 				// TODO
 				// resource.TestCheckResourceAttr("gdrive_permission_policy.policy", "role", "reader"),
@@ -75,7 +75,7 @@ func TestAccPermissionPolicy(t *testing.T) {
 			},
 			// 8 (Drive) - Change first Role
 			{
-				Config: testAccPermissionPolicyResourceConfig("file", "1", "FIRST_USER", "SECOND_USER", "writer", "writer"),
+				Config: testAccPermissionPolicyResourceConfig("drive", "1", "FIRST_USER", "SECOND_USER", "writer", "writer"),
 				Check:  resource.ComposeAggregateTestCheckFunc(
 				// TODO
 				// resource.TestCheckResourceAttr("gdrive_permission_policy.policy", "role", "reader"),
@@ -84,7 +84,7 @@ func TestAccPermissionPolicy(t *testing.T) {
 			},
 			// 9 (Drive) -Remove Second User
 			{
-				Config: testAccPermissionPolicyResourceConfig("file", "1", "FIRST_USER", "", "writer", "writer"),
+				Config: testAccPermissionPolicyResourceConfig("drive", "1", "FIRST_USER", "", "writer", "writer"),
 				Check:  resource.ComposeAggregateTestCheckFunc(
 				// TODO
 				// resource.TestCheckResourceAttr("gdrive_permission_policy.policy", "role", "reader"),
@@ -93,7 +93,7 @@ func TestAccPermissionPolicy(t *testing.T) {
 			},
 			// 10 (Drive) - Re-Add Second User with different permission
 			{
-				Config: testAccPermissionPolicyResourceConfig("file", "1", "FIRST_USER", "", "writer", "reader"),
+				Config: testAccPermissionPolicyResourceConfig("drive", "1", "FIRST_USER", "", "writer", "reader"),
 				Check:  resource.ComposeAggregateTestCheckFunc(
 				// TODO
 				// resource.TestCheckResourceAttr("gdrive_permission_policy.policy", "role", "reader"),
@@ -102,7 +102,7 @@ func TestAccPermissionPolicy(t *testing.T) {
 			},
 			// 11 - Delete File
 			{
-				Config: testAccPermissionPolicyResourceConfig("file", "0", "FIRST_USER", "FIRST_USER", "writer", "reader"),
+				Config: testAccPermissionPolicyResourceConfig("drive", "0", "FIRST_USER", "FIRST_USER", "writer", "reader"),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
