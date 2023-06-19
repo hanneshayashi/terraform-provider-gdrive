@@ -170,6 +170,7 @@ func (r *gdriveFileResource) Read(ctx context.Context, req resource.ReadRequest,
 		state.DriveId = types.StringValue(f.DriveId)
 	}
 	state.Name = types.StringValue(f.Name)
+	state.FileId = types.StringValue(f.Id)
 	state.MimeType = types.StringValue(f.MimeType)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

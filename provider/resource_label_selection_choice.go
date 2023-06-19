@@ -22,10 +22,10 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/hanneshayashi/gsm/gsmdrivelabels"
 	"github.com/hanneshayashi/gsm/gsmhelpers"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64default"
@@ -80,11 +80,13 @@ type gdriveLabelSelectionChoiceResourceModel struct {
 
 func (choiceModel *gdriveLabelSelectionChoiceResourceModel) toChoice() (choice *drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoice) {
 	choice = &drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoice{
-		Lifecycle: choiceModel.LifeCycle.toLifecycle(),
 		Properties: &drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoiceProperties{
 			DisplayName:        choiceModel.Properties.DisplayName.ValueString(),
 			InsertBeforeChoice: choiceModel.Properties.InsertBeforeChoice.ValueString(),
 		},
+	}
+	if choiceModel.LifeCycle != nil {
+		choice.Lifecycle = choiceModel.LifeCycle.toLifecycle()
 	}
 	if choiceModel.Properties.BadgeConfig != nil {
 		choice.Properties.BadgeConfig = &drivelabels.GoogleAppsDriveLabelsV2BadgeConfig{
@@ -158,8 +160,7 @@ func (r *gdriveLabelSelectionChoiceResource) Schema(ctx context.Context, req res
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
 				Description: `Set to true in order to use the user's admin credentials.
-The server verifies that the user is an admin for the label before allowing access.
-Requires setting the 'use_labels_admin_scope' property to 'true' in the provider config.`,
+The server verifies that the user is an admin for the label before allowing access.`,
 			},
 			"language_code": schema.StringAttribute{
 				MarkdownDescription: `The BCP-47 language code to use for evaluating localized field labels.
@@ -261,6 +262,8 @@ func (r *gdriveLabelSelectionChoiceResource) Create(ctx context.Context, req res
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	labelId := plan.LabelId.ValueString()
+	fieldId := plan.FieldId.ValueString()
 	updateLabelRequest := newUpdateLabelRequest(plan)
 	updateLabelRequest.Requests = []*drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 		{
@@ -270,14 +273,14 @@ func (r *gdriveLabelSelectionChoiceResource) Create(ctx context.Context, req res
 			},
 		},
 	}
-	updatedLabel, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.LabelId.ValueString(), "labels/"), "*", updateLabelRequest)
+	updatedLabel, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(labelId, "labels/"), "*", updateLabelRequest)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create selection choice, got error: %s", err))
 		return
 	}
 	var newChoice *drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoice
 	for i := range updatedLabel.UpdatedLabel.Fields {
-		if updatedLabel.UpdatedLabel.Fields[i].Id == updateLabelRequest.Requests[0].CreateSelectionChoice.FieldId {
+		if updatedLabel.UpdatedLabel.Fields[i].Id == fieldId {
 			if updateLabelRequest.Requests[0].CreateSelectionChoice.Choice.Properties.InsertBeforeChoice == "" {
 				newChoice = updatedLabel.UpdatedLabel.Fields[i].SelectionOptions.Choices[len(updatedLabel.UpdatedLabel.Fields[i].SelectionOptions.Choices)-1]
 			} else {
@@ -290,10 +293,8 @@ func (r *gdriveLabelSelectionChoiceResource) Create(ctx context.Context, req res
 			}
 		}
 	}
-	newChoice.Lifecycle.State = updateLabelRequest.Requests[0].CreateSelectionChoice.Choice.Lifecycle.State
-	plan.LifeCycle = toLifeCycleModel(newChoice.Lifecycle)
-	plan.Id = types.StringValue(newChoice.Id)
-	plan.ChoiceId = plan.Id
+	plan.Id = types.StringValue(fmt.Sprintf("%s/%s/%s", labelId, fieldId, newChoice.Id))
+	plan.ChoiceId = types.StringValue(newChoice.Id)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -303,25 +304,28 @@ func (r *gdriveLabelSelectionChoiceResource) Read(ctx context.Context, req resou
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	l, err := gsmdrivelabels.GetLabel(gsmhelpers.EnsurePrefix(state.LabelId.ValueString(), "labels/"), state.LanguageCode.ValueString(), "LABEL_VIEW_FULL", "*", state.UseAdminAccess.ValueBool())
+	idString := state.Id.ValueString()
+	ids := strings.Split(idString, "/")
+	if len(ids) != 3 {
+		resp.Diagnostics.AddError("Config Error", fmt.Sprintf("Invalid ID: %s", idString))
+		return
+	}
+	labelId := ids[0]
+	fieldId := ids[1]
+	choiceId := ids[2]
+	l, err := gsmdrivelabels.GetLabel(gsmhelpers.EnsurePrefix(labelId, "labels/"), state.LanguageCode.ValueString(), "LABEL_VIEW_FULL", "*", state.UseAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get label field, got error: %s", err))
 		return
 	}
-	fieldId := state.FieldId.ValueString()
-	choiceId := state.ChoiceId.ValueString()
+	c := state.toChoice()
 	for i := range l.Fields {
 		if l.Fields[i].Id == fieldId {
 			if l.Fields[i].SelectionOptions != nil {
 				for j := range l.Fields[i].SelectionOptions.Choices {
 					if l.Fields[i].SelectionOptions.Choices[j].Id == choiceId {
-						if l.Fields[i].SelectionOptions.Choices[j].Lifecycle != nil {
-							state.LifeCycle.State = types.StringValue(l.Fields[i].SelectionOptions.Choices[j].Lifecycle.State)
-							state.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.Fields[i].SelectionOptions.Choices[j].Lifecycle.HasUnpublishedChanges)
-							if state.LifeCycle.DisabledPolicy != nil && l.Fields[i].SelectionOptions.Choices[j].Lifecycle.DisabledPolicy != nil {
-								state.LifeCycle.DisabledPolicy.HideInSearch = types.BoolValue(l.Fields[i].SelectionOptions.Choices[j].Lifecycle.DisabledPolicy.HideInSearch)
-								state.LifeCycle.DisabledPolicy.ShowInApply = types.BoolValue(l.Fields[i].SelectionOptions.Choices[j].Lifecycle.DisabledPolicy.ShowInApply)
-							}
+						if state.LifeCycle != nil {
+							state.LifeCycle.populate(l.Fields[i].SelectionOptions.Choices[j].Lifecycle)
 						}
 						if l.Fields[i].SelectionOptions.Choices[j].Properties != nil {
 							state.Properties = &gdriveLabelChoicePropertiesRSModel{
@@ -340,7 +344,7 @@ func (r *gdriveLabelSelectionChoiceResource) Read(ctx context.Context, req resou
 									}
 								}
 							}
-							if j < len(l.Fields[i].SelectionOptions.Choices)-1 {
+							if j < len(l.Fields[i].SelectionOptions.Choices)-1 && c.Properties.InsertBeforeChoice != "" {
 								state.Properties.InsertBeforeChoice = types.StringValue(l.Fields[i].SelectionOptions.Choices[j+1].Id)
 							}
 						}
@@ -350,6 +354,9 @@ func (r *gdriveLabelSelectionChoiceResource) Read(ctx context.Context, req resou
 			break
 		}
 	}
+	state.LabelId = types.StringValue(labelId)
+	state.FieldId = types.StringValue(fieldId)
+	state.ChoiceId = types.StringValue(choiceId)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -368,7 +375,7 @@ func (r *gdriveLabelSelectionChoiceResource) Update(ctx context.Context, req res
 	planChoice := plan.toChoice()
 	stateChoice := state.toChoice()
 	fieldId := plan.FieldId.ValueString()
-	choiceId := plan.Id.ValueString()
+	choiceId := plan.ChoiceId.ValueString()
 	if !reflect.DeepEqual(planChoice.Properties, stateChoice.Properties) {
 		updateLabelRequest.Requests = append(updateLabelRequest.Requests, &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 			UpdateSelectionChoiceProperties: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestUpdateSelectionChoicePropertiesRequest{
@@ -397,12 +404,11 @@ func (r *gdriveLabelSelectionChoiceResource) Update(ctx context.Context, req res
 			})
 		}
 	}
-	l, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.LabelId.ValueString(), "labels/"), "*", updateLabelRequest)
+	_, err := gsmdrivelabels.Delta(gsmhelpers.EnsurePrefix(plan.LabelId.ValueString(), "labels/"), "*", updateLabelRequest)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update selection choice, got error: %s", err))
 		return
 	}
-	plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.UpdatedLabel.Lifecycle.HasUnpublishedChanges)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -416,7 +422,7 @@ func (r *gdriveLabelSelectionChoiceResource) Delete(ctx context.Context, req res
 	updateLabelRequest.Requests = []*drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 		{
 			DeleteSelectionChoice: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestDeleteSelectionChoiceRequest{
-				Id:      state.Id.ValueString(),
+				Id:      state.ChoiceId.ValueString(),
 				FieldId: state.FieldId.ValueString(),
 			},
 		},
@@ -429,5 +435,5 @@ func (r *gdriveLabelSelectionChoiceResource) Delete(ctx context.Context, req res
 }
 
 func (r *gdriveLabelSelectionChoiceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(importSplitId(ctx, req, resp, adminAttributeLabels, "label_id/field_id/choice_id")...)
 }

@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -121,6 +120,7 @@ func (r *gdriveLabelPolicyResource) Create(ctx context.Context, req resource.Cre
 	}
 	mockState := &gdriveLabelPolicyResourceModel{
 		FileId: plan.FileId,
+		Id:     plan.FileId,
 	}
 	resp.Diagnostics.Append(mockState.populate(ctx)...)
 	if resp.Diagnostics.HasError() {
@@ -180,8 +180,7 @@ func (r *gdriveLabelPolicyResource) Delete(ctx context.Context, req resource.Del
 			RemoveLabel: true,
 		})
 	}
-	tflog.Debug(ctx, fmt.Sprintf("Removing all Labels from %s", state.FileId.ValueString()))
-	_, err := gsmdrive.ModifyLabels(state.FileId.ValueString(), "", modLabelsReq)
+	_, err := gsmdrive.ModifyLabels(state.Id.ValueString(), "", modLabelsReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to remove label assignment(s), got error: %s", err))
 		return

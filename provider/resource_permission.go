@@ -23,7 +23,6 @@ import (
 	"net/http"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -200,7 +199,12 @@ func (r *gdrivePermissionResource) Read(ctx context.Context, req resource.ReadRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	p, err := gsmdrive.GetPermission(state.FileId.ValueString(), state.PermissionId.ValueString(), fieldsPermission, state.UseDomainAdminAccess.ValueBool())
+	fileId, permissionId, err := splitId(state.Id.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Config Error", fmt.Sprintf("Unable to use ID, got error: %s", err))
+		return
+	}
+	p, err := gsmdrive.GetPermission(fileId, permissionId, fieldsPermission, state.UseDomainAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read permission on file, got error: %s", err))
 		return
@@ -213,6 +217,8 @@ func (r *gdrivePermissionResource) Read(ctx context.Context, req resource.ReadRe
 	}
 	state.Role = types.StringValue(p.Role)
 	state.Type = types.StringValue(p.Type)
+	state.FileId = types.StringValue(fileId)
+	state.PermissionId = types.StringValue(permissionId)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -252,7 +258,7 @@ func (r *gdrivePermissionResource) Delete(ctx context.Context, req resource.Dele
 }
 
 func (r *gdrivePermissionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(importSplitId(ctx, req, resp, adminAttributeLabels, "file_id/permission_id")...)
 }
 
 // var validPermissionTypes = []string{

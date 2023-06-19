@@ -118,6 +118,7 @@ func (r *gdriveLabelAssignmentResource) Create(ctx context.Context, req resource
 	mockState := &gdriveLabelAssignmentResourceModel{
 		FileId:  plan.FileId,
 		LabelId: plan.LabelId,
+		Id:      types.StringValue(combineId(plan.FileId.ValueString(), plan.LabelId.ValueString())),
 	}
 	resp.Diagnostics.Append(mockState.populate(ctx)...)
 	if resp.Diagnostics.HasError() {

@@ -23,7 +23,6 @@ import (
 	"net/http"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -38,7 +37,10 @@ import (
 var _ resource.Resource = &gdriveDriveResource{}
 var _ resource.ResourceWithImportState = &gdriveDriveResource{}
 
-const fieldsDrive = "id,name,restrictions"
+const (
+	fieldsDrive         = "id,name,restrictions"
+	adminAttributeDrive = "use_domain_admin_access"
+)
 
 func newDrive() resource.Resource {
 	return &gdriveDriveResource{}
@@ -310,5 +312,5 @@ func (r *gdriveDriveResource) Delete(ctx context.Context, req resource.DeleteReq
 }
 
 func (r *gdriveDriveResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(importSplitId(ctx, req, resp, adminAttributeDrive, "drive_id")...)
 }

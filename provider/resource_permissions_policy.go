@@ -23,7 +23,6 @@ import (
 	"net/http"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -189,12 +188,13 @@ func (r *gdrivePermissionPolicyResource) Create(ctx context.Context, req resourc
 	}
 	mockState := &gdrivePermissionPolicyResourceModel{
 		FileId: plan.FileId,
+		Id:     plan.FileId,
 	}
 	resp.Diagnostics.Append(mockState.populate(ctx)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(setPermissionDiffs(plan, mockState, ctx)...)
+	resp.Diagnostics.Append(setPermissionDiffs(plan, mockState)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -236,7 +236,7 @@ func (r *gdrivePermissionPolicyResource) Update(ctx context.Context, req resourc
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(setPermissionDiffs(plan, state, ctx)...)
+	resp.Diagnostics.Append(setPermissionDiffs(plan, state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -262,5 +262,5 @@ func (r *gdrivePermissionPolicyResource) Delete(ctx context.Context, req resourc
 }
 
 func (r *gdrivePermissionPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(importSplitId(ctx, req, resp, adminAttributeDrive, "file_id")...)
 }

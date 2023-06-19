@@ -21,10 +21,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/hanneshayashi/gsm/gsmdrivelabels"
 	"github.com/hanneshayashi/gsm/gsmhelpers"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -32,6 +32,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"google.golang.org/api/drivelabels/v2"
 )
+
+const adminAttributeLabels = "use_admin_access"
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &gdriveLabelResource{}
@@ -46,21 +48,32 @@ type gdriveLabelResource struct {
 	client *http.Client
 }
 
-type gdriveLabelResourcePropertiesRSModel struct {
+func (propertiesModel *gdriveLabelResourcePropertiesModel) populate(properties *drivelabels.GoogleAppsDriveLabelsV2LabelProperties) {
+	if properties != nil {
+		if !(propertiesModel.Title.IsNull() && properties.Title == "") {
+			propertiesModel.Title = types.StringValue(properties.Title)
+		}
+		if !(propertiesModel.Description.IsNull() && properties.Description == "") {
+			propertiesModel.Description = types.StringValue(properties.Description)
+		}
+	}
+}
+
+type gdriveLabelResourcePropertiesModel struct {
 	Title       types.String `tfsdk:"title"`
 	Description types.String `tfsdk:"description"`
 }
 
 // gdriveLabelResourceModel describes the resource data model.
 type gdriveLabelResourceModel struct {
-	Properties     *gdriveLabelResourcePropertiesRSModel `tfsdk:"properties"`
-	LifeCycle      *gdriveLabelLifeCycleModel            `tfsdk:"life_cycle"`
-	Id             types.String                          `tfsdk:"id"`
-	LabelId        types.String                          `tfsdk:"label_id"`
-	Name           types.String                          `tfsdk:"name"`
-	LanguageCode   types.String                          `tfsdk:"language_code"`
-	LabelType      types.String                          `tfsdk:"label_type"`
-	UseAdminAccess types.Bool                            `tfsdk:"use_admin_access"`
+	Properties     *gdriveLabelResourcePropertiesModel `tfsdk:"properties"`
+	LifeCycle      *gdriveLabelLifeCycleModel          `tfsdk:"life_cycle"`
+	Id             types.String                        `tfsdk:"id"`
+	LabelId        types.String                        `tfsdk:"label_id"`
+	Name           types.String                        `tfsdk:"name"`
+	LanguageCode   types.String                        `tfsdk:"language_code"`
+	LabelType      types.String                        `tfsdk:"label_type"`
+	UseAdminAccess types.Bool                          `tfsdk:"use_admin_access"`
 }
 
 func (r *gdriveLabelResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -89,8 +102,7 @@ func (r *gdriveLabelResource) Schema(ctx context.Context, req resource.SchemaReq
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
 				Description: `Set to true in order to use the user's admin credentials.
-The server verifies that the user is an admin for the label before allowing access.
-Requires setting the 'use_labels_admin_scope' property to 'true' in the provider config.`,
+The server verifies that the user is an admin for the label before allowing access.`,
 			},
 			"language_code": schema.StringAttribute{
 				MarkdownDescription: `The BCP-47 language code to use for evaluating localized field labels.
@@ -160,12 +172,7 @@ func (r *gdriveLabelResource) Create(ctx context.Context, req resource.CreateReq
 			Description: plan.Properties.Description.ValueString(),
 		},
 	}
-	lifecycle := plan.LifeCycle.toLifecycle()
-	if plan.LifeCycle.DisabledPolicy != nil {
-		labelReq.Lifecycle = &drivelabels.GoogleAppsDriveLabelsV2Lifecycle{
-			DisabledPolicy: lifecycle.DisabledPolicy,
-		}
-	}
+
 	languageCode := plan.LanguageCode.ValueString()
 	useAdminAccess := plan.UseAdminAccess.ValueBool()
 	l, err := gsmdrivelabels.CreateLabel(labelReq, languageCode, "*", useAdminAccess)
@@ -176,33 +183,39 @@ func (r *gdriveLabelResource) Create(ctx context.Context, req resource.CreateReq
 	plan.Name = types.StringValue(l.Name)
 	plan.LabelId = types.StringValue(l.Id)
 	plan.Id = plan.LabelId
-	if lifecycle.State == "PUBLISHED" || lifecycle.State == "DISABLED" {
-		publishReq := &drivelabels.GoogleAppsDriveLabelsV2PublishLabelRequest{
-			LanguageCode:   languageCode,
-			UseAdminAccess: useAdminAccess,
-		}
-		l, err = gsmdrivelabels.Publish(l.Name, "*", publishReq)
-		if err != nil {
-			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to publish label, got error: %s", err))
-			return
+	var lifecycle *drivelabels.GoogleAppsDriveLabelsV2Lifecycle
+	if plan.LifeCycle != nil {
+		lifecycle = plan.LifeCycle.toLifecycle()
+		if plan.LifeCycle.DisabledPolicy != nil {
+			labelReq.Lifecycle = &drivelabels.GoogleAppsDriveLabelsV2Lifecycle{
+				DisabledPolicy: lifecycle.DisabledPolicy,
+			}
 		}
 	}
-	if lifecycle.State == "DISABLED" {
-		disableReq := &drivelabels.GoogleAppsDriveLabelsV2DisableLabelRequest{
-			LanguageCode:   languageCode,
-			UseAdminAccess: useAdminAccess,
-			DisabledPolicy: lifecycle.DisabledPolicy,
+	if plan.LifeCycle != nil {
+		if lifecycle.State == "PUBLISHED" || lifecycle.State == "DISABLED" {
+			publishReq := &drivelabels.GoogleAppsDriveLabelsV2PublishLabelRequest{
+				LanguageCode:   languageCode,
+				UseAdminAccess: useAdminAccess,
+			}
+			l, err = gsmdrivelabels.Publish(l.Name, "*", publishReq)
+			if err != nil {
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to publish label, got error: %s", err))
+				return
+			}
 		}
-		l, err = gsmdrivelabels.Disable(l.Name, "*", disableReq)
-		if err != nil {
-			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to disable label, got error: %s", err))
-			return
+		if lifecycle.State == "DISABLED" {
+			disableReq := &drivelabels.GoogleAppsDriveLabelsV2DisableLabelRequest{
+				LanguageCode:   languageCode,
+				UseAdminAccess: useAdminAccess,
+				DisabledPolicy: lifecycle.DisabledPolicy,
+			}
+			l, err = gsmdrivelabels.Disable(l.Name, "*", disableReq)
+			if err != nil {
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to disable label, got error: %s", err))
+				return
+			}
 		}
-	}
-	if l.Lifecycle != nil {
-		plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(l.Lifecycle.HasUnpublishedChanges)
-	} else {
-		plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -231,9 +244,9 @@ func (r *gdriveLabelResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	plan.LifeCycle.HasUnpublishedChanges = state.LifeCycle.HasUnpublishedChanges
-	name := gsmhelpers.EnsurePrefix(plan.Id.ValueString(), "labels/")
+	labelId := gsmhelpers.EnsurePrefix(plan.LabelId.ValueString(), "labels/")
 	updateLabelRequest := newUpdateLabelRequest(plan)
+	propertiesChanged := false
 	if !plan.Properties.Description.Equal(state.Properties.Description) || !plan.Properties.Title.Equal(state.Properties.Title) {
 		req := &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestRequest{
 			UpdateLabel: &drivelabels.GoogleAppsDriveLabelsV2DeltaUpdateLabelRequestUpdateLabelPropertiesRequest{
@@ -250,68 +263,54 @@ func (r *gdriveLabelResource) Update(ctx context.Context, req resource.UpdateReq
 			req.UpdateLabel.Properties.ForceSendFields = append(req.UpdateLabel.Properties.ForceSendFields, "Title")
 		}
 		updateLabelRequest.Requests = append(updateLabelRequest.Requests, req)
-		updatedLabel, err := gsmdrivelabels.Delta(name, "*", updateLabelRequest)
+		_, err := gsmdrivelabels.Delta(labelId, "*", updateLabelRequest)
 		if err != nil {
 			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update label, got error: %s", err))
 			return
 		}
-		if updatedLabel.UpdatedLabel.Lifecycle != nil {
-			plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(updatedLabel.UpdatedLabel.Lifecycle.HasUnpublishedChanges)
-		} else {
-			plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
+		propertiesChanged = true
+	}
+	var lifecyclePlan *drivelabels.GoogleAppsDriveLabelsV2Lifecycle
+	var lifecycleState *drivelabels.GoogleAppsDriveLabelsV2Lifecycle
+	if plan.LifeCycle != nil {
+		lifecyclePlan = plan.LifeCycle.toLifecycle()
+	}
+	if state.LifeCycle != nil {
+		lifecycleState = state.LifeCycle.toLifecycle()
+	}
+	lifeCycleChanged := lifecyclePlan != nil && !reflect.DeepEqual(lifecyclePlan, lifecycleState)
+	if lifeCycleChanged && lifecycleState != nil && lifecyclePlan.State == "PUBLISHED" && lifecycleState.State == "DISABLED" {
+		enableReq := &drivelabels.GoogleAppsDriveLabelsV2EnableLabelRequest{
+			LanguageCode:   plan.getLanguageCode(),
+			UseAdminAccess: plan.getUseAdminAccess(),
+		}
+		_, err := gsmdrivelabels.Enable(labelId, "*", enableReq)
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to enable label, got error: %s", err))
+			return
 		}
 	}
-	lifecyclePlan := plan.LifeCycle.toLifecycle()
-	lifecycleState := state.LifeCycle.toLifecycle()
-	if !plan.LifeCycle.State.Equal(state.LifeCycle.State) {
-		if lifecyclePlan.State == "PUBLISHED" && lifecycleState.State == "DISABLED" {
-			enableReq := &drivelabels.GoogleAppsDriveLabelsV2EnableLabelRequest{
-				LanguageCode:   plan.getLanguageCode(),
-				UseAdminAccess: plan.getUseAdminAccess(),
-			}
-			updatedLabel, err := gsmdrivelabels.Enable(name, "*", enableReq)
-			if err != nil {
-				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to enable label, got error: %s", err))
-				return
-			}
-			if updatedLabel.Lifecycle != nil {
-				plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(updatedLabel.Lifecycle.HasUnpublishedChanges)
-			} else {
-				plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
-			}
+	if (lifeCycleChanged || propertiesChanged) && lifecyclePlan != nil && lifecyclePlan.State == "PUBLISHED" {
+		publishReq := &drivelabels.GoogleAppsDriveLabelsV2PublishLabelRequest{
+			LanguageCode:   plan.getLanguageCode(),
+			UseAdminAccess: plan.getUseAdminAccess(),
 		}
-		if lifecyclePlan.State == "PUBLISHED" {
-			publishReq := &drivelabels.GoogleAppsDriveLabelsV2PublishLabelRequest{
-				LanguageCode:   plan.getLanguageCode(),
-				UseAdminAccess: plan.getUseAdminAccess(),
-			}
-			updatedLabel, err := gsmdrivelabels.Publish(name, "*", publishReq)
-			if err != nil {
-				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to publish label, got error: %s", err))
-				return
-			}
-			if updatedLabel.Lifecycle != nil {
-				plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(updatedLabel.Lifecycle.HasUnpublishedChanges)
-			} else {
-				plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
-			}
+		_, err := gsmdrivelabels.Publish(labelId, "*", publishReq)
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to publish label, got error: %s", err))
+			return
 		}
 	}
-	if lifecyclePlan.State == "DISABLED" {
+	if lifeCycleChanged && lifecyclePlan.State == "DISABLED" {
 		disable := &drivelabels.GoogleAppsDriveLabelsV2DisableLabelRequest{
 			LanguageCode:   plan.getLanguageCode(),
 			UseAdminAccess: plan.getUseAdminAccess(),
 			DisabledPolicy: lifecyclePlan.DisabledPolicy,
 		}
-		updatedLabel, err := gsmdrivelabels.Disable(name, "*", disable)
+		_, err := gsmdrivelabels.Disable(labelId, "*", disable)
 		if err != nil {
 			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to disable label, got error: %s", err))
 			return
-		}
-		if updatedLabel.Lifecycle != nil {
-			plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(updatedLabel.Lifecycle.HasUnpublishedChanges)
-		} else {
-			plan.LifeCycle.HasUnpublishedChanges = types.BoolValue(false)
 		}
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -323,7 +322,7 @@ func (r *gdriveLabelResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	_, err := gsmdrivelabels.DeleteLabel(gsmhelpers.EnsurePrefix(state.Id.ValueString(), "labels/"), "", state.UseAdminAccess.ValueBool())
+	_, err := gsmdrivelabels.DeleteLabel(gsmhelpers.EnsurePrefix(state.LabelId.ValueString(), "labels/"), "", state.UseAdminAccess.ValueBool())
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete label, got error: %s", err))
 		return
@@ -331,5 +330,5 @@ func (r *gdriveLabelResource) Delete(ctx context.Context, req resource.DeleteReq
 }
 
 func (r *gdriveLabelResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resp.Diagnostics.Append(importSplitId(ctx, req, resp, adminAttributeLabels, "label_id")...)
 }
