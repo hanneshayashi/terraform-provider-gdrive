@@ -176,7 +176,7 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	gsmdrivelabels.SetClient(client)
 	var retryOn []int
 	if data.RetryOn.IsNull() {
-		retryOn = []int{502}
+		retryOn = []int{404, 502}
 	} else {
 		resp.Diagnostics.Append(data.RetryOn.ElementsAs(ctx, &retryOn, false)...)
 		if resp.Diagnostics.HasError() {
@@ -205,6 +205,7 @@ func (p *gdriveProvider) Resources(ctx context.Context) []func() resource.Resour
 		newLabelUserField,
 		newLabelSelectionField,
 		newLabelSelectionChoice,
+		newLabelPermission,
 	}
 }
 
