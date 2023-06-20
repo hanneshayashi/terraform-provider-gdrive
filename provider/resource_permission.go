@@ -23,10 +23,13 @@ import (
 	"net/http"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"google.golang.org/api/drive/v3"
 )
@@ -110,10 +113,11 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
-				// Validators: []validator.String{
-				// TODO
-				// 				ConflictsWith: []string{"email_address"},
-				// },
+				Validators: []validator.String{
+					stringvalidator.ConflictsWith(path.Expressions{
+						path.MatchRoot("email_address"),
+					}...),
+				},
 			},
 			"email_address": schema.StringAttribute{
 				MarkdownDescription: "The email address of the trustee",
@@ -121,18 +125,15 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
-				// Validators: []validator.String{
-				// TODO
-				// 				ConflictsWith: []string{"domain"},
-				// },
+				Validators: []validator.String{
+					stringvalidator.ConflictsWith(path.Expressions{
+						path.MatchRoot("domain"),
+					}...),
+				},
 			},
 			"role": schema.StringAttribute{
 				MarkdownDescription: "The role",
 				Required:            true,
-				// Validators: []validator.String{
-				// TODO
-				// 				ConflictsWith: []string{"email_address"},
-				// },
 			},
 			"use_domain_admin_access": schema.BoolAttribute{
 				MarkdownDescription: "Use domain admin access",
@@ -258,12 +259,5 @@ func (r *gdrivePermissionResource) Delete(ctx context.Context, req resource.Dele
 }
 
 func (r *gdrivePermissionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resp.Diagnostics.Append(importSplitId(ctx, req, resp, adminAttributeLabels, "file_id/permission_id")...)
+	resp.Diagnostics.Append(importSplitId(ctx, req, resp, adminAttributeDrive, "file_id/permission_id")...)
 }
-
-// var validPermissionTypes = []string{
-// 	"user",
-// 	"group",
-// 	"domain",
-// 	"anyone",
-// }
