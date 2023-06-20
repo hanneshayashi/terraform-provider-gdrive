@@ -80,41 +80,44 @@ type gdriveLabelSelectionChoiceResourceModel struct {
 
 func (choiceModel *gdriveLabelSelectionChoiceResourceModel) toChoice() (choice *drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoice) {
 	choice = &drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoice{
-		Properties: &drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoiceProperties{
-			DisplayName:        choiceModel.Properties.DisplayName.ValueString(),
-			InsertBeforeChoice: choiceModel.Properties.InsertBeforeChoice.ValueString(),
-		},
+		Properties: &drivelabels.GoogleAppsDriveLabelsV2FieldSelectionOptionsChoiceProperties{},
+	}
+	if choiceModel.Properties != nil {
+		choice.Properties.DisplayName = choiceModel.Properties.DisplayName.ValueString()
+		if !choiceModel.Properties.InsertBeforeChoice.IsNull() {
+			choice.Properties.InsertBeforeChoice = choiceModel.Properties.InsertBeforeChoice.ValueString()
+		}
+		if choiceModel.Properties.BadgeConfig != nil {
+			choice.Properties.BadgeConfig = &drivelabels.GoogleAppsDriveLabelsV2BadgeConfig{
+				PriorityOverride: choiceModel.Properties.BadgeConfig.PriorityOverride.ValueInt64(),
+			}
+			if choice.Properties.BadgeConfig.PriorityOverride == 0 {
+				choice.Properties.BadgeConfig.ForceSendFields = append(choice.Properties.BadgeConfig.ForceSendFields, "PriorityOverride")
+			}
+			if choiceModel.Properties.BadgeConfig.Color != nil {
+				choice.Properties.BadgeConfig.Color = &drivelabels.GoogleTypeColor{
+					Red:   choiceModel.Properties.BadgeConfig.Color.Red.ValueFloat64(),
+					Green: choiceModel.Properties.BadgeConfig.Color.Green.ValueFloat64(),
+					Blue:  choiceModel.Properties.BadgeConfig.Color.Blue.ValueFloat64(),
+					Alpha: choiceModel.Properties.BadgeConfig.Color.Alpha.ValueFloat64(),
+				}
+				if choice.Properties.BadgeConfig.Color.Red == 0 {
+					choice.Properties.BadgeConfig.Color.ForceSendFields = append(choice.Properties.BadgeConfig.Color.ForceSendFields, "Red")
+				}
+				if choice.Properties.BadgeConfig.Color.Green == 0 {
+					choice.Properties.BadgeConfig.Color.ForceSendFields = append(choice.Properties.BadgeConfig.Color.ForceSendFields, "Green")
+				}
+				if choice.Properties.BadgeConfig.Color.Blue == 0 {
+					choice.Properties.BadgeConfig.Color.ForceSendFields = append(choice.Properties.BadgeConfig.Color.ForceSendFields, "Blue")
+				}
+				if choice.Properties.BadgeConfig.Color.Alpha == 0 {
+					choice.Properties.BadgeConfig.Color.ForceSendFields = append(choice.Properties.BadgeConfig.Color.ForceSendFields, "Alpha")
+				}
+			}
+		}
 	}
 	if choiceModel.LifeCycle != nil {
 		choice.Lifecycle = choiceModel.LifeCycle.toLifecycle()
-	}
-	if choiceModel.Properties.BadgeConfig != nil {
-		choice.Properties.BadgeConfig = &drivelabels.GoogleAppsDriveLabelsV2BadgeConfig{
-			PriorityOverride: choiceModel.Properties.BadgeConfig.PriorityOverride.ValueInt64(),
-		}
-		if choice.Properties.BadgeConfig.PriorityOverride == 0 {
-			choice.Properties.BadgeConfig.ForceSendFields = append(choice.Properties.BadgeConfig.ForceSendFields, "PriorityOverride")
-		}
-		if choiceModel.Properties.BadgeConfig.Color != nil {
-			choice.Properties.BadgeConfig.Color = &drivelabels.GoogleTypeColor{
-				Red:   choiceModel.Properties.BadgeConfig.Color.Red.ValueFloat64(),
-				Green: choiceModel.Properties.BadgeConfig.Color.Green.ValueFloat64(),
-				Blue:  choiceModel.Properties.BadgeConfig.Color.Blue.ValueFloat64(),
-				Alpha: choiceModel.Properties.BadgeConfig.Color.Alpha.ValueFloat64(),
-			}
-			if choice.Properties.BadgeConfig.Color.Red == 0 {
-				choice.Properties.BadgeConfig.Color.ForceSendFields = append(choice.Properties.BadgeConfig.Color.ForceSendFields, "Red")
-			}
-			if choice.Properties.BadgeConfig.Color.Green == 0 {
-				choice.Properties.BadgeConfig.Color.ForceSendFields = append(choice.Properties.BadgeConfig.Color.ForceSendFields, "Green")
-			}
-			if choice.Properties.BadgeConfig.Color.Blue == 0 {
-				choice.Properties.BadgeConfig.Color.ForceSendFields = append(choice.Properties.BadgeConfig.Color.ForceSendFields, "Blue")
-			}
-			if choice.Properties.BadgeConfig.Color.Alpha == 0 {
-				choice.Properties.BadgeConfig.Color.ForceSendFields = append(choice.Properties.BadgeConfig.Color.ForceSendFields, "Alpha")
-			}
-		}
 	}
 	return
 }
