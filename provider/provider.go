@@ -85,14 +85,14 @@ You can also use the "SUBJECT" environment variable.`,
 			"retry_on": schema.ListAttribute{
 				Optional: true,
 				MarkdownDescription: `A list of HTTP error codes you want the provider to retry on.
-If this is unset, the provider will retry on 404 using an exponential backoff strategy. If you DON'T want the provider to retry on 404, set this to an empty list.
-The provider will always retry on rate limiting errors.`,
+If this is unset, the provider will retry on 404 and 502 using an exponential backoff strategy. If you DON'T want the provider to retry on any error, set this to an empty list.
+The provider will ALWAYS retry on 403 errors that indicate a rate limiting / quota issue.`,
 				ElementType: types.Int64Type,
 			},
 			"scopes": schema.ListAttribute{
 				Optional: true,
 				MarkdownDescription: `List of scopes that the provider will add to the API client.
-If this is unset, the provider will use the following scopes that you must add to the Domain-Wide Delegation configuration in your Admin Console:
+If this is unset, the provider will use the following scopes that must be added to the Domain-Wide Delegation configuration in the Google Workspace Admin Console:
 * https://www.googleapis.com/auth/cloud-identity.orgunits
 * https://www.googleapis.com/auth/drive
 * https://www.googleapis.com/auth/drive.labels
@@ -186,7 +186,7 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	for i := range retryOn {
 		gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i])
 	}
-	gsmhelpers.SetStandardRetrier(time.Duration(500*time.Millisecond), time.Duration(60*time.Second))
+	gsmhelpers.SetStandardRetrier(time.Duration(500*time.Millisecond), time.Duration(60*time.Second), time.Duration(3*time.Minute))
 }
 
 func (p *gdriveProvider) Resources(ctx context.Context) []func() resource.Resource {

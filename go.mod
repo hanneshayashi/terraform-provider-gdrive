@@ -3,8 +3,9 @@ module github.com/hanneshayashi/terraform-provider-gdrive
 go 1.20
 
 require (
-	github.com/hanneshayashi/gsm v0.9.1-0.20230616064906-4a3b1cede254
+	github.com/hanneshayashi/gsm v0.9.1-0.20230620060438-9ba964918b15
 	github.com/hashicorp/terraform-plugin-framework v1.3.1
+	github.com/hashicorp/terraform-plugin-framework-validators v0.10.0
 	github.com/hashicorp/terraform-plugin-go v0.15.0
 	github.com/hashicorp/terraform-plugin-testing v1.2.0
 	google.golang.org/api v0.128.0
