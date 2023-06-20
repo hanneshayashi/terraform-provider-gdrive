@@ -66,10 +66,11 @@ resource "gdrive_file" "folder" {
 }
 
 resource "gdrive_permission" "permission" {
-  file_id       = gdrive_file.folder.file_id
-  email_address = "%s"
-  role          = "%s"
-  type          = "user"
+  use_domain_admin_access = false
+  file_id                 = gdrive_file.folder.file_id
+  email_address           = "%s"
+  role                    = "%s"
+  type                    = "user"
 }
 `, os.Getenv(user), role)
 	}
