@@ -47,6 +47,20 @@ type fieldInterface interface {
 	toField() *drivelabels.GoogleAppsDriveLabelsV2Field
 }
 
+func (badgeConfigModel *gdriveLabelChoiceBadgeConfigModel) populate(badgeConfig *drivelabels.GoogleAppsDriveLabelsV2BadgeConfig) {
+	if badgeConfig != nil {
+		badgeConfigModel.PriorityOverride = types.Int64Value(badgeConfig.PriorityOverride)
+		if badgeConfig.Color != nil {
+			badgeConfigModel.Color = &gdriveLabelChoiceBadgeColorConfigModel{
+				Red:   types.Float64Value(badgeConfig.Color.Red),
+				Green: types.Float64Value(badgeConfig.Color.Green),
+				Blue:  types.Float64Value(badgeConfig.Color.Blue),
+				Alpha: types.Float64Value(badgeConfig.Color.Alpha),
+			}
+		}
+	}
+}
+
 func populateField(fieldModel fieldInterface) (field *drivelabels.GoogleAppsDriveLabelsV2Field, err error) {
 	labelId, fieldId, err := splitId(fieldModel.getId())
 	if err != nil {

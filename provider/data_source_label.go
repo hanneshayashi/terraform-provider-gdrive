@@ -45,11 +45,16 @@ type gdriveLabelListOptionsModel struct {
 	MaxEntries types.Int64 `tfsdk:"max_entries"`
 }
 
-type gdriveLabelChoicedModel struct {
-	LifeCycle   *gdriveLabelLifeCycleModel `tfsdk:"life_cycle"`
-	Id          types.String               `tfsdk:"id"`
-	ChoiceId    types.String               `tfsdk:"choice_id"`
-	DisplayName types.String               `tfsdk:"display_name"`
+type gdriveLabelChoicePropertiesModel struct {
+	BadgeConfig *gdriveLabelChoiceBadgeConfigModel `tfsdk:"badge_config"`
+	DisplayName types.String                       `tfsdk:"display_name"`
+}
+
+type gdriveLabelChoiceModel struct {
+	LifeCycle  *gdriveLabelLifeCycleDSModel      `tfsdk:"life_cycle"`
+	Properties *gdriveLabelChoicePropertiesModel `tfsdk:"properties"`
+	Id         types.String                      `tfsdk:"id"`
+	ChoiceId   types.String                      `tfsdk:"choice_id"`
 }
 
 type gdriveLabelDateFieldModel struct {
@@ -81,7 +86,7 @@ type gdriveLabelUserOptionseModel struct {
 
 type gdriveLabelSelectionOptionsModel struct {
 	ListOptions *gdriveLabelListOptionsModel `tfsdk:"list_options"`
-	Choices     []*gdriveLabelChoicedModel   `tfsdk:"choices"`
+	Choices     []*gdriveLabelChoiceModel    `tfsdk:"choices"`
 }
 
 type gdriveLabelLifeCycleDisabledPolicyModel struct {
@@ -100,24 +105,23 @@ type gdriveLabelLifeCycleModel struct {
 	State          types.String                             `tfsdk:"state"`
 }
 
-type gdriveLabelFieldPropertieseModel struct {
-	DisplayName       types.String `tfsdk:"display_name"`
-	InsertBeforeField types.String `tfsdk:"insert_before_field"`
-	Required          types.Bool   `tfsdk:"required"`
+type gdriveLabelDataSourceFieldPropertieseModel struct {
+	DisplayName types.String `tfsdk:"display_name"`
+	Required    types.Bool   `tfsdk:"required"`
 }
 
 type gdriveLabelDataSourceFieldsModel struct {
-	LifeCycle        *gdriveLabelLifeCycleDSModel      `tfsdk:"life_cycle"`
-	DateOptions      *gdriveLabelDateOptionsModel      `tfsdk:"date_options"`
-	SelectionOptions *gdriveLabelSelectionOptionsModel `tfsdk:"selection_options"`
-	IntegerOptions   *gdriveLabelIntegerOptionsModel   `tfsdk:"integer_options"`
-	TextOptions      *gdriveLabelTextOptionsModel      `tfsdk:"text_options"`
-	UserOptions      *gdriveLabelUserOptionseModel     `tfsdk:"user_options"`
-	Properties       *gdriveLabelFieldPropertieseModel `tfsdk:"properties"`
-	Id               types.String                      `tfsdk:"id"`
-	FieldId          types.String                      `tfsdk:"field_id"`
-	QueryKey         types.String                      `tfsdk:"query_key"`
-	ValueType        types.String                      `tfsdk:"value_type"`
+	LifeCycle        *gdriveLabelLifeCycleDSModel                `tfsdk:"life_cycle"`
+	DateOptions      *gdriveLabelDateOptionsModel                `tfsdk:"date_options"`
+	SelectionOptions *gdriveLabelSelectionOptionsModel           `tfsdk:"selection_options"`
+	IntegerOptions   *gdriveLabelIntegerOptionsModel             `tfsdk:"integer_options"`
+	TextOptions      *gdriveLabelTextOptionsModel                `tfsdk:"text_options"`
+	UserOptions      *gdriveLabelUserOptionseModel               `tfsdk:"user_options"`
+	Properties       *gdriveLabelDataSourceFieldPropertieseModel `tfsdk:"properties"`
+	Id               types.String                                `tfsdk:"id"`
+	FieldId          types.String                                `tfsdk:"field_id"`
+	QueryKey         types.String                                `tfsdk:"query_key"`
+	ValueType        types.String                                `tfsdk:"value_type"`
 }
 
 type gdriveLabelDataSourceModel struct {
@@ -242,7 +246,11 @@ func (ds *labelDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	config.Fields = fieldsToModel(l.Fields)
 	config.LifeCycle = &gdriveLabelLifeCycleDSModel{}
 	config.LifeCycle.populate(l.Lifecycle)
-	config.Properties = &gdriveLabelResourcePropertiesModel{}
-	config.Properties.populate(l.Properties)
+	if l.Properties != nil {
+		config.Properties = &gdriveLabelResourcePropertiesModel{
+			Title:       types.StringValue(l.Properties.Title),
+			Description: types.StringValue(l.Properties.Description),
+		}
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

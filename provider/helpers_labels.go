@@ -31,6 +31,12 @@ import (
 	"google.golang.org/api/drivelabels/v2"
 )
 
+type gdriveLabelFieldPropertieseModel struct {
+	DisplayName       types.String `tfsdk:"display_name"`
+	InsertBeforeField types.String `tfsdk:"insert_before_field"`
+	Required          types.Bool   `tfsdk:"required"`
+}
+
 func (disablePolicyModel *gdriveLabelLifeCycleDisabledPolicyModel) populate(disablePolicy *drivelabels.GoogleAppsDriveLabelsV2LifecycleDisabledPolicy) {
 	if disablePolicy != nil {
 		disablePolicyModel.HideInSearch = types.BoolValue(disablePolicy.HideInSearch)
@@ -56,6 +62,7 @@ func (lifeCycleModel *gdriveLabelLifeCycleModel) populate(lifecycle *drivelabels
 func (lifeCycleModel *gdriveLabelLifeCycleDSModel) populate(lifecycle *drivelabels.GoogleAppsDriveLabelsV2Lifecycle) {
 	if lifecycle != nil {
 		lifeCycleModel.State = types.StringValue(lifecycle.State)
+		lifeCycleModel.HasUnpublishedChanges = types.BoolValue(lifecycle.HasUnpublishedChanges)
 		if lifeCycleModel.DisabledPolicy != nil {
 			lifeCycleModel.DisabledPolicy.populate(lifecycle.DisabledPolicy)
 		}
@@ -298,7 +305,7 @@ Use this when setting the values for a field.`,
 					Description: "Options for the selection field type.",
 					Blocks: map[string]dsschema.Block{
 						"list_options": listOptions(),
-						"choices": dsschema.SetNestedBlock{
+						"choices": dsschema.ListNestedBlock{
 							NestedObject: dsschema.NestedBlockObject{
 								Attributes: map[string]dsschema.Attribute{
 									"id": dsId(),
@@ -307,13 +314,57 @@ Use this when setting the values for a field.`,
 										Description: `The unique value of the choice.
 											Use this when referencing / setting a choice.`,
 									},
-									"display_name": dsschema.StringAttribute{
-										Computed:    true,
-										Description: "The display text to show in the UI identifying this field.",
-									},
 								},
 								Blocks: map[string]dsschema.Block{
 									"life_cycle": lifecycleDS(),
+									"properties": dsschema.SingleNestedBlock{
+										MarkdownDescription: "Basic properties of the choice.",
+										Attributes: map[string]dsschema.Attribute{
+											"display_name": dsschema.StringAttribute{
+												MarkdownDescription: "The display text to show in the UI identifying this choice.",
+												Required:            true,
+											},
+										},
+										Blocks: map[string]dsschema.Block{
+											"badge_config": dsschema.SingleNestedBlock{
+												Attributes: map[string]dsschema.Attribute{
+													"priority_override": dsschema.Int64Attribute{
+														MarkdownDescription: `Override the default global priority of this badge.
+When set to 0, the default priority heuristic is used.`,
+														Computed: true,
+													},
+												},
+												Blocks: map[string]dsschema.Block{
+													"color": dsschema.SingleNestedBlock{
+														MarkdownDescription: `The color of the badge.
+When not specified, no badge is rendered.
+The background, foreground, and solo (light and dark mode) colors set here are changed in the Drive UI into the closest recommended supported color.
+
+*After setting this property, the plan will likely show a difference, because the API automatically modifies the values.
+It is recommended to change the Terraform configuration to match the values set by the API.`,
+														Attributes: map[string]dsschema.Attribute{
+															"alpha": dsschema.Float64Attribute{
+																MarkdownDescription: `The alpha value for the badge color as a float (number between 1 and 0 - e.g. "0.5")`,
+																Computed:            true,
+															},
+															"blue": dsschema.Float64Attribute{
+																MarkdownDescription: `The blue value for the badge color as a float (number between 1 and 0 - e.g. "0.5")`,
+																Computed:            true,
+															},
+															"green": dsschema.Float64Attribute{
+																MarkdownDescription: `The green value for the badge color as a float (number between 1 and 0 - e.g. "0.5")`,
+																Computed:            true,
+															},
+															"red": dsschema.Float64Attribute{
+																MarkdownDescription: `The red value for the badge color as a float (number between 1 and 0 - e.g. "0.5")`,
+																Computed:            true,
+															},
+														},
+													},
+												},
+											},
+										},
+									},
 								},
 							},
 						},
@@ -377,6 +428,12 @@ func fieldsToModel(fields []*drivelabels.GoogleAppsDriveLabelsV2Field) (model []
 			QueryKey:  types.StringValue(fields[i].QueryKey),
 			LifeCycle: &gdriveLabelLifeCycleDSModel{},
 		}
+		if fields[i].Properties != nil {
+			field.Properties = &gdriveLabelDataSourceFieldPropertieseModel{
+				DisplayName: types.StringValue(fields[i].Properties.DisplayName),
+				Required:    types.BoolValue(fields[i].Properties.Required),
+			}
+		}
 		field.LifeCycle.populate(fields[i].Lifecycle)
 		if fields[i].TextOptions != nil {
 			field.ValueType = types.StringValue("text")
@@ -406,15 +463,21 @@ func fieldsToModel(fields []*drivelabels.GoogleAppsDriveLabelsV2Field) (model []
 					MaxEntries: types.Int64Value(fields[i].SelectionOptions.ListOptions.MaxEntries),
 				}
 			}
-			field.SelectionOptions.Choices = make([]*gdriveLabelChoicedModel, len(fields[i].SelectionOptions.Choices))
+			field.SelectionOptions.Choices = make([]*gdriveLabelChoiceModel, len(fields[i].SelectionOptions.Choices))
 			for j := range fields[i].SelectionOptions.Choices {
-				field.SelectionOptions.Choices[j] = &gdriveLabelChoicedModel{
+				field.SelectionOptions.Choices[j] = &gdriveLabelChoiceModel{
 					Id:        types.StringValue(fields[i].SelectionOptions.Choices[j].Id),
 					ChoiceId:  types.StringValue(fields[i].SelectionOptions.Choices[j].Id),
-					LifeCycle: &gdriveLabelLifeCycleModel{},
+					LifeCycle: &gdriveLabelLifeCycleDSModel{},
 				}
 				if fields[i].SelectionOptions.Choices[j].Properties != nil {
-					field.SelectionOptions.Choices[j].DisplayName = types.StringValue(fields[i].SelectionOptions.Choices[j].Properties.DisplayName)
+					field.SelectionOptions.Choices[j].Properties = &gdriveLabelChoicePropertiesModel{
+						DisplayName: types.StringValue(fields[i].SelectionOptions.Choices[j].Properties.DisplayName),
+					}
+					if fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig != nil {
+						field.SelectionOptions.Choices[j].Properties.BadgeConfig = &gdriveLabelChoiceBadgeConfigModel{}
+						field.SelectionOptions.Choices[j].Properties.BadgeConfig.populate(fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig)
+					}
 				}
 				field.SelectionOptions.Choices[j].LifeCycle.populate(fields[i].SelectionOptions.Choices[j].Lifecycle)
 			}

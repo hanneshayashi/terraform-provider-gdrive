@@ -49,22 +49,22 @@ type gdriveLabelSelectionChoiceResource struct {
 	client *http.Client
 }
 
-type gdriveLabelChoiceBadgeColorConfigRSModel struct {
+type gdriveLabelChoiceBadgeColorConfigModel struct {
 	Red   types.Float64 `tfsdk:"red"`
 	Green types.Float64 `tfsdk:"green"`
 	Blue  types.Float64 `tfsdk:"blue"`
 	Alpha types.Float64 `tfsdk:"alpha"`
 }
 
-type gdriveLabelChoiceBadgeConfigRSModel struct {
-	Color            *gdriveLabelChoiceBadgeColorConfigRSModel `tfsdk:"color"`
-	PriorityOverride types.Int64                               `tfsdk:"priority_override"`
+type gdriveLabelChoiceBadgeConfigModel struct {
+	Color            *gdriveLabelChoiceBadgeColorConfigModel `tfsdk:"color"`
+	PriorityOverride types.Int64                             `tfsdk:"priority_override"`
 }
 
 type gdriveLabelChoicePropertiesRSModel struct {
-	BadgeConfig        *gdriveLabelChoiceBadgeConfigRSModel `tfsdk:"badge_config"`
-	DisplayName        types.String                         `tfsdk:"display_name"`
-	InsertBeforeChoice types.String                         `tfsdk:"insert_before_choice"`
+	BadgeConfig        *gdriveLabelChoiceBadgeConfigModel `tfsdk:"badge_config"`
+	DisplayName        types.String                       `tfsdk:"display_name"`
+	InsertBeforeChoice types.String                       `tfsdk:"insert_before_choice"`
 }
 
 type gdriveLabelSelectionChoiceResourceModel struct {
@@ -335,17 +335,8 @@ func (r *gdriveLabelSelectionChoiceResource) Read(ctx context.Context, req resou
 								DisplayName: types.StringValue(l.Fields[i].SelectionOptions.Choices[j].Properties.DisplayName),
 							}
 							if l.Fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig != nil {
-								state.Properties.BadgeConfig = &gdriveLabelChoiceBadgeConfigRSModel{
-									PriorityOverride: types.Int64Value(l.Fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig.PriorityOverride),
-								}
-								if l.Fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig.Color != nil {
-									state.Properties.BadgeConfig.Color = &gdriveLabelChoiceBadgeColorConfigRSModel{
-										Red:   types.Float64Value(l.Fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig.Color.Red),
-										Green: types.Float64Value(l.Fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig.Color.Green),
-										Blue:  types.Float64Value(l.Fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig.Color.Blue),
-										Alpha: types.Float64Value(l.Fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig.Color.Alpha),
-									}
-								}
+								state.Properties.BadgeConfig = &gdriveLabelChoiceBadgeConfigModel{}
+								state.Properties.BadgeConfig.populate(l.Fields[i].SelectionOptions.Choices[j].Properties.BadgeConfig)
 							}
 							if j < len(l.Fields[i].SelectionOptions.Choices)-1 && c.Properties.InsertBeforeChoice != "" {
 								state.Properties.InsertBeforeChoice = types.StringValue(l.Fields[i].SelectionOptions.Choices[j+1].Id)
