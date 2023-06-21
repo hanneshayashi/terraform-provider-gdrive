@@ -546,3 +546,19 @@ func newUpdateLabelRequest(plan labelInterface) *drivelabels.GoogleAppsDriveLabe
 		View:           "LABEL_VIEW_FULL",
 	}
 }
+
+func labelPropertiesDS() dsschema.SingleNestedBlock {
+	return dsschema.SingleNestedBlock{
+		MarkdownDescription: "Basic properties of the label.",
+		Attributes: map[string]dsschema.Attribute{
+			"title": dsschema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Title of the label.",
+			},
+			"description": dsschema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The description of the label.",
+			},
+		},
+	}
+}

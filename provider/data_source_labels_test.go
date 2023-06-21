@@ -7,39 +7,32 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-func TestAccLabelDS(t *testing.T) {
+func TestAccLabelsDS(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// 1 - Create and Read testing
 			{
-				Config: testAccLabelDataSourceConfig(""),
+				Config: testAccLabelsDataSourceConfig(""),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("gdrive_label_selection_field.field", "properties.display_name", "field"),
 				),
 			},
 			// 2 - Create Data Source
 			{
-				Config: testAccLabelDataSourceConfig("1"),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.gdrive_label.label", "properties.title", "selection choice test"),
-					resource.TestCheckResourceAttr("data.gdrive_label.label", "fields.0.properties.display_name", "field"),
-					resource.TestCheckResourceAttr("data.gdrive_label.label", "fields.0.selection_options.choices.0.properties.badge_config.color.blue", "0.5"),
-					resource.TestCheckResourceAttr("data.gdrive_label.label", "fields.0.selection_options.choices.0.properties.display_name", "foo"),
-					resource.TestCheckResourceAttr("data.gdrive_label.label", "fields.0.selection_options.choices.1.properties.display_name", "bar"),
-				),
+				Config: testAccLabelsDataSourceConfig("1"),
+				Check:  resource.ComposeAggregateTestCheckFunc(),
 			},
 			// Delete testing automatically occurs in TestCase
 		},
 	})
 }
 
-func testAccLabelDataSourceConfig(ds string) string {
+func testAccLabelsDataSourceConfig(ds string) string {
 	if ds != "" {
 		ds = `
-data "gdrive_label" "label" {
-  name             = gdrive_label.test.name
+data "gdrive_labels" "labels" {
   use_admin_access = true
 }
 `

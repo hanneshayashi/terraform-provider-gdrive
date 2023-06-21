@@ -104,6 +104,7 @@ APPLIER    - An applier can write associated metadata on Drive items in which th
 		},
 		Blocks: map[string]schema.Block{
 			"labels": schema.SetNestedBlock{
+				MarkdownDescription: "The labels that were found.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"id": dsId(),
@@ -115,18 +116,11 @@ APPLIER    - An applier can write associated metadata on Drive items in which th
 							Computed:    true,
 							Description: `The type of this label.`,
 						},
-						"description": schema.StringAttribute{
-							Computed:    true,
-							Description: `The description of the label.`,
-						},
-						"title": schema.StringAttribute{
-							Computed:    true,
-							Description: `Title of the label.`,
-						},
 					},
 					Blocks: map[string]schema.Block{
 						"life_cycle": lifecycleDS(),
 						"fields":     fieldsDS(),
+						"properties": labelPropertiesDS(),
 					},
 				},
 			},

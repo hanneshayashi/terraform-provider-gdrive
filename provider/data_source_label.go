@@ -187,19 +187,7 @@ Reading other revisions may require addtional permissions and / or setting the '
 		Blocks: map[string]schema.Block{
 			"life_cycle": lifecycleDS(),
 			"fields":     fieldsDS(),
-			"properties": schema.SingleNestedBlock{
-				MarkdownDescription: "Basic properties of the label.",
-				Attributes: map[string]schema.Attribute{
-					"title": schema.StringAttribute{
-						Computed:            true,
-						MarkdownDescription: "Title of the label.",
-					},
-					"description": schema.StringAttribute{
-						Computed:            true,
-						MarkdownDescription: "The description of the label.",
-					},
-				},
-			},
+			"properties": labelPropertiesDS(),
 		},
 	}
 }
