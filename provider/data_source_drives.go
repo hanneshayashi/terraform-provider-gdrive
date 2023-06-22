@@ -127,7 +127,7 @@ func (ds *drivesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 	query := config.Query.ValueString()
-	r, err := gsmdrive.ListDrives(query, fmt.Sprintf("permissions(%s),nextPageToken", fieldsDrive), config.UseDomainAdminAccess.ValueBool(), 1)
+	r, err := gsmdrive.ListDrives(query, fmt.Sprintf("drives(%s),nextPageToken", fieldsDrive), config.UseDomainAdminAccess.ValueBool(), 1)
 	for d := range r {
 		config.Drives = append(config.Drives, &gdriveDrivesDataSourceDriveModel{
 			Name:    types.StringValue(d.Name),
