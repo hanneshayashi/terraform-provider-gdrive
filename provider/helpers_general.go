@@ -82,15 +82,15 @@ func (membershipModel *gdriveOrgUnitMembershipResourceModel) move() (diags diag.
 
 func dsId() dsschema.StringAttribute {
 	return dsschema.StringAttribute{
-		Computed:    true,
-		Description: "The unique ID of this resource.",
+		Computed:            true,
+		MarkdownDescription: "The unique ID of this resource.",
 	}
 }
 
 func rsId() rsschema.StringAttribute {
 	id := rsschema.StringAttribute{
-		Computed:    true,
-		Description: "The unique ID of this resource.",
+		Computed:            true,
+		MarkdownDescription: "The unique ID of this resource.",
 		PlanModifiers: []planmodifier.String{
 			stringplanmodifier.UseStateForUnknown(),
 		},

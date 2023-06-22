@@ -63,11 +63,11 @@ func (r *gdriveLabelPolicyResource) Metadata(ctx context.Context, req resource.M
 
 func (r *gdriveLabelPolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Sets a label on a Drive object",
+		MarkdownDescription: "Enforces a set of labels on a Drive object.",
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"file_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the file to assign the label to.",
+				MarkdownDescription: "ID of the file to assign the label(s) to.",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -82,7 +82,7 @@ func (r *gdriveLabelPolicyResource) Schema(ctx context.Context, req resource.Sch
 							MarkdownDescription: "The ID of the label.",
 							Required:            true,
 						},
-						"fields": labelAssignmentField(),
+						"fields": labelAssignmentFields(),
 					},
 				},
 			},

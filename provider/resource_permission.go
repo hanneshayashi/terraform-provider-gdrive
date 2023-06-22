@@ -71,41 +71,37 @@ func (r *gdrivePermissionResource) Metadata(ctx context.Context, req resource.Me
 
 func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Creates a file or folder with the given MIME type and optionally uploads a local file",
+		MarkdownDescription: "Grants a permission on a file/folder or Shared Drive.",
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"file_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the file or Shared Drive",
+				MarkdownDescription: "ID of the file or Shared Drive.",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"permission_id": schema.StringAttribute{
-				MarkdownDescription: "PermissionID of the trustee",
+				MarkdownDescription: "PermissionID of the trustee.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"email_message": schema.StringAttribute{
-				MarkdownDescription: "An optional email message that will be sent when the permission is created",
+				MarkdownDescription: "An optional email message that will be sent when the permission is created.",
 				Optional:            true,
 			},
 			"send_notification_email": schema.BoolAttribute{
-				MarkdownDescription: "Wether to send a notfication email",
+				MarkdownDescription: "Wether to send a notfication email.",
 				Optional:            true,
 			},
 			"type": schema.StringAttribute{
-				MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
+				MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
-				// Validators: []validator.String{
-				// TODO
-				// 				ValidateFunc: validatePermissionType,
-				// },
 			},
 			"domain": schema.StringAttribute{
 				MarkdownDescription: "The domain that should be granted access",
@@ -136,7 +132,7 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 				Required:            true,
 			},
 			"use_domain_admin_access": schema.BoolAttribute{
-				MarkdownDescription: "Use domain admin access",
+				MarkdownDescription: "Use domain admin access.",
 				Optional:            true,
 			},
 			"transfer_ownership": schema.BoolAttribute{

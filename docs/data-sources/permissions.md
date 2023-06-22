@@ -3,12 +3,12 @@
 page_title: "gdrive_permissions Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Returns a list of all permissions set on a file or Shared Drive
+  Returns the list of all permissions on a file or Shared Drive
 ---
 
 # gdrive_permissions (Data Source)
 
-Returns a list of all permissions set on a file or Shared Drive
+Returns the list of all permissions on a file or Shared Drive
 
 ## Example Usage
 
@@ -19,17 +19,15 @@ data "gdrive_permissions" "some_file_permissions" {
 }
 
 # Set the exact same permissions on a different file
-resource "gdrive_permissions_policy" "permissions_policy" {
+resource "gdrive_permissions_policy" "permissions_policy_target" {
   file_id = "..."
-  dynamic "permissions" {
-    for_each = data.gdrive_permissions.some_file_permissions.permissions
-    content {
-      role          = permissions.value.role
-      email_address = permissions.value.email_address
-      type          = permissions.value.type
-      domain        = permissions.value.domain
+  permissions = [for p in data.gdrive_permissions.some_file_permissions.permissions : {
+    role          = p.role
+    type          = p.type
+    email_address = p.email_address == "" ? null : p.email_address
+    domain        = p.domain == "" ? null : p.domain
     }
-  }
+  ]
 }
 ```
 
@@ -38,27 +36,35 @@ resource "gdrive_permissions_policy" "permissions_policy" {
 
 ### Required
 
-- `file_id` (String) ID of the file or Shared Drive
+- `file_id` (String) ID of the file or Shared Drive.
 
 ### Optional
 
-- `use_domain_admin_access` (Boolean) Use domain admin access
+- `use_domain_admin_access` (Boolean) Use domain admin access.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
-- `permissions` (List of Object) The list of permissions set on this file or Shared Drive (see [below for nested schema](#nestedatt--permissions))
+- `id` (String) The unique ID of this resource.
+- `permissions` (Attributes Set) The list of permissions set on this file or Shared Drive. (see [below for nested schema](#nestedatt--permissions))
 
 <a id="nestedatt--permissions"></a>
 ### Nested Schema for `permissions`
 
 Read-Only:
 
-- `deleted` (Boolean)
-- `display_name` (String)
-- `domain` (String)
-- `email_address` (String)
-- `expiration_time` (String)
-- `permission_id` (String)
-- `role` (String)
-- `type` (String)
+- `deleted` (Boolean) Whether the account associated with this permission has been deleted.
+
+This field only pertains to user and group permissions.
+- `display_name` (String) The "pretty" name of the value of the permission.
+
+The following is a list of examples for each type of permission:
+* user    - User's full name, as defined for their Google account, such as "Joe Smith."
+* group   - Name of the Google Group, such as "The Company Administrators."
+* domain  - String domain name, such as "thecompany.com."
+* anyone  - No displayName is present.
+- `domain` (String) The domain if the type of this permissions is 'domain'.
+- `email_address` (String) The email address if the type of this permissions is 'user' or 'group'.
+- `expiration_time` (String) The time at which this permission will expire (RFC 3339 date-time).
+- `permission_id` (String) ID of the permission.
+- `role` (String) The role that this trustee is granted.
+- `type` (String) The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.

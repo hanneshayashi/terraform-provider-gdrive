@@ -3,12 +3,12 @@
 page_title: "gdrive_files Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Returns a list of files that match the given query
+  Returns a list of files that match the given query.
 ---
 
 # gdrive_files (Data Source)
 
-Returns a list of files that match the given query
+Returns a list of files that match the given query.
 
 ## Example Usage
 
@@ -32,34 +32,39 @@ data "gdrive_files" "files" {
 ### Required
 
 - `query` (String) A query for filtering the file results.
+
 See the https://developers.google.com/drive/api/v3/search-files for the supported syntax.
 
 ### Optional
 
 - `corpora` (String) Groupings of files to which the query applies.
+
 Supported groupings are:
-'user' (files created by, opened by, or shared directly with the user)
-'drive' (files in the specified shared drive as indicated by the 'driveId')
-'domain' (files shared to the user's domain)
-'allDrives' (A combination of 'user' and 'drive' for all drives where the user is a member).
+* 'user' (files created by, opened by, or shared directly with the user)
+* 'drive' (files in the specified shared drive as indicated by the 'driveId')
+* 'domain' (files shared to the user's domain)
+* 'allDrives' (A combination of 'user' and 'drive' for all drives where the user is a member).
+
 When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.
 - `drive_id` (String) ID of the shared drive.
 - `include_items_from_all_drives` (Boolean) Whether both My Drive and shared drive items should be included in results.
 - `spaces` (String) A comma-separated list of spaces to query within the corpus.
+
 Supported values are 'drive', 'appDataFolder' and 'photos'.
 
 ### Read-Only
 
-- `files` (List of Object) (see [below for nested schema](#nestedatt--files))
-- `id` (String) The ID of this resource.
+- `files` (Attributes Set) A set of files that match the specified query. (see [below for nested schema](#nestedatt--files))
+- `id` (String) The unique ID of this resource.
 
 <a id="nestedatt--files"></a>
 ### Nested Schema for `files`
 
 Read-Only:
 
-- `drive_id` (String)
-- `file_id` (String)
-- `mime_type` (String)
-- `name` (String)
-- `parent` (String)
+- `drive_id` (String) The ID of the Shared Drive the file is located in. Only present if the file is located in a Shared Drive.
+- `file_id` (String) The ID of the file.
+- `id` (String) The unique ID of this resource.
+- `mime_type` (String) The MIME type of the file.
+- `name` (String) The name of the file.
+- `parent` (String) The ID of the file's parent.

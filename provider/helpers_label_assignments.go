@@ -350,32 +350,32 @@ func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Con
 	return diags
 }
 
-func labelAssignmentField() rsschema.SetNestedAttribute {
+func labelAssignmentFields() rsschema.SetNestedAttribute {
 	return rsschema.SetNestedAttribute{
-		MarkdownDescription: `A field of the assigned label.
-This block may be used multiple times to set multiple fields of the same label.`,
-		Required: true,
+		MarkdownDescription: `A Set of fields of the assigned label.`,
+		Required:            true,
 		NestedObject: rsschema.NestedAttributeObject{
 			Attributes: map[string]rsschema.Attribute{
 				"field_id": rsschema.StringAttribute{
-					Required:    true,
-					Description: "The identifier of this field.",
+					Required:            true,
+					MarkdownDescription: "The identifier of this field.",
 				},
 				"value_type": rsschema.StringAttribute{
 					Required: true,
-					Description: `The field type.
+					MarkdownDescription: `The field type.
 While new values may be supported in the future, the following are currently allowed:
-- dateString
-- integer
-- selection
-- text
-- user`,
+* dateString
+* integer
+* selection
+* text
+* user`,
 				},
 				"values": rsschema.SetAttribute{
 					ElementType: types.StringType,
 					Required:    true,
-					Description: `The values that should be set.
-Must be compatible with the specified valueType.`,
+					MarkdownDescription: `The values that should be set.
+
+Must be compatible with the specified value_type.`,
 				},
 			},
 		},

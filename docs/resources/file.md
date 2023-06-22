@@ -3,12 +3,12 @@
 page_title: "gdrive_file Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Creates a file or folder with the given MIME type and optionally uploads a local file
+  Creates a file or folder with the given MIME type and optionally uploads or imports a local file.
 ---
 
 # gdrive_file (Resource)
 
-Creates a file or folder with the given MIME type and optionally uploads a local file
+Creates a file or folder with the given MIME type and optionally uploads or imports a local file.
 
 ## Example Usage
 
@@ -16,7 +16,7 @@ Creates a file or folder with the given MIME type and optionally uploads a local
 # Create a folder inside the impersonated user's personal Drive
 resource "gdrive_file" "folder" {
   mime_type = "application/vnd.google-apps.folder"
-  parent    = "root"
+  parent    = "root" # This will cause a planned changed during the next refresh because the provider will read the actual FileID of the user's root folder
   name      = "folder"
 }
 
@@ -43,26 +43,29 @@ resource "gdrive_file" "import_csv" {
 
 ### Required
 
-- `mime_type` (String) MIME type of the target file (in Google Drive)
-- `name` (String) name of the file / folder
-- `parent` (String) fileId of the parent
+- `mime_type` (String) MIME type of the target file (in Google Drive).
+- `name` (String) name of the file / folder.
+- `parent` (String) The file_id of the parent.
 
 ### Optional
 
-- `content` (String) path to a file to upload.
+- `content` (String) Path to a file to upload.
+
 The provider does not check the content of the file for updates.
-If you need to upload a new version of a file, you need to supply a different file name.
-- `drive_id` (String) driveId of the Shared Drive
-- `mime_type_source` (String) MIME type of the source file (on the local system)
+
+If you need to upload/import a new version of a file, you need to supply a different file name.
+- `drive_id` (String) ID of the Shared Drive.
+- `mime_type_source` (String) MIME type of the source file (on the local system).,
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `file_id` (String) The ID of the file.
+- `id` (String) The unique ID of this resource.
 
 ## Import
 
 Import is supported using the following syntax:
 
 ```shell
-terraform import gdrive_file.file [fileId]
+terraform import gdrive_file.file [file_id]
 ```

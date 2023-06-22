@@ -3,36 +3,12 @@
 page_title: "gdrive_drive_ou_membership Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  BEWARE! THE API AND THIS RESOURCE ARE IN BETA AND MAY BREAK WITHOUT WARNING!
-  Sets the membership of a Shared Drive in an organizational unit.
-  This resource requires additional setup:
-  1. Enable the Cloud Identity API in your GCP project
-  2. Add 'https://www.googleapis.com/auth/cloud-identity.orgunits' as a scope to your Domain Wide Delegation config
-  3. Set 'use_cloud_identity_api' to 'true' in your provider configuration
-  The resource will move the Shared Drive to the specified OU in your Admin Console.
-  Some things to note:
-  - You need to specify the ID of the OU (NOT THE PATH!)
-    - You can find the ID via the Admin SDK (or https://gsm.hayashi-ke.online/gsm/orgunits/list/)
-  - If you move the Shared Drive outside of Terraform, the resource will be re-created
-  - A destroy of this resource will not do anything
+  Creates a OrgUnit or folder with the given MIME type and optionally uploads a local OrgUnit
 ---
 
 # gdrive_drive_ou_membership (Resource)
 
-BEWARE! THE API AND THIS RESOURCE ARE IN BETA AND MAY BREAK WITHOUT WARNING!
-Sets the membership of a Shared Drive in an organizational unit.
-This resource requires additional setup:
-1. Enable the Cloud Identity API in your GCP project
-2. Add 'https://www.googleapis.com/auth/cloud-identity.orgunits' as a scope to your Domain Wide Delegation config
-3. Set 'use_cloud_identity_api' to 'true' in your provider configuration
-
-The resource will move the Shared Drive to the specified OU in your Admin Console.
-
-Some things to note:
-- You need to specify the ID of the OU (NOT THE PATH!)
-  - You can find the ID via the Admin SDK (or https://gsm.hayashi-ke.online/gsm/orgunits/list/)
-- If you move the Shared Drive outside of Terraform, the resource will be re-created
-- A destroy of this resource will not do anything
+Creates a OrgUnit or folder with the given MIME type and optionally uploads a local OrgUnit
 
 ## Example Usage
 
@@ -55,12 +31,13 @@ resource "gdrive_drive_ou_membership" "membership" {
 
 ### Required
 
-- `drive_id` (String) driveId of the Shared Drive
+- `drive_id` (String) ID of the Shared Drive
 - `parent` (String) ID of the organizational unit (NOT the path!)
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) The unique ID of this resource.
+- `org_unit_id` (String) The ID of the OrgUnit (OrgUnitId)
 
 ## Import
 

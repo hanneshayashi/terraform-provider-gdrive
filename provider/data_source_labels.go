@@ -64,24 +64,20 @@ func (d *labelsDataSource) Metadata(ctx context.Context, req datasource.Metadata
 
 func (d *labelsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: `This resource can be used to get the fields and other metadata for a single label.
-This resource requires additional setup:
-1. Enable the Drive Labels API in your GCP project
-2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
-3. Set 'use_labels_api' to 'true' in your provider configuration`,
+		MarkdownDescription: `This resource can be used to get the fields and other metadata for all labels that match the specified restrictions.`,
 		Attributes: map[string]schema.Attribute{
 			"id": dsId(),
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
-				Description: `Set to true in order to use the user's admin credentials.
+				MarkdownDescription: `Set to true in order to use the user's admin credentials.
+
 The server verifies that the user is an admin for the label before allowing access.`,
 			},
 			"published_only": schema.BoolAttribute{
 				Optional: true,
-				Description: `Whether to include only published labels in the results.
+				MarkdownDescription: `Whether to include only published labels in the results.
 
-When true, only the current published label revisions are returned.
-Disabled labels are included.
+When true, only the current published label revisions are returned. Disabled labels are included.
 Returned label resource names reference the published revision (labels/{id}/{revisionId}).
 
 When false, the current label revisions are returned, which might not be published.
@@ -89,17 +85,19 @@ Returned label resource names don't reference a specific revision (labels/{id}).
 			},
 			"language_code": schema.StringAttribute{
 				Optional: true,
-				Description: `The BCP-47 language code to use for evaluating localized field labels.
+				MarkdownDescription: `The BCP-47 language code to use for evaluating localized field labels.
+
 When not specified, values in the default configured language are used.`,
 			},
 			"minimum_role": schema.StringAttribute{
 				Optional: true,
-				Description: `Specifies the level of access the user must have on the returned Labels.
+				MarkdownDescription: `Specifies the level of access the user must have on the returned Labels.
 The minimum role a user must have on a label.
 Defaults to READER.
-[READER|APPLIER|ORGANIZER|EDITOR]
 READER     - A reader can read the label and associated metadata applied to Drive items.
-APPLIER    - An applier can write associated metadata on Drive items in which they also have write access to. Implies READER.`,
+APPLIER    - An applier can write associated metadata on Drive items in which they also have write access to. Implies READER.
+ORGANIZER  - An organizer can pin this label in shared drives they manage and add new appliers to the label.
+EDITOR     - Editors can make any update including deleting the label which also deletes the associated Drive item metadata. Implies APPLIER.`,
 			},
 			"labels": schema.SetNestedAttribute{
 				Computed:            true,
@@ -108,12 +106,12 @@ APPLIER    - An applier can write associated metadata on Drive items in which th
 					Attributes: map[string]schema.Attribute{
 						"id": dsId(),
 						"label_id": schema.StringAttribute{
-							Computed:    true,
-							Description: `The id of this label.`,
+							Computed:            true,
+							MarkdownDescription: `The id of this label.`,
 						},
 						"label_type": schema.StringAttribute{
-							Computed:    true,
-							Description: `The type of this label.`,
+							Computed:            true,
+							MarkdownDescription: `The type of this label.`,
 						},
 						"life_cycle": lifecycleDS(),
 						"fields":     fieldsDS(),

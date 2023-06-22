@@ -65,40 +65,42 @@ func (r *gdriveFileResource) Metadata(ctx context.Context, req resource.Metadata
 
 func (r *gdriveFileResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Creates a file or folder with the given MIME type and optionally uploads a local file",
+		MarkdownDescription: "Creates a file or folder with the given MIME type and optionally uploads or imports a local file.",
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"file_id": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "The ID of the file (fileId)",
+				MarkdownDescription: "The ID of the file.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"parent": schema.StringAttribute{
-				MarkdownDescription: "The fileId of the parent",
+				MarkdownDescription: "The file_id of the parent.",
 				Required:            true,
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "name of the file / folder",
+				MarkdownDescription: "name of the file / folder.",
 				Required:            true,
 			},
 			"mime_type": schema.StringAttribute{
-				MarkdownDescription: "MIME type of the target file (in Google Drive)",
+				MarkdownDescription: "MIME type of the target file (in Google Drive).",
 				Required:            true,
 			},
 			"mime_type_source": schema.StringAttribute{
-				MarkdownDescription: "MIME type of the source file (on the local system)",
+				MarkdownDescription: "MIME type of the source file (on the local system).,",
 				Optional:            true,
 			},
 			"drive_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the Shared Drive",
+				MarkdownDescription: "ID of the Shared Drive.",
 				Optional:            true,
 			},
 			"content": schema.StringAttribute{
 				MarkdownDescription: `Path to a file to upload.
+
 The provider does not check the content of the file for updates.
-If you need to upload a new version of a file, you need to supply a different file name.`,
+
+If you need to upload/import a new version of a file, you need to supply a different file name.`,
 				Optional: true,
 			},
 		},

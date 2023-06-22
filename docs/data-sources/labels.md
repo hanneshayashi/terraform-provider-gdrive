@@ -3,20 +3,12 @@
 page_title: "gdrive_labels Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Retrieves all matching labels.
-  This resource requires additional setup:
-  1. Enable the Drive Labels API in your GCP project
-  2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
-  3. Set 'uselabelsapi' to 'true' in your provider configuration
+  This resource can be used to get the fields and other metadata for all labels that match the specified restrictions.
 ---
 
 # gdrive_labels (Data Source)
 
-Retrieves all matching labels.
-This resource requires additional setup:
-1. Enable the Drive Labels API in your GCP project
-2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
-3. Set 'use_labels_api' to 'true' in your provider configuration
+This resource can be used to get the fields and other metadata for all labels that match the specified restrictions.
 
 ## Example Usage
 
@@ -26,7 +18,7 @@ data "gdrive_labels" "labels" {
 
 # Retrieve only published labels using admin access
 # Requires setting the 'use_labels_admin_scope' property to 'true' in the provider config.
-data "gdrive_labels" "label_revision" {
+data "gdrive_labels" "label_published_only" {
   use_admin_access = true
   published_only   = true
 }
@@ -38,168 +30,284 @@ data "gdrive_labels" "label_revision" {
 ### Optional
 
 - `language_code` (String) The BCP-47 language code to use for evaluating localized field labels.
+
 When not specified, values in the default configured language are used.
 - `minimum_role` (String) Specifies the level of access the user must have on the returned Labels.
 The minimum role a user must have on a label.
 Defaults to READER.
-[READER|APPLIER|ORGANIZER|EDITOR]
 READER     - A reader can read the label and associated metadata applied to Drive items.
 APPLIER    - An applier can write associated metadata on Drive items in which they also have write access to. Implies READER.
+ORGANIZER  - An organizer can pin this label in shared drives they manage and add new appliers to the label.
+EDITOR     - Editors can make any update including deleting the label which also deletes the associated Drive item metadata. Implies APPLIER.
 - `published_only` (Boolean) Whether to include only published labels in the results.
 
-When true, only the current published label revisions are returned.
-Disabled labels are included.
+When true, only the current published label revisions are returned. Disabled labels are included.
 Returned label resource names reference the published revision (labels/{id}/{revisionId}).
 
 When false, the current label revisions are returned, which might not be published.
 Returned label resource names don't reference a specific revision (labels/{id}).
 - `use_admin_access` (Boolean) Set to true in order to use the user's admin credentials.
+
 The server verifies that the user is an admin for the label before allowing access.
-Requires setting the 'use_labels_admin_scope' property to 'true' in the provider config.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
-- `labels` (List of Object) (see [below for nested schema](#nestedatt--labels))
+- `id` (String) The unique ID of this resource.
+- `labels` (Attributes Set) The labels that were found. (see [below for nested schema](#nestedatt--labels))
 
 <a id="nestedatt--labels"></a>
 ### Nested Schema for `labels`
 
 Read-Only:
 
-- `description` (String)
-- `fields` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields))
-- `id` (String)
-- `label_type` (String)
-- `title` (String)
+- `fields` (Attributes List) The fields of this label. (see [below for nested schema](#nestedatt--labels--fields))
+- `id` (String) The unique ID of this resource.
+- `label_id` (String) The id of this label.
+- `label_type` (String) The type of this label.
+- `life_cycle` (Attributes) The lifecycle state of an object, such as label, field, or choice. (see [below for nested schema](#nestedatt--labels--life_cycle))
+- `properties` (Attributes) Basic properties of the label. (see [below for nested schema](#nestedatt--labels--properties))
 
-<a id="nestedobjatt--labels--fields"></a>
+<a id="nestedatt--labels--fields"></a>
 ### Nested Schema for `labels.fields`
 
 Read-Only:
 
-- `date_options` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--date_options))
-- `id` (String)
-- `integer_options` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--integer_options))
-- `life_cycle` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--life_cycle))
-- `properties` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--properties))
-- `query_key` (String)
-- `selection_options` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--selection_options))
-- `text_options` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--text_options))
-- `user_options` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--user_options))
-- `value_type` (String)
+- `date_options` (Attributes) A set of restrictions that apply to this shared drive or items inside this shared drive. (see [below for nested schema](#nestedatt--labels--fields--date_options))
+- `field_id` (String) The key of a field, unique within a label or library.
+Use this when referencing a field somewhere.
+- `id` (String) The unique ID of this resource.
+- `integer_options` (Attributes) Options for the Integer field type. (see [below for nested schema](#nestedatt--labels--fields--integer_options))
+- `life_cycle` (Attributes) The lifecycle state of an object, such as label, field, or choice. (see [below for nested schema](#nestedatt--labels--fields--life_cycle))
+- `properties` (Attributes) The basic properties of the field. (see [below for nested schema](#nestedatt--labels--fields--properties))
+- `query_key` (String) The key to use when constructing Drive search queries to find labels based on values defined for this field on labels.
+For example, "{queryKey} > 2001-01-01".
+- `selection_options` (Attributes) Options for the selection field type. (see [below for nested schema](#nestedatt--labels--fields--selection_options))
+- `text_options` (Attributes) Options for the Text field type. (see [below for nested schema](#nestedatt--labels--fields--text_options))
+- `user_options` (Attributes) Options for the user field type. (see [below for nested schema](#nestedatt--labels--fields--user_options))
+- `value_type` (String) The type of the field.
+Use this when setting the values for a field.
 
-<a id="nestedobjatt--labels--fields--date_options"></a>
+<a id="nestedatt--labels--fields--date_options"></a>
 ### Nested Schema for `labels.fields.date_options`
 
 Read-Only:
 
-- `date_format` (String)
-- `date_format_type` (String)
-- `max_value` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--date_options--max_value))
-- `min_value` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--date_options--min_value))
+- `date_format` (String) ICU date format.
+- `date_format_type` (String) Localized date formatting option. Field values are rendered in this format according to their locale.
+- `max_value` (Attributes) Min/Max valid value (year, month, day). (see [below for nested schema](#nestedatt--labels--fields--date_options--max_value))
+- `min_value` (Attributes) Min/Max valid value (year, month, day). (see [below for nested schema](#nestedatt--labels--fields--date_options--min_value))
 
-<a id="nestedobjatt--labels--fields--date_options--max_value"></a>
+<a id="nestedatt--labels--fields--date_options--max_value"></a>
 ### Nested Schema for `labels.fields.date_options.min_value`
 
 Read-Only:
 
-- `day` (Number)
-- `month` (Number)
-- `year` (Number)
+- `day` (Number) Day of a month.
+- `month` (Number) Month of a year.
+- `year` (Number) Year of the date.
 
 
-<a id="nestedobjatt--labels--fields--date_options--min_value"></a>
+<a id="nestedatt--labels--fields--date_options--min_value"></a>
 ### Nested Schema for `labels.fields.date_options.min_value`
 
 Read-Only:
 
-- `day` (Number)
-- `month` (Number)
-- `year` (Number)
+- `day` (Number) Day of a month.
+- `month` (Number) Month of a year.
+- `year` (Number) Year of the date.
 
 
 
-<a id="nestedobjatt--labels--fields--integer_options"></a>
+<a id="nestedatt--labels--fields--integer_options"></a>
 ### Nested Schema for `labels.fields.integer_options`
 
 Read-Only:
 
-- `max_value` (Number)
-- `min_value` (Number)
+- `max_value` (Number) The maximum valid value for the integer field.
+- `min_value` (Number) The minimum valid value for the integer field.
 
 
-<a id="nestedobjatt--labels--fields--life_cycle"></a>
+<a id="nestedatt--labels--fields--life_cycle"></a>
 ### Nested Schema for `labels.fields.life_cycle`
 
 Read-Only:
 
-- `state` (String)
+- `disabled_policy` (Attributes) The policy that governs how to show a disabled label, field, or selection choice. (see [below for nested schema](#nestedatt--labels--fields--life_cycle--disabled_policy))
+- `has_unpublished_changes` (Boolean) Whether the object associated with this lifecycle has unpublished changes.
+- `state` (String) The state of the object associated with this lifecycle.
+
+<a id="nestedatt--labels--fields--life_cycle--disabled_policy"></a>
+### Nested Schema for `labels.fields.life_cycle.state`
+
+Read-Only:
+
+- `hide_in_search` (Boolean) Whether to hide this disabled object in the search menu for Drive items.
+
+When false, the object is generally shown in the UI as disabled but it appears in the search results when searching for Drive items.
+When true, the object is generally hidden in the UI when searching for Drive items.
+- `show_in_apply` (Boolean) Whether to show this disabled object in the apply menu on Drive items.
+
+When true, the object is generally shown in the UI as disabled and is unselectable.
+When false, the object is generally hidden in the UI.
 
 
-<a id="nestedobjatt--labels--fields--properties"></a>
+
+<a id="nestedatt--labels--fields--properties"></a>
 ### Nested Schema for `labels.fields.properties`
 
 Read-Only:
 
-- `display_name` (String)
-- `required` (Boolean)
+- `display_name` (String) The display text to show in the UI identifying this field.
+- `required` (Boolean) Whether the field should be marked as required.
 
 
-<a id="nestedobjatt--labels--fields--selection_options"></a>
+<a id="nestedatt--labels--fields--selection_options"></a>
 ### Nested Schema for `labels.fields.selection_options`
 
 Read-Only:
 
-- `choices` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--selection_options--choices))
-- `list_options` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--selection_options--list_options))
+- `choices` (Attributes List) (see [below for nested schema](#nestedatt--labels--fields--selection_options--choices))
+- `list_options` (Attributes) List options (see [below for nested schema](#nestedatt--labels--fields--selection_options--list_options))
 
-<a id="nestedobjatt--labels--fields--selection_options--choices"></a>
+<a id="nestedatt--labels--fields--selection_options--choices"></a>
 ### Nested Schema for `labels.fields.selection_options.list_options`
 
 Read-Only:
 
-- `display_name` (String)
-- `id` (String)
-- `life_cycle` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--selection_options--list_options--life_cycle))
+- `choice_id` (String) The unique value of the choice.
+Use this when referencing / setting a choice.
+- `id` (String) The unique ID of this resource.
+- `life_cycle` (Attributes) The lifecycle state of an object, such as label, field, or choice. (see [below for nested schema](#nestedatt--labels--fields--selection_options--list_options--life_cycle))
+- `properties` (Attributes) Basic properties of the choice. (see [below for nested schema](#nestedatt--labels--fields--selection_options--list_options--properties))
 
-<a id="nestedobjatt--labels--fields--selection_options--list_options--life_cycle"></a>
+<a id="nestedatt--labels--fields--selection_options--list_options--life_cycle"></a>
 ### Nested Schema for `labels.fields.selection_options.list_options.life_cycle`
 
 Read-Only:
 
-- `state` (String)
+- `disabled_policy` (Attributes) The policy that governs how to show a disabled label, field, or selection choice. (see [below for nested schema](#nestedatt--labels--fields--selection_options--list_options--life_cycle--disabled_policy))
+- `has_unpublished_changes` (Boolean) Whether the object associated with this lifecycle has unpublished changes.
+- `state` (String) The state of the object associated with this lifecycle.
+
+<a id="nestedatt--labels--fields--selection_options--list_options--life_cycle--disabled_policy"></a>
+### Nested Schema for `labels.fields.selection_options.list_options.life_cycle.state`
+
+Read-Only:
+
+- `hide_in_search` (Boolean) Whether to hide this disabled object in the search menu for Drive items.
+
+When false, the object is generally shown in the UI as disabled but it appears in the search results when searching for Drive items.
+When true, the object is generally hidden in the UI when searching for Drive items.
+- `show_in_apply` (Boolean) Whether to show this disabled object in the apply menu on Drive items.
+
+When true, the object is generally shown in the UI as disabled and is unselectable.
+When false, the object is generally hidden in the UI.
 
 
 
-<a id="nestedobjatt--labels--fields--selection_options--list_options"></a>
+<a id="nestedatt--labels--fields--selection_options--list_options--properties"></a>
+### Nested Schema for `labels.fields.selection_options.list_options.properties`
+
+Required:
+
+- `display_name` (String) The display text to show in the UI identifying this choice.
+
+Read-Only:
+
+- `badge_config` (Attributes) (see [below for nested schema](#nestedatt--labels--fields--selection_options--list_options--properties--badge_config))
+
+<a id="nestedatt--labels--fields--selection_options--list_options--properties--badge_config"></a>
+### Nested Schema for `labels.fields.selection_options.list_options.properties.badge_config`
+
+Read-Only:
+
+- `color` (Attributes) The color of the badge.
+When not specified, no badge is rendered.
+The background, foreground, and solo (light and dark mode) colors set here are changed in the Drive UI into the closest recommended supported color.
+
+*After setting this property, the plan will likely show a difference, because the API automatically modifies the values.
+It is recommended to change the Terraform configuration to match the values set by the API. (see [below for nested schema](#nestedatt--labels--fields--selection_options--list_options--properties--badge_config--color))
+- `priority_override` (Number) Override the default global priority of this badge.
+When set to 0, the default priority heuristic is used.
+
+<a id="nestedatt--labels--fields--selection_options--list_options--properties--badge_config--color"></a>
+### Nested Schema for `labels.fields.selection_options.list_options.properties.badge_config.priority_override`
+
+Read-Only:
+
+- `alpha` (Number) The alpha value for the badge color as a float (number between 1 and 0 - e.g. "0.5")
+- `blue` (Number) The blue value for the badge color as a float (number between 1 and 0 - e.g. "0.5")
+- `green` (Number) The green value for the badge color as a float (number between 1 and 0 - e.g. "0.5")
+- `red` (Number) The red value for the badge color as a float (number between 1 and 0 - e.g. "0.5")
+
+
+
+
+
+<a id="nestedatt--labels--fields--selection_options--list_options"></a>
 ### Nested Schema for `labels.fields.selection_options.list_options`
 
 Read-Only:
 
-- `max_entries` (Number)
+- `max_entries` (Number) Maximum number of entries permitted.
 
 
 
-<a id="nestedobjatt--labels--fields--text_options"></a>
+<a id="nestedatt--labels--fields--text_options"></a>
 ### Nested Schema for `labels.fields.text_options`
 
 Read-Only:
 
-- `max_length` (Number)
-- `min_length` (Number)
+- `max_length` (Number) The maximum valid length of values for the text field.
+- `min_length` (Number) The minimum valid length of values for the text field.
 
 
-<a id="nestedobjatt--labels--fields--user_options"></a>
+<a id="nestedatt--labels--fields--user_options"></a>
 ### Nested Schema for `labels.fields.user_options`
 
 Read-Only:
 
-- `list_options` (List of Object) (see [below for nested schema](#nestedobjatt--labels--fields--user_options--list_options))
+- `list_options` (Attributes) List options (see [below for nested schema](#nestedatt--labels--fields--user_options--list_options))
 
-<a id="nestedobjatt--labels--fields--user_options--list_options"></a>
+<a id="nestedatt--labels--fields--user_options--list_options"></a>
 ### Nested Schema for `labels.fields.user_options.list_options`
 
 Read-Only:
 
-- `max_entries` (Number)
+- `max_entries` (Number) Maximum number of entries permitted.
+
+
+
+
+<a id="nestedatt--labels--life_cycle"></a>
+### Nested Schema for `labels.life_cycle`
+
+Read-Only:
+
+- `disabled_policy` (Attributes) The policy that governs how to show a disabled label, field, or selection choice. (see [below for nested schema](#nestedatt--labels--life_cycle--disabled_policy))
+- `has_unpublished_changes` (Boolean) Whether the object associated with this lifecycle has unpublished changes.
+- `state` (String) The state of the object associated with this lifecycle.
+
+<a id="nestedatt--labels--life_cycle--disabled_policy"></a>
+### Nested Schema for `labels.life_cycle.disabled_policy`
+
+Read-Only:
+
+- `hide_in_search` (Boolean) Whether to hide this disabled object in the search menu for Drive items.
+
+When false, the object is generally shown in the UI as disabled but it appears in the search results when searching for Drive items.
+When true, the object is generally hidden in the UI when searching for Drive items.
+- `show_in_apply` (Boolean) Whether to show this disabled object in the apply menu on Drive items.
+
+When true, the object is generally shown in the UI as disabled and is unselectable.
+When false, the object is generally hidden in the UI.
+
+
+
+<a id="nestedatt--labels--properties"></a>
+### Nested Schema for `labels.properties`
+
+Read-Only:
+
+- `description` (String) The description of the label.
+- `title` (String) Title of the label.

@@ -3,12 +3,18 @@
 page_title: "gdrive_file Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Gets a files metadata and optionally downloads / exports it to the local file system
+  This data source can be used for the following:
+  * Get a file and return its metadata.
+  * Download a file from Drive to the local file system.
+  * Export a Google file (Doc, Sheet, etc) to a native file format (CSV, Excel, Word, etc.) and download it to the local file system.
 ---
 
 # gdrive_file (Data Source)
 
-Gets a files metadata and optionally downloads / exports it to the local file system
+This data source can be used for the following:
+* Get a file and return its metadata.
+* Download a file from Drive to the local file system.
+* Export a Google file (Doc, Sheet, etc) to a native file format (CSV, Excel, Word, etc.) and download it to the local file system.
 
 ## Example Usage
 
@@ -37,20 +43,21 @@ data "gdrive_file" "file_export" {
 
 ### Required
 
-- `file_id` (String) ID of the file
+- `file_id` (String) ID of the file.
 
 ### Optional
 
-- `download_path` (String) Use this to specify a local file path to download a (non-Google) file
+- `download_path` (String) Use this to specify a local file path to download a (non-Google) file.
 - `export_mime_type` (String) Specify the target MIME type for the export.
-For a list of supported MIME types see https://developers.google.com/drive/api/v3/ref-export-formats
+
+For a list of supported MIME types see https://developers.google.com/file/api/v3/ref-export-formats
 - `export_path` (String) Use this to specify a local file path to export a Google file (sheet, doc, etc.)
 
 ### Read-Only
 
-- `drive_id` (String) The driveId if the file is located in a Shared Drive
-- `id` (String) The ID of this resource.
+- `drive_id` (String) The ID of the Shared Drive the file is located it. Only present if the file is located in a Shared Drive.
+- `id` (String) The unique ID of this resource.
 - `local_file_path` (String) The path where the local copy or export of the file was created
-- `mime_type` (String) Name MIME type of the file in Google Drive
-- `name` (String) The name of the file
-- `parent` (String) The ID of the file's parent
+- `mime_type` (String) Name MIME type of the file in Google file.
+- `name` (String) The name of the file.
+- `parent` (String) The ID of the file's parent.

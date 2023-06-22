@@ -3,45 +3,81 @@
 page_title: "gdrive_label_assignment Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Sets the labels on a Drive object
+  Sets a label on a Drive object.
 ---
 
 # gdrive_label_assignment (Resource)
 
-Sets the labels on a Drive object
+Sets a label on a Drive object.
 
 ## Example Usage
 
 ```terraform
-# Assign a label policy to a file
-resource "gdrive_label_assignment" "label_assignment" {
-  file_id  = "..."
-  label_id = "..."
-  field {
-    field_id   = "..."
-    value_type = "text"
-    values     = ["one"]
+# Create and publish a Label
+resource "gdrive_label" "test" {
+  label_type       = "ADMIN"
+  use_admin_access = true
+  properties {
+    title       = "My Label"
+    description = "My Description"
   }
-  field {
-    field_id   = "..."
-    value_type = "selection"
-    values     = ["foo", "bar"]
+  life_cycle {
+    state = "PUBLISHED"
   }
 }
 
-# Assign a label to all files in a folder
-data "gdrive_files" "files" {
-  query = "'file_id of a folder' in parents"
+# Create a Date Field for the Label
+resource "gdrive_label_date_field" "field" {
+  label_id         = gdrive_label.test.label_id
+  use_admin_access = true
+  properties {
+    display_name = "My Date Field"
+  }
 }
 
-resource "gdrive_label_assignment" "label_assignment" {
-  for_each = toset([for file in data.gdrive_files.files.files : file.file_id])
-  label_id = "..."
-  field {
-    field_id   = "..."
-    value_type = "..."
-    values     = ["..."]
+# Create a Selection Field for the Label
+resource "gdrive_label_selection_field" "field" {
+  label_id         = gdrive_label.test.label_id
+  use_admin_access = true
+  properties {
+    display_name = "My Selection Field"
   }
+}
+
+# Create a Choice for the Selection Field
+resource "gdrive_label_selection_choice" "choice" {
+  label_id         = gdrive_label_selection_field.field.label_id
+  field_id         = gdrive_label_selection_field.field.field_id
+  use_admin_access = true
+  properties {
+    display_name = "My Choice"
+  }
+}
+
+# Create an empty Sheet
+resource "gdrive_file" "empty_speadsheet" {
+  name      = "my_sheet"
+  mime_type = "application/vnd.google-apps.spreadsheet"
+  parent    = "root"
+}
+
+# BE SURE TO CREATE AND PUBLISH(!) THE LABEL FIRST!
+# Assign the Label with the Field and Choice to a File
+resource "gdrive_label_assignment" "label_assignment" {
+  file_id  = gdrive_file.empty_speadsheet.file_id
+  label_id = gdrive_label.test.label_id
+  fields = [
+    {
+      field_id   = gdrive_label_selection_field.field.field_id
+      value_type = "selection"
+      values     = [gdrive_label_selection_choice.choice.choice_id]
+    },
+    {
+      field_id   = gdrive_label_date_field.field.field_id
+      value_type = "dateString"
+      values     = ["2023-06-22"] # YYYY-MM-DD
+    }
+  ]
 }
 ```
 
@@ -50,34 +86,38 @@ resource "gdrive_label_assignment" "label_assignment" {
 
 ### Required
 
-- `field` (Block Set, Min: 1) (see [below for nested schema](#nestedblock--field))
+- `fields` (Attributes Set) A Set of fields of the assigned label. (see [below for nested schema](#nestedatt--fields))
 - `file_id` (String) ID of the file to assign the label to.
 - `label_id` (String) The ID of the label.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) The unique ID of this resource.
 
-<a id="nestedblock--field"></a>
-### Nested Schema for `field`
+<a id="nestedatt--fields"></a>
+### Nested Schema for `fields`
 
 Required:
 
 - `field_id` (String) The identifier of this field.
 - `value_type` (String) The field type.
 While new values may be supported in the future, the following are currently allowed:
-- dateString
-- integer
-- selection
-- text
-- user
+* dateString
+* integer
+* selection
+* text
+* user
 - `values` (Set of String) The values that should be set.
-Must be compatible with the specified valueType.
+
+Must be compatible with the specified value_type.
 
 ## Import
 
 Import is supported using the following syntax:
 
 ```shell
-terraform import gdrive_label_assignment.label_assignment [file_id/label_id]
+# The ID for this resource is a combined ID that consistent of the file_id and the label_id.
+# If you file's file_id is "abcdef" and your label_id is "xzy", the ID of the resource would be:
+# "abcdef/xzy"
+terraform import gdrive_label_assignment.label_assignment [file_id]/[label_id]
 ```

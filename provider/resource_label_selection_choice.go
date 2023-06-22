@@ -136,7 +136,7 @@ func (r *gdriveLabelSelectionChoiceResource) Metadata(ctx context.Context, req r
 
 func (r *gdriveLabelSelectionChoiceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Creates an Selection Field for a Drive Label",
+		MarkdownDescription: "Creates a Choice for a Selection Field Label.",
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"choice_id": schema.StringAttribute{
@@ -162,11 +162,13 @@ func (r *gdriveLabelSelectionChoiceResource) Schema(ctx context.Context, req res
 			},
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
-				Description: `Set to true in order to use the user's admin credentials.
+				MarkdownDescription: `Set to true in order to use the user's admin credentials.
+
 The server verifies that the user is an admin for the label before allowing access.`,
 			},
 			"language_code": schema.StringAttribute{
 				MarkdownDescription: `The BCP-47 language code to use for evaluating localized field labels.
+
 When not specified, values in the default configured language are used.`,
 				Optional: true,
 			},

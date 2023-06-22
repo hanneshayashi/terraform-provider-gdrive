@@ -69,7 +69,6 @@ func (p *gdriveProvider) Schema(ctx context.Context, req provider.SchemaRequest,
 				MarkdownDescription: `The path to or the content of a key file for your Service Account.
 Leave empty if you want to use Application Default Credentials (ADC) (**recommended**).<br>
 You can also use the "SERVICE_ACCOUNT_KEY" environment variable to store either the path to the key file or the key itself (in JSON format).`,
-				// 				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT_KEY", ""),
 			},
 			"service_account": schema.StringAttribute{
 				Optional: true,
@@ -93,10 +92,10 @@ The provider will ALWAYS retry on 403 errors that indicate a rate limiting / quo
 				Optional: true,
 				MarkdownDescription: `List of scopes that the provider will add to the API client.
 If this is unset, the provider will use the following scopes that must be added to the Domain-Wide Delegation configuration in the Google Workspace Admin Console:
-* https://www.googleapis.com/auth/cloud-identity.orgunits
 * https://www.googleapis.com/auth/drive
 * https://www.googleapis.com/auth/drive.labels
-* https://www.googleapis.com/auth/drive.admin.labels`,
+* https://www.googleapis.com/auth/drive.admin.labels
+* https://www.googleapis.com/auth/cloud-identity.orgunits`,
 				ElementType: types.StringType,
 			},
 		},

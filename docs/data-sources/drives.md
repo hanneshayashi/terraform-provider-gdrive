@@ -3,12 +3,12 @@
 page_title: "gdrive_drives Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Returns a list of Shared Drives that match the given query
+  Returns a list of Shared Drives that match the given query.
 ---
 
 # gdrive_drives (Data Source)
 
-Returns a list of Shared Drives that match the given query
+Returns a list of Shared Drives that match the given query.
 
 ## Example Usage
 
@@ -31,22 +31,37 @@ data "gdrive_drives" "drives_no_members" {
 ### Required
 
 - `query` (String) Query string for searching shared drives.
+
 See the https://developers.google.com/drive/api/v3/search-shareddrives for supported syntax.
 
 ### Optional
 
-- `use_domain_admin_access` (Boolean) Use domain admin access
+- `use_domain_admin_access` (Boolean) Use domain admin access.
 
 ### Read-Only
 
-- `drives` (List of Object) (see [below for nested schema](#nestedatt--drives))
-- `id` (String) The ID of this resource.
+- `drives` (Attributes Set) A set of Shared Drives that match the specified query. (see [below for nested schema](#nestedatt--drives))
+- `id` (String) The unique ID of this resource.
+- `name` (String) The name of this shared drive.
 
 <a id="nestedatt--drives"></a>
 ### Nested Schema for `drives`
 
 Read-Only:
 
-- `drive_id` (String)
-- `name` (String)
-- `restrictions` (Map of Boolean)
+- `drive_id` (String) ID of the Shared Drive.
+- `id` (String) The unique ID of this resource.
+- `name` (String) The name of this shared drive.
+- `restrictions` (Attributes) A set of restrictions that apply to this Shared Drive or items inside this Shared Drive. (see [below for nested schema](#nestedatt--drives--restrictions))
+
+<a id="nestedatt--drives--restrictions"></a>
+### Nested Schema for `drives.restrictions`
+
+Read-Only:
+
+- `admin_managed_restrictions` (Boolean) Whether administrative privileges on this shared drive are required to modify restrictions.
+- `copy_requires_writer_permission` (Boolean) Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
+When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.
+- `domain_users_only` (Boolean) Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
+This restriction may be overridden by other sharing policies controlled outside of this shared drive.
+- `drive_members_only` (Boolean) Whether access to items inside this shared drive is restricted to its members.

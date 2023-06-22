@@ -57,36 +57,36 @@ func (d *permissionDataSource) Metadata(ctx context.Context, req datasource.Meta
 
 func (d *permissionDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns the metadata of a permission on a file or Shared Drive",
+		MarkdownDescription: "Returns the metadata of a permission on a file or Shared Drive.",
 		Attributes: map[string]schema.Attribute{
 			"id": dsId(),
 			"permission_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the permission",
+				MarkdownDescription: "ID of the permission.",
 				Required:            true,
 			},
 			"file_id": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "ID of the file or Shared Drive",
+				MarkdownDescription: "ID of the file or Shared Drive.",
 			},
 			"type": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
+				MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.",
 			},
 			"domain": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "The domain if the type of this permissions is 'domain'",
+				MarkdownDescription: "The domain if the type of this permissions is 'domain'.",
 			},
 			"email_address": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "The email address if the type of this permissions is 'user' or 'group'",
+				MarkdownDescription: "The email address if the type of this permissions is 'user' or 'group'.",
 			},
 			"role": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "The role that this trustee is granted",
+				MarkdownDescription: "The role that this trustee is granted.",
 			},
 			"use_domain_admin_access": schema.BoolAttribute{
 				Optional:            true,
-				MarkdownDescription: "Use domain admin access",
+				MarkdownDescription: "Use domain admin access.",
 			},
 		},
 	}

@@ -3,12 +3,12 @@
 page_title: "gdrive_permission Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Sets a single permission on a file or Shared Drive
+  Grants a permission on a file/folder or Shared Drive.
 ---
 
 # gdrive_permission (Resource)
 
-Sets a single permission on a file or Shared Drive
+Grants a permission on a file/folder or Shared Drive.
 
 ## Example Usage
 
@@ -39,31 +39,34 @@ resource "gdrive_permission" "permissions_owner_transfer" {
 
 ### Required
 
-- `file_id` (String) ID of the file or Shared Drive
+- `file_id` (String) ID of the file or Shared Drive.
 - `role` (String) The role
-- `type` (String) The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'
 
 ### Optional
 
 - `domain` (String) The domain that should be granted access
 - `email_address` (String) The email address of the trustee
-- `email_message` (String) An optional email message that will be sent when the permission is created
+- `email_message` (String) An optional email message that will be sent when the permission is created.
 - `move_to_new_owners_root` (Boolean) This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.
-- `send_notification_email` (Boolean) Wether to send a notfication email
+- `send_notification_email` (Boolean) Wether to send a notfication email.
 - `transfer_ownership` (Boolean) Whether to transfer ownership to the specified user
-- `use_domain_admin_access` (Boolean) Use domain admin access
+- `type` (String) The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.
+- `use_domain_admin_access` (Boolean) Use domain admin access.
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) The unique ID of this resource.
+- `permission_id` (String) PermissionID of the trustee.
 
 ## Import
 
 Import is supported using the following syntax:
 
 ```shell
-# The ID for this resource is a combined ID that consistent of the fileId and the permissionId.
-# If you file's fileId is "abcdef" and your permissionId is "12345", the ID of the resource would be:
+# The ID for this resource is a combined ID that consistent of the file_id and the permission_id.
+# If you file's file_id is "abcdef" and your permission_id is "12345", the ID of the resource would be:
 # "abcdef/12345"
-terraform import gdrive_permission.permission [fileId/permisssionId]
+# In addition, the use_domain_admin_access attribute must be specified during the import.
+# Example: false,abcdef/12345
+terraform import gdrive_permission.permission [use_domain_admin_access],[file_id]/[permission_id]
 ```

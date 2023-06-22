@@ -23,8 +23,11 @@ import (
 	"net/http"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -59,49 +62,59 @@ func (d *fileDataSource) Metadata(ctx context.Context, req datasource.MetadataRe
 
 func (d *fileDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Gets a Shared file and returns its metadata",
+		MarkdownDescription: `This data source can be used for the following:
+* Get a file and return its metadata.
+* Download a file from Drive to the local file system.
+* Export a Google file (Doc, Sheet, etc) to a native file format (CSV, Excel, Word, etc.) and download it to the local file system.`,
 		Attributes: map[string]schema.Attribute{
 			"id": dsId(),
 			"file_id": schema.StringAttribute{
-				Required:    true,
-				Description: "ID of the file",
+				Required:            true,
+				MarkdownDescription: "ID of the file.",
 			},
 			"drive_id": schema.StringAttribute{
-				Computed:    true,
-				Description: "The ID of the Shared Drive the file is located it. Only present if the file is located in a Shared Drive.",
+				Computed:            true,
+				MarkdownDescription: "The ID of the Shared Drive the file is located it. Only present if the file is located in a Shared Drive.",
 			},
 			"parent": schema.StringAttribute{
-				Computed:    true,
-				Description: "The ID of the file's parent",
+				Computed:            true,
+				MarkdownDescription: "The ID of the file's parent.",
 			},
 			"name": schema.StringAttribute{
-				Computed:    true,
-				Description: "The name of the file",
+				Computed:            true,
+				MarkdownDescription: "The name of the file.",
 			},
 			"mime_type": schema.StringAttribute{
-				Computed:    true,
-				Description: "Name MIME type of the file in Google file",
+				Computed:            true,
+				MarkdownDescription: "Name MIME type of the file in Google file.",
 			},
 			"download_path": schema.StringAttribute{
-				Optional:    true,
-				Description: "Use this to specify a local file path to download a (non-Google) file",
+				Optional:            true,
+				MarkdownDescription: "Use this to specify a local file path to download a (non-Google) file.",
+				Validators: []validator.String{
+					stringvalidator.ConflictsWith(path.Expressions{
+						path.MatchRoot("export_path"),
+					}...),
+				},
 			},
 			"export_path": schema.StringAttribute{
-				Optional:    true,
-				Description: "Use this to specify a local file path to export a Google file (sheet, doc, etc.)",
-				// ConflictsWith: []string{"download_path"},
-				// RequiredWith:  []string{"export_mime_type"},
+				Optional:            true,
+				MarkdownDescription: "Use this to specify a local file path to export a Google file (sheet, doc, etc.)",
+				Validators: []validator.String{
+					stringvalidator.ConflictsWith(path.Expressions{
+						path.MatchRoot("download_path"),
+					}...),
+				},
 			},
 			"export_mime_type": schema.StringAttribute{
-				// RequiredWith:  []string{"export_path"},
-				// ConflictsWith: []string{"download_path"},
 				Optional: true,
-				Description: `Specify the target MIME type for the export.
+				MarkdownDescription: `Specify the target MIME type for the export.
+
 For a list of supported MIME types see https://developers.google.com/file/api/v3/ref-export-formats`,
 			},
 			"local_file_path": schema.StringAttribute{
-				Computed:    true,
-				Description: "The path where the local copy or export of the file was created",
+				Computed:            true,
+				MarkdownDescription: "The path where the local copy or export of the file was created",
 			},
 		},
 	}

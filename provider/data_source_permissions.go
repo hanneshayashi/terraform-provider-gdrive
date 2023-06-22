@@ -64,59 +64,61 @@ func (d *permissionsDataSource) Metadata(ctx context.Context, req datasource.Met
 
 func (d *permissionsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns the metadata of a permission on a file or Shared Drive",
+		MarkdownDescription: "Returns the list of all permissions on a file or Shared Drive",
 		Attributes: map[string]schema.Attribute{
 			"id": dsId(),
 			"file_id": schema.StringAttribute{
-				Required:    true,
-				Description: "ID of the file or Shared Drive",
+				Required:            true,
+				MarkdownDescription: "ID of the file or Shared Drive.",
 			},
 			"use_domain_admin_access": schema.BoolAttribute{
-				Optional:    true,
-				Description: "Use domain admin access",
+				Optional:            true,
+				MarkdownDescription: "Use domain admin access.",
 			},
 			"permissions": schema.SetNestedAttribute{
 				Computed:            true,
-				MarkdownDescription: "The list of permissions set on this file or Shared Drive",
+				MarkdownDescription: "The list of permissions set on this file or Shared Drive.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"permission_id": schema.StringAttribute{
-							Computed:    true,
-							Description: "ID of the permission",
+							Computed:            true,
+							MarkdownDescription: "ID of the permission.",
 						},
 						"display_name": schema.StringAttribute{
 							Computed: true,
-							Description: `The "pretty" name of the value of the permission.
+							MarkdownDescription: `The "pretty" name of the value of the permission.
+
 The following is a list of examples for each type of permission:
-- user    - User's full name, as defined for their Google account, such as "Joe Smith."
-- group   - Name of the Google Group, such as "The Company Administrators."
-- domain  - String domain name, such as "thecompany.com."
-- anyone  - No displayName is present.`,
+* user    - User's full name, as defined for their Google account, such as "Joe Smith."
+* group   - Name of the Google Group, such as "The Company Administrators."
+* domain  - String domain name, such as "thecompany.com."
+* anyone  - No displayName is present.`,
 						},
 						"domain": schema.StringAttribute{
-							Computed:    true,
-							Description: "The domain if the type of this permissions is 'domain'",
+							Computed:            true,
+							MarkdownDescription: "The domain if the type of this permissions is 'domain'.",
 						},
 						"deleted": schema.BoolAttribute{
 							Computed: true,
-							Description: `Whether the account associated with this permission has been deleted.
+							MarkdownDescription: `Whether the account associated with this permission has been deleted.
+
 This field only pertains to user and group permissions.`,
 						},
 						"email_address": schema.StringAttribute{
-							Computed:    true,
-							Description: "The email address if the type of this permissions is 'user' or 'group'",
+							Computed:            true,
+							MarkdownDescription: "The email address if the type of this permissions is 'user' or 'group'.",
 						},
 						"expiration_time": schema.StringAttribute{
-							Computed:    true,
-							Description: "The time at which this permission will expire (RFC 3339 date-time)",
+							Computed:            true,
+							MarkdownDescription: "The time at which this permission will expire (RFC 3339 date-time).",
 						},
 						"role": schema.StringAttribute{
-							Computed:    true,
-							Description: "The role that this trustee is granted",
+							Computed:            true,
+							MarkdownDescription: "The role that this trustee is granted.",
 						},
 						"type": schema.StringAttribute{
-							Computed:    true,
-							Description: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
+							Computed:            true,
+							MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.",
 						},
 					},
 				},

@@ -2,7 +2,7 @@
 layout: ""
 page_title: "Provider: Google Drive"
 description: ](-
-  The Google Drive provider can manage Google Drive files / folders, Shared Drives and permissions
+  The Google Drive provider can manage Google Drive files / folders, Shared Drives, Labels and permissions
 ---
 
 # Google Drive provider
@@ -10,33 +10,33 @@ description: ](-
 ## Setup
 First, you need a GCP Service Account with [Domain Wide Delegation](https://support.google.com/a/answer/162106) set up with the Google Drive scope.
 
-This provider uses [GSM](https://github.com/hanneshayashi/gsm)'s auth and drive packages.
+This provider uses [GSM](https://github.com/hanneshayashi/gsm) for authentication and API access.
 You can take a look at the GSM [Setup Guide](https://gsm.hayashi-ke.online/setup), if you need help.
 
 The basic steps are:
-1. Create GCP Project
-2. Enable Drive API
-3. Create Service Account + Enable Domain Wide Delegation
+1. Create GCP Project (or use an existing one)
+2. Enable the following APIs:
+    * Drive API
+    * Drive Labels API
+    * Cloud Identity API
+3. Create a Service Account + Enable Domain Wide Delegation
     * See [Perform Google Workspace Domain-Wide Delegation of Authority](https://developers.google.com/admin-sdk/directory/v1/guides/delegation)
     * **You don't need the Service Account Key if you want to use [Application Default Credential](https://cloud.google.com/iam/docs/best-practices-for-using-and-managing-service-accounts#use-attached-service-accounts)**
-4. Enter the Client ID of the Service Account with the [Drive scope](https://developers.google.com/identity/protocols/oauth2/scopes#drive) (https://www.googleapis.com/auth/drive) in your Admin Console
+4. Enter the Client ID of the Service Account with the following scopes in your Admin Console:
+    *	`https://www.googleapis.com/auth/drive`
+    *	`https://www.googleapis.com/auth/drive.labels`
+    *	`https://www.googleapis.com/auth/drive.admin.labels`
+    * `https://www.googleapis.com/auth/cloud-identity.orgunits`
 
 You can authenticate in one of two ways:
-1. Create a Service Account Key and configure the provider like so:
-```terraform
-provider "gdrive" {
-  service_account_key = "/path/to/sa.json"  # This is the path to your Service Account Key file or its content in JSON format
-  subject             = "admin@example.com" # This is the user you want to impersonate with Domain Wide Delegation
-}
-```
-2. Use Application Default Credentials:
-Activate the [IAM Service Account Credentials API](https://console.developers.google.com/apis/api/iamcredentials.googleapis.com/overview) *in the project where the Service Account is located*
+1. Use Application Default Credentials (**recommended**):
+  Activate the [IAM Service Account Credentials API](https://console.developers.google.com/apis/api/iamcredentials.googleapis.com/overview) *in the project where the Service Account is located*
 
-   a) Use `gcloud auth application-default login` on your local workstation
+   a) Use a Google Compute Engine instance or [any service that supports attaching a Service Account in GCP](https://cloud.google.com/iam/docs/impersonating-service-accounts#attaching-new-resource)
 
    **or**
 
-   b) Use a Google Compute Engine instance or [any service that supports attaching a Service Account in GCP](https://cloud.google.com/iam/docs/impersonating-service-accounts#attaching-new-resource)
+   b) Use `gcloud auth application-default login --impersonate-service-account` on your local workstation
 
 In **both** cases, the account needs the *[Service Account Token Creator](https://cloud.google.com/iam/docs/service-accounts#token-creator-role)* role for the Service Account you set up for DWD (**even if your GCP service is using the same account**).
 
@@ -49,61 +49,19 @@ provider "gdrive" {
 }
 ```
 
-### Optional
-
-#### Enable Management of Shared Drives in Organizational Units
-
-**BEWARE! THE API AND THIS FEATURE ARE IN BETA AND MAY BREAK WITHOUT WARNING!**
-
-If you want to organize your Shared Drives in organizational units with this provider, some additional setup is required:
-1. Enable the Cloud Identity API in your GCP project
-2. Add `https://www.googleapis.com/auth/cloud-identity.orgunits` as a scope to your Domain Wide Delegation config
-3. Set `use_cloud_identity_api = true` in your provider configuration:
-
+2. Create a Service Account Key and configure the provider like so:
 ```terraform
 provider "gdrive" {
-  # ...
-  use_cloud_identity_api = true
+  service_account_key = "/path/to/sa.json"  # This is the path to your Service Account Key file or its content in JSON format
+  subject             = "admin@example.com" # This is the user you want to impersonate with Domain Wide Delegation
 }
 ```
 
-#### Enable Drive Label API
-
-**Label assignments use the normal Drive API so no additional setup is required**
-
-If you want to use Google Drive Labels (currently data sources only), some additional setup is required:
-1. Enable the Drive Labels API in your GCP project
-2. Add `https://www.googleapis.com/auth/drive.labels` as a scope to your Domain Wide Delegation config
-3. Set `use_labels_api = true` in your provider configuration:
-
-```terraform
-provider "gdrive" {
-  # ...
-  use_labels_api = true
-}
-```
-
-If you want to use "admin access" when working with labels, you also need to do the following:
-1. Add `https://www.googleapis.com/auth/drive.admin.labels` as a scope to your Domain Wide Delegation config
-2. Set `use_labels_admin_scope = true` in your provider configuration:
-
-```terraform
-provider "gdrive" {
-  # ...
-  use_labels_api         = true
-  use_labels_admin_scope = true
-}
-```
+You can also set the `SERVICE_ACCOUNT_KEY` environment variable to store either the key or the json contents.
 
 ## Example Usage
 
 ```terraform
-# Use a Service Account Key from a JSON file
-provider "gdrive" {
-  service_account_key = "/path/to/sa.json"
-  subject             = "admin@example.com"
-}
-
 # Use Application Default Credentials
 provider "gdrive" {
   subject = "admin@example.com"
@@ -114,6 +72,12 @@ provider "gdrive" {
   service_account = "email@my-project.iam.gserviceaccount.com"
   subject         = "admin@example.com"
 }
+
+# Use a Service Account Key from a JSON file
+provider "gdrive" {
+  service_account_key = "/path/to/sa.json"
+  subject             = "admin@example.com"
+}
 ```
 
 <!-- schema generated by tfplugindocs -->
@@ -121,25 +85,20 @@ provider "gdrive" {
 
 ### Optional
 
-- `retry_on` (List of Number) A list of HTTP error codes you want the provider to retry on (e.g. 404).
+- `retry_on` (List of Number) A list of HTTP error codes you want the provider to retry on.
+If this is unset, the provider will retry on 404 and 502 using an exponential backoff strategy. If you DON'T want the provider to retry on any error, set this to an empty list.
+The provider will ALWAYS retry on 403 errors that indicate a rate limiting / quota issue.
+- `scopes` (List of String) List of scopes that the provider will add to the API client.
+If this is unset, the provider will use the following scopes that must be added to the Domain-Wide Delegation configuration in the Google Workspace Admin Console:
+* https://www.googleapis.com/auth/drive
+* https://www.googleapis.com/auth/drive.labels
+* https://www.googleapis.com/auth/drive.admin.labels
+* https://www.googleapis.com/auth/cloud-identity.orgunits
 - `service_account` (String) The email address of the Service Account you want to impersonate with Application Default Credentials (ADC).
 Leave empty if you want to use the Service Account of a GCP service (GCE, Cloud Run, Cloud Build, etc) directly.<br>
 You can also use the "SERVICE_ACCOUNT" environment variable.
-- `service_account_key` (String) The path to or the content of a key file for your Service Account.
-Leave empty if you want to use Application Default Credentials (ADC).<br>
+- `service_account_key` (String, Sensitive) The path to or the content of a key file for your Service Account.
+Leave empty if you want to use Application Default Credentials (ADC) (**recommended**).<br>
 You can also use the "SERVICE_ACCOUNT_KEY" environment variable to store either the path to the key file or the key itself (in JSON format).
 - `subject` (String) The email address of the Workspace user you want to impersonate with Domain Wide Delegation (DWD).<br>
 You can also use the "SUBJECT" environment variable.
-- `use_cloud_identity_api` (Boolean) Set this to true if you want to manage Shared Drives in organizational units.
-Adds the scope 'https://www.googleapis.com/auth/cloud-identity.orgunits' to the provider's http client.
-This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
-Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"
-- `use_labels_admin_scope` (Boolean) Set this to true if you want to manage Drive labels with the admin scope.
-Only has effect if 'use_labels_api' is also set to 'true'.
-Adds the scope 'https://www.googleapis.com/auth/drive.admin.labels' to the provider's http client.
-This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
-Can also be set with the environment variable "USE_LABELS_ADMIN_SCOPE"
-- `use_labels_api` (Boolean) Set this to true if you want to manage Drive labels.
-Adds the scope 'https://www.googleapis.com/auth/drive.labels' to the provider's http client.
-This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
-Can also be set with the environment variable "USE_LABELS_API"

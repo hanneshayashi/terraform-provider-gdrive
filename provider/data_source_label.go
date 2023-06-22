@@ -143,11 +143,7 @@ func (d *labelDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 
 func (d *labelDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: `This resource can be used to get the fields and other metadata for a single label.
-This resource requires additional setup:
-1. Enable the Drive Labels API in your GCP project
-2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
-3. Set 'use_labels_api' to 'true' in your provider configuration`,
+		MarkdownDescription: `This resource can be used to get the fields and other metadata for a single label.`,
 		Attributes: map[string]schema.Attribute{
 			"id": dsId(),
 			"label_id": schema.StringAttribute{
@@ -156,32 +152,37 @@ This resource requires additional setup:
 			},
 			"name": schema.StringAttribute{
 				Required: true,
-				Description: `Label resource name.
+				MarkdownDescription: `Label resource name.
+
 May be any of:
-- labels/{id} (equivalent to labels/{id}@latest)
-- labels/{id}@latest
-- labels/{id}@published
-- labels/{id}@{revisionId}`,
+* labels/{id} (equivalent to labels/{id}@latest)
+* labels/{id}@latest
+* labels/{id}@published
+* labels/{id}@{revisionId}`,
 			},
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
-				Description: `Set to true in order to use the user's admin credentials.
+				MarkdownDescription: `Set to true in order to use the user's admin credentials.
+
 The server verifies that the user is an admin for the label before allowing access.`,
 			},
 			"language_code": schema.StringAttribute{
 				Optional: true,
-				Description: `The BCP-47 language code to use for evaluating localized field labels.
+				MarkdownDescription: `The BCP-47 language code to use for evaluating localized field labels.
+
 When not specified, values in the default configured language are used.`,
 			},
 			"revision": schema.StringAttribute{
 				Optional: true,
-				Description: `The revision of the label to retrieve.
+				MarkdownDescription: `The revision of the label to retrieve.
+
 Defaults to the latest revision.
+
 Reading other revisions may require addtional permissions and / or setting the 'use_admin_access' flag.`,
 			},
 			"label_type": schema.StringAttribute{
-				Computed:    true,
-				Description: `The type of this label.`,
+				Computed:            true,
+				MarkdownDescription: `The type of this label.`,
 			},
 			"life_cycle": lifecycleDS(),
 			"fields":     fieldsDS(),

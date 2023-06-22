@@ -67,36 +67,40 @@ func (d *filesDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 
 func (d *filesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns a list of Shared Drives that match the given query",
+		MarkdownDescription: "Returns a list of files that match the given query.",
 		Attributes: map[string]schema.Attribute{
 			"id": dsId(),
 			"query": schema.StringAttribute{
 				Required: true,
-				Description: `A query for filtering the file results.
+				MarkdownDescription: `A query for filtering the file results.
+
 See the https://developers.google.com/drive/api/v3/search-files for the supported syntax.`,
 			},
 			"spaces": schema.StringAttribute{
 				Optional: true,
-				Description: `A comma-separated list of spaces to query within the corpus.
+				MarkdownDescription: `A comma-separated list of spaces to query within the corpus.
+
 Supported values are 'drive', 'appDataFolder' and 'photos'.`,
 			},
 			"corpora": schema.StringAttribute{
 				Optional: true,
-				Description: `Groupings of files to which the query applies.
+				MarkdownDescription: `Groupings of files to which the query applies.
+
 Supported groupings are:
-'user' (files created by, opened by, or shared directly with the user)
-'drive' (files in the specified shared drive as indicated by the 'driveId')
-'domain' (files shared to the user's domain)
-'allDrives' (A combination of 'user' and 'drive' for all drives where the user is a member).
+* 'user' (files created by, opened by, or shared directly with the user)
+* 'drive' (files in the specified shared drive as indicated by the 'driveId')
+* 'domain' (files shared to the user's domain)
+* 'allDrives' (A combination of 'user' and 'drive' for all drives where the user is a member).
+
 When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.`,
 			},
 			"drive_id": schema.StringAttribute{
-				Optional:    true,
-				Description: `ID of the shared drive.`,
+				Optional:            true,
+				MarkdownDescription: `ID of the shared drive.`,
 			},
 			"include_items_from_all_drives": schema.BoolAttribute{
-				Optional:    true,
-				Description: `Whether both My Drive and shared drive items should be included in results.`,
+				Optional:            true,
+				MarkdownDescription: `Whether both My Drive and shared drive items should be included in results.`,
 			},
 			"files": schema.SetNestedAttribute{
 				Computed:            true,
@@ -117,7 +121,7 @@ When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.`,
 							Computed:            true,
 						},
 						"mime_type": schema.StringAttribute{
-							MarkdownDescription: "The MIME type of the file",
+							MarkdownDescription: "The MIME type of the file.",
 							Computed:            true,
 						},
 						"parent": schema.StringAttribute{

@@ -4,15 +4,13 @@ data "gdrive_permissions" "some_file_permissions" {
 }
 
 # Set the exact same permissions on a different file
-resource "gdrive_permissions_policy" "permissions_policy" {
+resource "gdrive_permissions_policy" "permissions_policy_target" {
   file_id = "..."
-  dynamic "permissions" {
-    for_each = data.gdrive_permissions.some_file_permissions.permissions
-    content {
-      role          = permissions.value.role
-      email_address = permissions.value.email_address
-      type          = permissions.value.type
-      domain        = permissions.value.domain
+  permissions = [for p in data.gdrive_permissions.some_file_permissions.permissions : {
+    role          = p.role
+    type          = p.type
+    email_address = p.email_address == "" ? null : p.email_address
+    domain        = p.domain == "" ? null : p.domain
     }
-  }
+  ]
 }

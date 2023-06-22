@@ -76,26 +76,26 @@ func (restrictionsModel *driveRestrictionsModel) toDriveRestrictions() *drive.Dr
 
 func dsDriveRestrictions() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		Computed:    true,
-		Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
+		Computed:            true,
+		MarkdownDescription: "A set of restrictions that apply to this Shared Drive or items inside this Shared Drive.",
 		Attributes: map[string]schema.Attribute{
 			"admin_managed_restrictions": schema.BoolAttribute{
-				Computed:    true,
-				Description: "Whether administrative privileges on this shared drive are required to modify restrictions.",
+				Computed:            true,
+				MarkdownDescription: "Whether administrative privileges on this shared drive are required to modify restrictions.",
 			},
 			"copy_requires_writer_permission": schema.BoolAttribute{
 				Computed: true,
-				Description: `Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
+				MarkdownDescription: `Whether the options to copy, print, or download files inside this shared drive, should be disabled for readers and commenters.
 When this restriction is set to true, it will override the similarly named field to true for any file inside this shared drive.`,
 			},
 			"domain_users_only": schema.BoolAttribute{
 				Computed: true,
-				Description: `Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
+				MarkdownDescription: `Whether access to this shared drive and items inside this shared drive is restricted to users of the domain to which this shared drive belongs.
 This restriction may be overridden by other sharing policies controlled outside of this shared drive.`,
 			},
 			"drive_members_only": schema.BoolAttribute{
-				Computed:    true,
-				Description: "Whether access to items inside this shared drive is restricted to its members.",
+				Computed:            true,
+				MarkdownDescription: "Whether access to items inside this shared drive is restricted to its members.",
 			},
 		},
 	}

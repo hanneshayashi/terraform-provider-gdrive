@@ -82,7 +82,7 @@ func (r *gdriveLabelResource) Metadata(ctx context.Context, req resource.Metadat
 
 func (r *gdriveLabelResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Creates a Drive Label",
+		MarkdownDescription: "Creates a Drive Label.",
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"label_id": schema.StringAttribute{
@@ -101,16 +101,19 @@ func (r *gdriveLabelResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
-				Description: `Set to true in order to use the user's admin credentials.
+				MarkdownDescription: `Set to true in order to use the user's admin credentials.
+
 The server verifies that the user is an admin for the label before allowing access.`,
 			},
 			"language_code": schema.StringAttribute{
 				MarkdownDescription: `The BCP-47 language code to use for evaluating localized field labels.
+
 When not specified, values in the default configured language are used.`,
 				Optional: true,
 			},
 			"label_type": schema.StringAttribute{
 				MarkdownDescription: `The type of this label.
+
 The following values are accepted:
 * "SHARED"  - Shared labels may be shared with users to apply to Drive items.
 * "ADMIN"   - Admin-owned label. Only creatable and editable by admins. Supports some additional admin-only features.`,

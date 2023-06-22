@@ -23,10 +23,13 @@ import (
 	"net/http"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -72,27 +75,27 @@ func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resourc
 	resp.Schema = schema.Schema{
 		MarkdownDescription: `Creates an authoratative permissions policy on a file or Shared Drive.
 
-// **Warning: This resource will set exactly the defined permissions and remove everything else!**
+**Warning: This resource will set exactly the defined permissions and remove everything else!**
 
-// It is HIGHLY recommended that you import the resource and make sure that the owner is properly set before applying it!
+It is HIGHLY recommended that you import the resource and make sure that the owner is properly set before applying it!
 
-// You can import the resource using the file's or Shared Drive's id like so:
+You can import the resource using the file's or Shared Drive's id like so:
 
-// terraform import [resource address] [fileId]
+terraform import [resource address] [fileId]
 
-// **Important**: On a *destroy*, this resource will preserve the owner and organizer permissions!`,
+**Important**: On a *destroy*, this resource will preserve the owner and organizer permissions!`,
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"file_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the file or Shared Drive",
+				MarkdownDescription: "ID of the file or Shared Drive.",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"use_domain_admin_access": schema.BoolAttribute{
-				Optional:    true,
-				Description: "Use domain admin access",
+				Optional:            true,
+				MarkdownDescription: "Use domain admin access.",
 			},
 			"permissions": schema.SetNestedAttribute{
 				Required:            true,
@@ -100,51 +103,45 @@ func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resourc
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"permission_id": schema.StringAttribute{
-							MarkdownDescription: "PermissionID of the trustee",
+							MarkdownDescription: "PermissionID of the trustee.",
 							Computed:            true,
 						},
 						"email_message": schema.StringAttribute{
-							MarkdownDescription: "An optional email message that will be sent when the permission is created",
+							MarkdownDescription: "An optional email message that will be sent when the permission is created.",
 							Optional:            true,
 						},
 						"send_notification_email": schema.BoolAttribute{
-							MarkdownDescription: "Wether to send a notfication email",
+							MarkdownDescription: "Wether to send a notfication email.",
 							Optional:            true,
 						},
 						"type": schema.StringAttribute{
-							MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
+							MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.",
 							Optional:            true,
-							// Validators: []validator.String{
-							// TODO
-							// 				ValidateFunc: validatePermissionType,
-							// },
 						},
 						"domain": schema.StringAttribute{
-							MarkdownDescription: "The domain that should be granted access",
+							MarkdownDescription: "The domain that should be granted access.",
 							Optional:            true,
-							// Validators: []validator.String{
-							// TODO
-							// 				ConflictsWith: []string{"email_address"},
-							// },
+							Validators: []validator.String{
+								stringvalidator.ConflictsWith(path.Expressions{
+									path.MatchRoot("email_address"),
+								}...),
+							},
 						},
 						"email_address": schema.StringAttribute{
-							MarkdownDescription: "The email address of the trustee",
+							MarkdownDescription: "The email address of the trustee.",
 							Optional:            true,
-							// Validators: []validator.String{
-							// TODO
-							// 				ConflictsWith: []string{"domain"},
-							// },
+							Validators: []validator.String{
+								stringvalidator.ConflictsWith(path.Expressions{
+									path.MatchRoot("domain"),
+								}...),
+							},
 						},
 						"role": schema.StringAttribute{
-							MarkdownDescription: "The role",
+							MarkdownDescription: "The role.",
 							Required:            true,
-							// Validators: []validator.String{
-							// TODO
-							// 				ConflictsWith: []string{"email_address"},
-							// },
 						},
 						"transfer_ownership": schema.BoolAttribute{
-							MarkdownDescription: "Whether to transfer ownership to the specified user",
+							MarkdownDescription: "Whether to transfer ownership to the specified user.",
 							Optional:            true,
 						},
 						"move_to_new_owners_root": schema.BoolAttribute{

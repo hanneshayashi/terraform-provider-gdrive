@@ -83,51 +83,53 @@ func (r *gdriveDriveResource) Metadata(ctx context.Context, req resource.Metadat
 func (r *gdriveDriveResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:             1,
-		MarkdownDescription: "Creates a Shared Drive",
+		MarkdownDescription: "Creates a Shared Drive.",
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"drive_id": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "The ID of the Shared Drive (driveId)",
+				MarkdownDescription: "The ID of the Shared Drive.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "Name of the Shared Drive",
+				MarkdownDescription: "Name of the Shared Drive.",
 				Required:            true,
 			},
 			"use_domain_admin_access": schema.BoolAttribute{
-				MarkdownDescription: "Use domain admin access",
+				MarkdownDescription: "Use domain admin access.",
 				Optional:            true,
 			},
 		},
 		Blocks: map[string]schema.Block{
 			"restrictions": schema.SingleNestedBlock{
-				MarkdownDescription: "The restrictions that should be set on the Shared Drive",
+				MarkdownDescription: "The restrictions that should be set on the Shared Drive.",
 				Attributes: map[string]schema.Attribute{
 					"admin_managed_restrictions": schema.BoolAttribute{
-						MarkdownDescription: "Whether administrative privileges on this Shared Drive are required to modify restrictions",
+						MarkdownDescription: "Whether administrative privileges on this Shared Drive are required to modify restrictions.",
 						Optional:            true,
 						Computed:            true,
 						Default:             booldefault.StaticBool(false),
 					},
 					"copy_requires_writer_permission": schema.BoolAttribute{
 						MarkdownDescription: `Whether the options to copy, print, or download files inside this Shared Drive, should be disabled for readers and commenters.
-When this restriction is set to true, it will override the similarly named field to true for any file inside this Shared Drive`,
+
+When this restriction is set to true, it will override the similarly named field to true for any file inside this Shared Drive.`,
 						Optional: true,
 						Computed: true,
 						Default:  booldefault.StaticBool(false),
 					},
 					"domain_users_only": schema.BoolAttribute{
 						MarkdownDescription: `Whether access to this Shared Drive and items inside this Shared Drive is restricted to users of the domain to which this Shared Drive belongs.
-This restriction may be overridden by other sharing policies controlled outside of this Shared Drive`,
+
+This restriction may be overridden by other sharing policies controlled outside of this Shared Drive.`,
 						Optional: true,
 						Computed: true,
 						Default:  booldefault.StaticBool(false),
 					},
 					"drive_members_only": schema.BoolAttribute{
-						MarkdownDescription: "Whether access to items inside this Shared Drive is restricted to its members",
+						MarkdownDescription: "Whether access to items inside this Shared Drive is restricted to its members.",
 						Optional:            true,
 						Computed:            true,
 						Default:             booldefault.StaticBool(false),
@@ -165,22 +167,16 @@ func (r *gdriveDriveResource) UpgradeState(ctx context.Context) map[int64]resour
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"admin_managed_restrictions": schema.BoolAttribute{
-									MarkdownDescription: "Whether administrative privileges on this Shared Drive are required to modify restrictions",
-									Optional:            true,
+									Optional: true,
 								},
 								"copy_requires_writer_permission": schema.BoolAttribute{
-									MarkdownDescription: `Whether the options to copy, print, or download files inside this Shared Drive, should be disabled for readers and commenters.
-When this restriction is set to true, it will override the similarly named field to true for any file inside this Shared Drive`,
 									Optional: true,
 								},
 								"domain_users_only": schema.BoolAttribute{
-									MarkdownDescription: `Whether access to this Shared Drive and items inside this Shared Drive is restricted to users of the domain to which this Shared Drive belongs.
-This restriction may be overridden by other sharing policies controlled outside of this Shared Drive`,
 									Optional: true,
 								},
 								"drive_members_only": schema.BoolAttribute{
-									MarkdownDescription: "Whether access to items inside this Shared Drive is restricted to its members",
-									Optional:            true,
+									Optional: true,
 								},
 							},
 						},

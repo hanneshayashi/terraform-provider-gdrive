@@ -68,7 +68,9 @@ func (r *gdriveLabelPermissionResourceModel) Metadata(ctx context.Context, req r
 func (r *gdriveLabelPermissionResourceModel) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: `Updates a Label's permissions.
+
 If a permission for the indicated principal doesn't exist, a new Label Permission is created, otherwise the existing permission is updated.
+
 Permissions affect the Label resource as a whole, are not revisioned, and do not require publishing.`,
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
@@ -88,14 +90,15 @@ Permissions affect the Label resource as a whole, are not revisioned, and do not
 			},
 			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
-				Description: `Set to true in order to use the user's admin credentials.
+				MarkdownDescription: `Set to true in order to use the user's admin credentials.
+
 The server verifies that the user is an admin for the label before allowing access.`,
 			},
 			"email": schema.StringAttribute{
 				Optional: true,
-				Description: `Specifies the email address for a user or group pricinpal.
-User and Group permissions may only be inserted using email address.
-On update requests, if email address is specified, no principal should be specified.`,
+				MarkdownDescription: `Specifies the email address for a user or group pricinpal.
+
+User and Group permissions may only be inserted using email address.`,
 				Validators: []validator.String{
 					stringvalidator.ExactlyOneOf(path.Expressions{
 						path.MatchRoot("audience"),
@@ -108,7 +111,8 @@ On update requests, if email address is specified, no principal should be specif
 			},
 			"audience": schema.StringAttribute{
 				MarkdownDescription: `Audience to grant a role to.
-The magic value of audiences/default may be used to apply the role to the default audience in the context of the organization that owns the Label.`,
+
+The magic value of 'audiences/default' may be used to apply the role to the default audience in the context of the organization that owns the Label.`,
 				Optional: true,
 				Validators: []validator.String{
 					stringvalidator.ExactlyOneOf(path.Expressions{
@@ -122,7 +126,7 @@ The magic value of audiences/default may be used to apply the role to the defaul
 			},
 			"role": schema.StringAttribute{
 				Required: true,
-				Description: `The role the principal should have. Possible values are:
+				MarkdownDescription: `The role the principal should have. Possible values are:
 
 * READER     - A reader can read the label and associated metadata applied to Drive items.
 * APPLIER    - An applier can write associated metadata on Drive items in which they also have write access to. Implies READER.

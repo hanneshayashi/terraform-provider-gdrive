@@ -44,20 +44,20 @@ func (d *driveDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 
 func (d *driveDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Gets a Shared Drive and returns its metadata",
+		MarkdownDescription: "Gets a Shared Drive and returns its metadata.",
 		Attributes: map[string]schema.Attribute{
 			"id": dsId(),
 			"drive_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the Shared Drive",
+				MarkdownDescription: "ID of the Shared Drive.",
 				Required:            true,
 			},
 			"use_domain_admin_access": schema.BoolAttribute{
-				Optional:    true,
-				Description: "Use domain admin access",
+				Optional:            true,
+				MarkdownDescription: "Use domain admin access.",
 			},
 			"name": schema.StringAttribute{
-				Computed:    true,
-				Description: "The name of this shared drive.",
+				Computed:            true,
+				MarkdownDescription: "The name of this shared drive.",
 			},
 			"restrictions": dsDriveRestrictions(),
 		},

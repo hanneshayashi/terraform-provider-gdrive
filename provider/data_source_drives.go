@@ -63,34 +63,36 @@ func (d *drivesDataSource) Metadata(ctx context.Context, req datasource.Metadata
 
 func (d *drivesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns a list of Shared Drives that match the given query",
+		MarkdownDescription: "Returns a list of Shared Drives that match the given query.",
 		Attributes: map[string]schema.Attribute{
 			"id": dsId(),
 			"query": schema.StringAttribute{
 				Required: true,
-				Description: `Query string for searching shared drives.
+				MarkdownDescription: `Query string for searching shared drives.
+
 See the https://developers.google.com/drive/api/v3/search-shareddrives for supported syntax.`,
 			},
 			"use_domain_admin_access": schema.BoolAttribute{
-				Optional:    true,
-				Description: "Use domain admin access",
+				Optional:            true,
+				MarkdownDescription: "Use domain admin access.",
 			},
 			"name": schema.StringAttribute{
-				Computed:    true,
-				Description: "The name of this shared drive.",
-			}, "drives": schema.SetNestedAttribute{
+				Computed:            true,
+				MarkdownDescription: "The name of this shared drive.",
+			},
+			"drives": schema.SetNestedAttribute{
 				Computed:            true,
 				MarkdownDescription: "A set of Shared Drives that match the specified query.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": dsId(),
 						"drive_id": schema.StringAttribute{
-							MarkdownDescription: "ID of the Shared Drive",
-							Required:            true,
+							MarkdownDescription: "ID of the Shared Drive.",
+							Computed:            true,
 						},
 						"name": schema.StringAttribute{
-							Computed:    true,
-							Description: "The name of this shared drive.",
+							Computed:            true,
+							MarkdownDescription: "The name of this shared drive.",
 						},
 						"restrictions": dsDriveRestrictions(),
 					},

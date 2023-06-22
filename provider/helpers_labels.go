@@ -143,19 +143,19 @@ func dateFieldDS() dsschema.SingleNestedAttribute {
 		Computed: true,
 		Attributes: map[string]dsschema.Attribute{
 			"day": dsschema.Int64Attribute{
-				Computed:    true,
-				Description: `Day of a month.`,
+				Computed:            true,
+				MarkdownDescription: `Day of a month.`,
 			},
 			"month": dsschema.Int64Attribute{
-				Computed:    true,
-				Description: "Month of a year.",
+				Computed:            true,
+				MarkdownDescription: "Month of a year.",
 			},
 			"year": dsschema.Int64Attribute{
-				Computed:    true,
-				Description: "Year of the date.",
+				Computed:            true,
+				MarkdownDescription: "Year of the date.",
 			},
 		},
-		MarkdownDescription: "Maximum valid value (year, month, day).",
+		MarkdownDescription: "Min/Max valid value (year, month, day).",
 	}
 }
 
@@ -164,12 +164,12 @@ func lifeCycleRS() rsschema.SingleNestedBlock {
 		MarkdownDescription: `The lifecycle state of an object, such as label, field, or choice.
 
 The lifecycle enforces the following transitions:
-UNPUBLISHED_DRAFT (starting state)
-UNPUBLISHED_DRAFT -> PUBLISHED
-UNPUBLISHED_DRAFT -> (Deleted)
-PUBLISHED -> DISABLED
-DISABLED -> PUBLISHED
-DISABLED -> (Deleted)`,
+* UNPUBLISHED_DRAFT (starting state)
+* UNPUBLISHED_DRAFT -> PUBLISHED
+* UNPUBLISHED_DRAFT -> (Deleted)
+* PUBLISHED -> DISABLED
+* DISABLED -> PUBLISHED
+* DISABLED -> (Deleted)`,
 		Attributes: map[string]rsschema.Attribute{
 			"state": rsschema.StringAttribute{
 				MarkdownDescription: "The state of the object associated with this lifecycle.",
@@ -206,16 +206,8 @@ When false, the object is generally hidden in the UI.`,
 
 func lifecycleDS() dsschema.SingleNestedAttribute {
 	return dsschema.SingleNestedAttribute{
-		MarkdownDescription: `The lifecycle state of an object, such as label, field, or choice.
-
-The lifecycle enforces the following transitions:
-UNPUBLISHED_DRAFT (starting state)
-UNPUBLISHED_DRAFT -> PUBLISHED
-UNPUBLISHED_DRAFT -> (Deleted)
-PUBLISHED -> DISABLED
-DISABLED -> PUBLISHED
-DISABLED -> (Deleted)`,
-		Computed: true,
+		MarkdownDescription: `The lifecycle state of an object, such as label, field, or choice.`,
+		Computed:            true,
 		Attributes: map[string]dsschema.Attribute{
 			"state": dsschema.StringAttribute{
 				MarkdownDescription: "The state of the object associated with this lifecycle.",
@@ -255,8 +247,8 @@ func listOptions() dsschema.SingleNestedAttribute {
 		MarkdownDescription: "List options",
 		Attributes: map[string]dsschema.Attribute{
 			"max_entries": dsschema.Int64Attribute{
-				Description: "Maximum number of entries permitted.",
-				Computed:    true,
+				MarkdownDescription: "Maximum number of entries permitted.",
+				Computed:            true,
 			},
 		},
 	}
@@ -271,39 +263,39 @@ func fieldsDS() dsschema.ListNestedAttribute {
 				"id": dsId(),
 				"field_id": dsschema.StringAttribute{
 					Computed: true,
-					Description: `The key of a field, unique within a label or library.
+					MarkdownDescription: `The key of a field, unique within a label or library.
 Use this when referencing a field somewhere.`,
 				},
 				"query_key": dsschema.StringAttribute{
 					Computed: true,
-					Description: `The key to use when constructing Drive search queries to find labels based on values defined for this field on labels.
+					MarkdownDescription: `The key to use when constructing Drive search queries to find labels based on values defined for this field on labels.
 For example, "{queryKey} > 2001-01-01".`,
 				},
 				"value_type": dsschema.StringAttribute{
 					Computed: true,
-					Description: `The type of the field.
+					MarkdownDescription: `The type of the field.
 Use this when setting the values for a field.`,
 				},
 				"life_cycle": lifecycleDS(),
 				"date_options": dsschema.SingleNestedAttribute{
-					Computed:    true,
-					Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
+					Computed:            true,
+					MarkdownDescription: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
 					Attributes: map[string]dsschema.Attribute{
 						"date_format": dsschema.StringAttribute{
-							Computed:    true,
-							Description: "ICU date format.",
+							Computed:            true,
+							MarkdownDescription: "ICU date format.",
 						},
 						"date_format_type": dsschema.StringAttribute{
-							Computed:    true,
-							Description: "Localized date formatting option. Field values are rendered in this format according to their locale.",
+							Computed:            true,
+							MarkdownDescription: "Localized date formatting option. Field values are rendered in this format according to their locale.",
 						},
 						"max_value": dateFieldDS(),
 						"min_value": dateFieldDS(),
 					},
 				},
 				"selection_options": dsschema.SingleNestedAttribute{
-					Computed:    true,
-					Description: "Options for the selection field type.",
+					Computed:            true,
+					MarkdownDescription: "Options for the selection field type.",
 					Attributes: map[string]dsschema.Attribute{
 						"list_options": listOptions(),
 						"choices": dsschema.ListNestedAttribute{
@@ -313,8 +305,8 @@ Use this when setting the values for a field.`,
 									"id": dsId(),
 									"choice_id": dsschema.StringAttribute{
 										Computed: true,
-										Description: `The unique value of the choice.
-											Use this when referencing / setting a choice.`,
+										MarkdownDescription: `The unique value of the choice.
+Use this when referencing / setting a choice.`,
 									},
 									"life_cycle": lifecycleDS(),
 									"properties": dsschema.SingleNestedAttribute{
@@ -369,51 +361,51 @@ It is recommended to change the Terraform configuration to match the values set 
 					},
 				},
 				"integer_options": dsschema.SingleNestedAttribute{
-					Computed:    true,
-					Description: "Options for the Integer field type.",
+					Computed:            true,
+					MarkdownDescription: "Options for the Integer field type.",
 					Attributes: map[string]dsschema.Attribute{
 						"max_value": dsschema.Int64Attribute{
-							Computed:    true,
-							Description: "The maximum valid value for the integer field.",
+							Computed:            true,
+							MarkdownDescription: "The maximum valid value for the integer field.",
 						},
 						"min_value": dsschema.Int64Attribute{
-							Computed:    true,
-							Description: "The minimum valid value for the integer field.",
+							Computed:            true,
+							MarkdownDescription: "The minimum valid value for the integer field.",
 						},
 					},
 				},
 				"text_options": dsschema.SingleNestedAttribute{
-					Computed:    true,
-					Description: "Options for the Text field type.",
+					Computed:            true,
+					MarkdownDescription: "Options for the Text field type.",
 					Attributes: map[string]dsschema.Attribute{
 						"min_length": dsschema.Int64Attribute{
-							Computed:    true,
-							Description: "The minimum valid length of values for the text field.",
+							Computed:            true,
+							MarkdownDescription: "The minimum valid length of values for the text field.",
 						},
 						"max_length": dsschema.Int64Attribute{
-							Computed:    true,
-							Description: "The maximum valid length of values for the text field.",
+							Computed:            true,
+							MarkdownDescription: "The maximum valid length of values for the text field.",
 						},
 					},
 				},
 				"user_options": dsschema.SingleNestedAttribute{
-					Computed:    true,
-					Description: "Options for the user field type.",
+					Computed:            true,
+					MarkdownDescription: "Options for the user field type.",
 					Attributes: map[string]dsschema.Attribute{
 						"list_options": listOptions(),
 					},
 				},
 				"properties": dsschema.SingleNestedAttribute{
-					Computed:    true,
-					Description: "The basic properties of the field.",
+					Computed:            true,
+					MarkdownDescription: "The basic properties of the field.",
 					Attributes: map[string]dsschema.Attribute{
 						"display_name": dsschema.StringAttribute{
-							Computed:    true,
-							Description: "The display text to show in the UI identifying this field.",
+							Computed:            true,
+							MarkdownDescription: "The display text to show in the UI identifying this field.",
 						},
 						"required": dsschema.BoolAttribute{
-							Computed:    true,
-							Description: "Whether the field should be marked as required.",
+							Computed:            true,
+							MarkdownDescription: "Whether the field should be marked as required.",
 						},
 					},
 				},
