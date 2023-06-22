@@ -101,11 +101,10 @@ Defaults to READER.
 READER     - A reader can read the label and associated metadata applied to Drive items.
 APPLIER    - An applier can write associated metadata on Drive items in which they also have write access to. Implies READER.`,
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"labels": schema.SetNestedBlock{
+			"labels": schema.SetNestedAttribute{
+				Computed:            true,
 				MarkdownDescription: "The labels that were found.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": dsId(),
 						"label_id": schema.StringAttribute{
@@ -116,8 +115,6 @@ APPLIER    - An applier can write associated metadata on Drive items in which th
 							Computed:    true,
 							Description: `The type of this label.`,
 						},
-					},
-					Blocks: map[string]schema.Block{
 						"life_cycle": lifecycleDS(),
 						"fields":     fieldsDS(),
 						"properties": labelPropertiesDS(),

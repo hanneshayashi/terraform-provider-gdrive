@@ -74,8 +74,9 @@ func (restrictionsModel *driveRestrictionsModel) toDriveRestrictions() *drive.Dr
 	return restrictions
 }
 
-func dsDriveRestrictions() schema.SingleNestedBlock {
-	return schema.SingleNestedBlock{
+func dsDriveRestrictions() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Computed:    true,
 		Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
 		Attributes: map[string]schema.Attribute{
 			"admin_managed_restrictions": schema.BoolAttribute{

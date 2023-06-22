@@ -75,11 +75,10 @@ func (d *permissionsDataSource) Schema(ctx context.Context, req datasource.Schem
 				Optional:    true,
 				Description: "Use domain admin access",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"permissions": schema.SetNestedBlock{
+			"permissions": schema.SetNestedAttribute{
+				Computed:            true,
 				MarkdownDescription: "The list of permissions set on this file or Shared Drive",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"permission_id": schema.StringAttribute{
 							Computed:    true,

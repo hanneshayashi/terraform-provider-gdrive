@@ -138,8 +138,9 @@ func (labelModel *gdriveLabelResourceModel) populate(ctx context.Context) (diags
 	return
 }
 
-func dateFieldDS() dsschema.SingleNestedBlock {
-	return dsschema.SingleNestedBlock{
+func dateFieldDS() dsschema.SingleNestedAttribute {
+	return dsschema.SingleNestedAttribute{
+		Computed: true,
 		Attributes: map[string]dsschema.Attribute{
 			"day": dsschema.Int64Attribute{
 				Computed:    true,
@@ -203,8 +204,8 @@ When false, the object is generally hidden in the UI.`,
 	}
 }
 
-func lifecycleDS() dsschema.SingleNestedBlock {
-	return dsschema.SingleNestedBlock{
+func lifecycleDS() dsschema.SingleNestedAttribute {
+	return dsschema.SingleNestedAttribute{
 		MarkdownDescription: `The lifecycle state of an object, such as label, field, or choice.
 
 The lifecycle enforces the following transitions:
@@ -214,6 +215,7 @@ UNPUBLISHED_DRAFT -> (Deleted)
 PUBLISHED -> DISABLED
 DISABLED -> PUBLISHED
 DISABLED -> (Deleted)`,
+		Computed: true,
 		Attributes: map[string]dsschema.Attribute{
 			"state": dsschema.StringAttribute{
 				MarkdownDescription: "The state of the object associated with this lifecycle.",
@@ -223,9 +225,8 @@ DISABLED -> (Deleted)`,
 				MarkdownDescription: "Whether the object associated with this lifecycle has unpublished changes.",
 				Computed:            true,
 			},
-		},
-		Blocks: map[string]dsschema.Block{
-			"disabled_policy": dsschema.SingleNestedBlock{
+			"disabled_policy": dsschema.SingleNestedAttribute{
+				Computed:            true,
 				MarkdownDescription: "The policy that governs how to show a disabled label, field, or selection choice.",
 				Attributes: map[string]dsschema.Attribute{
 					"hide_in_search": dsschema.BoolAttribute{
@@ -248,8 +249,9 @@ When false, the object is generally hidden in the UI.`,
 	}
 }
 
-func listOptions() dsschema.SingleNestedBlock {
-	return dsschema.SingleNestedBlock{
+func listOptions() dsschema.SingleNestedAttribute {
+	return dsschema.SingleNestedAttribute{
+		Computed:            true,
 		MarkdownDescription: "List options",
 		Attributes: map[string]dsschema.Attribute{
 			"max_entries": dsschema.Int64Attribute{
@@ -260,10 +262,11 @@ func listOptions() dsschema.SingleNestedBlock {
 	}
 }
 
-func fieldsDS() dsschema.ListNestedBlock {
-	return dsschema.ListNestedBlock{
+func fieldsDS() dsschema.ListNestedAttribute {
+	return dsschema.ListNestedAttribute{
 		MarkdownDescription: "The fields of this label.",
-		NestedObject: dsschema.NestedBlockObject{
+		Computed:            true,
+		NestedObject: dsschema.NestedAttributeObject{
 			Attributes: map[string]dsschema.Attribute{
 				"id": dsId(),
 				"field_id": dsschema.StringAttribute{
@@ -281,10 +284,9 @@ For example, "{queryKey} > 2001-01-01".`,
 					Description: `The type of the field.
 Use this when setting the values for a field.`,
 				},
-			},
-			Blocks: map[string]dsschema.Block{
 				"life_cycle": lifecycleDS(),
-				"date_options": dsschema.SingleNestedBlock{
+				"date_options": dsschema.SingleNestedAttribute{
+					Computed:    true,
 					Description: "A set of restrictions that apply to this shared drive or items inside this shared drive.",
 					Attributes: map[string]dsschema.Attribute{
 						"date_format": dsschema.StringAttribute{
@@ -295,18 +297,18 @@ Use this when setting the values for a field.`,
 							Computed:    true,
 							Description: "Localized date formatting option. Field values are rendered in this format according to their locale.",
 						},
-					},
-					Blocks: map[string]dsschema.Block{
 						"max_value": dateFieldDS(),
 						"min_value": dateFieldDS(),
 					},
 				},
-				"selection_options": dsschema.SingleNestedBlock{
+				"selection_options": dsschema.SingleNestedAttribute{
+					Computed:    true,
 					Description: "Options for the selection field type.",
-					Blocks: map[string]dsschema.Block{
+					Attributes: map[string]dsschema.Attribute{
 						"list_options": listOptions(),
-						"choices": dsschema.ListNestedBlock{
-							NestedObject: dsschema.NestedBlockObject{
+						"choices": dsschema.ListNestedAttribute{
+							Computed: true,
+							NestedObject: dsschema.NestedAttributeObject{
 								Attributes: map[string]dsschema.Attribute{
 									"id": dsId(),
 									"choice_id": dsschema.StringAttribute{
@@ -314,28 +316,24 @@ Use this when setting the values for a field.`,
 										Description: `The unique value of the choice.
 											Use this when referencing / setting a choice.`,
 									},
-								},
-								Blocks: map[string]dsschema.Block{
 									"life_cycle": lifecycleDS(),
-									"properties": dsschema.SingleNestedBlock{
+									"properties": dsschema.SingleNestedAttribute{
+										Computed:            true,
 										MarkdownDescription: "Basic properties of the choice.",
 										Attributes: map[string]dsschema.Attribute{
 											"display_name": dsschema.StringAttribute{
 												MarkdownDescription: "The display text to show in the UI identifying this choice.",
 												Required:            true,
-											},
-										},
-										Blocks: map[string]dsschema.Block{
-											"badge_config": dsschema.SingleNestedBlock{
+											}, "badge_config": dsschema.SingleNestedAttribute{
+												Computed: true,
 												Attributes: map[string]dsschema.Attribute{
 													"priority_override": dsschema.Int64Attribute{
 														MarkdownDescription: `Override the default global priority of this badge.
 When set to 0, the default priority heuristic is used.`,
 														Computed: true,
 													},
-												},
-												Blocks: map[string]dsschema.Block{
-													"color": dsschema.SingleNestedBlock{
+													"color": dsschema.SingleNestedAttribute{
+														Computed: true,
 														MarkdownDescription: `The color of the badge.
 When not specified, no badge is rendered.
 The background, foreground, and solo (light and dark mode) colors set here are changed in the Drive UI into the closest recommended supported color.
@@ -370,7 +368,8 @@ It is recommended to change the Terraform configuration to match the values set 
 						},
 					},
 				},
-				"integer_options": dsschema.SingleNestedBlock{
+				"integer_options": dsschema.SingleNestedAttribute{
+					Computed:    true,
 					Description: "Options for the Integer field type.",
 					Attributes: map[string]dsschema.Attribute{
 						"max_value": dsschema.Int64Attribute{
@@ -383,7 +382,8 @@ It is recommended to change the Terraform configuration to match the values set 
 						},
 					},
 				},
-				"text_options": dsschema.SingleNestedBlock{
+				"text_options": dsschema.SingleNestedAttribute{
+					Computed:    true,
 					Description: "Options for the Text field type.",
 					Attributes: map[string]dsschema.Attribute{
 						"min_length": dsschema.Int64Attribute{
@@ -396,13 +396,15 @@ It is recommended to change the Terraform configuration to match the values set 
 						},
 					},
 				},
-				"user_options": dsschema.SingleNestedBlock{
+				"user_options": dsschema.SingleNestedAttribute{
+					Computed:    true,
 					Description: "Options for the user field type.",
-					Blocks: map[string]dsschema.Block{
+					Attributes: map[string]dsschema.Attribute{
 						"list_options": listOptions(),
 					},
 				},
-				"properties": dsschema.SingleNestedBlock{
+				"properties": dsschema.SingleNestedAttribute{
+					Computed:    true,
 					Description: "The basic properties of the field.",
 					Attributes: map[string]dsschema.Attribute{
 						"display_name": dsschema.StringAttribute{
@@ -547,8 +549,9 @@ func newUpdateLabelRequest(plan labelInterface) *drivelabels.GoogleAppsDriveLabe
 	}
 }
 
-func labelPropertiesDS() dsschema.SingleNestedBlock {
-	return dsschema.SingleNestedBlock{
+func labelPropertiesDS() dsschema.SingleNestedAttribute {
+	return dsschema.SingleNestedAttribute{
+		Computed:            true,
 		MarkdownDescription: "Basic properties of the label.",
 		Attributes: map[string]dsschema.Attribute{
 			"title": dsschema.StringAttribute{

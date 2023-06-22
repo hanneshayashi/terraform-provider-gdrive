@@ -47,14 +47,14 @@ type gdriveLabelPolicyResource struct {
 
 type gdriveLabelPolicyLabelModel struct {
 	LabelId types.String             `tfsdk:"label_id"`
-	Field   []*gdriveLabelFieldModel `tfsdk:"field"`
+	Fields  []*gdriveLabelFieldModel `tfsdk:"fields"`
 }
 
 // gdriveLabelPolicyResourceModel describes the resource data model.
 type gdriveLabelPolicyResourceModel struct {
 	FileId types.String                   `tfsdk:"file_id"`
 	Id     types.String                   `tfsdk:"id"`
-	Label  []*gdriveLabelPolicyLabelModel `tfsdk:"label"`
+	Labels []*gdriveLabelPolicyLabelModel `tfsdk:"labels"`
 }
 
 func (r *gdriveLabelPolicyResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -73,18 +73,16 @@ func (r *gdriveLabelPolicyResource) Schema(ctx context.Context, req resource.Sch
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"label": schema.SetNestedBlock{
-				NestedObject: schema.NestedBlockObject{
+			"labels": schema.SetNestedAttribute{
+				MarkdownDescription: "The set of labels that should be applied to this file.",
+				Required:            true,
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"label_id": schema.StringAttribute{
 							MarkdownDescription: "The ID of the label.",
 							Required:            true,
 						},
-					},
-					Blocks: map[string]schema.Block{
-						"field": labelAssignmentField(),
+						"fields": labelAssignmentField(),
 					},
 				},
 			},
@@ -174,9 +172,9 @@ func (r *gdriveLabelPolicyResource) Delete(ctx context.Context, req resource.Del
 	modLabelsReq := &drive.ModifyLabelsRequest{
 		LabelModifications: []*drive.LabelModification{},
 	}
-	for i := range state.Label {
+	for i := range state.Labels {
 		modLabelsReq.LabelModifications = append(modLabelsReq.LabelModifications, &drive.LabelModification{
-			LabelId:     state.Label[i].LabelId.ValueString(),
+			LabelId:     state.Labels[i].LabelId.ValueString(),
 			RemoveLabel: true,
 		})
 	}

@@ -183,8 +183,6 @@ Reading other revisions may require addtional permissions and / or setting the '
 				Computed:    true,
 				Description: `The type of this label.`,
 			},
-		},
-		Blocks: map[string]schema.Block{
 			"life_cycle": lifecycleDS(),
 			"fields":     fieldsDS(),
 			"properties": labelPropertiesDS(),

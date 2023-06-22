@@ -118,26 +118,26 @@ func testAccPermissionPolicyResourceConfig(fileDrive, count, firstUser, secondUs
 	} else {
 		fileId = "gdrive_drive.drive.drive_id"
 		organizer = fmt.Sprintf(`
-  permissions {
+  {
     email_address = "%s"
     role          = "organizer"
     type          = "user"
-  }`, os.Getenv("SUBJECT"))
+  },`, os.Getenv("SUBJECT"))
 	}
 	if secondUser != "" {
 		secondUser = fmt.Sprintf(`
-  permissions {
+  {
     email_address = "%s"
     role          = "%s"
     type          = "user"
-  }`, os.Getenv(secondUser), roleSecondUser)
+  },`, os.Getenv(secondUser), roleSecondUser)
 	}
 	firstUser = fmt.Sprintf(`
-  permissions {
+  {
     email_address = "%s"
     role          = "%s"
     type          = "user"
-  }`, os.Getenv(firstUser), roleFirstUser)
+  },`, os.Getenv(firstUser), roleFirstUser)
 	if count == "1" {
 		permission = fmt.Sprintf(`
 resource "gdrive_file" "folder" {
@@ -150,9 +150,11 @@ resource "gdrive_file" "folder" {
 resource "gdrive_permissions_policy" "policy" {
   file_id                 = %s
   use_domain_admin_access = false
-  %s
-  %s
-  %s
+  permissions = [
+    %s
+    %s
+    %s
+  ]
 }
 
 `, fileId, organizer, firstUser, secondUser)

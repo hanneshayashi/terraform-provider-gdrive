@@ -98,11 +98,10 @@ When able, use 'user' or 'drive', instead of 'allDrives', for efficiency.`,
 				Optional:    true,
 				Description: `Whether both My Drive and shared drive items should be included in results.`,
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"files": schema.SetNestedBlock{
+			"files": schema.SetNestedAttribute{
+				Computed:            true,
 				MarkdownDescription: "A set of files that match the specified query.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": dsId(),
 						"file_id": schema.StringAttribute{

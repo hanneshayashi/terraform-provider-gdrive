@@ -38,17 +38,17 @@ func fieldsToMap(fields []*gdriveLabelFieldModel) map[string]*gdriveLabelFieldMo
 }
 
 func (labelModel *gdriveLabelPolicyLabelModel) toMap() map[string]*gdriveLabelFieldModel {
-	return fieldsToMap(labelModel.Field)
+	return fieldsToMap(labelModel.Fields)
 }
 
 func (labelModel *gdriveLabelAssignmentResourceModel) toMap() map[string]*gdriveLabelFieldModel {
-	return fieldsToMap(labelModel.Field)
+	return fieldsToMap(labelModel.Fields)
 }
 
 func (labelModel *gdriveLabelPolicyResourceModel) toMap() map[string]*gdriveLabelPolicyLabelModel {
 	m := map[string]*gdriveLabelPolicyLabelModel{}
-	for i := range labelModel.Label {
-		m[labelModel.Label[i].LabelId.ValueString()] = labelModel.Label[i]
+	for i := range labelModel.Labels {
+		m[labelModel.Labels[i].LabelId.ValueString()] = labelModel.Labels[i]
 	}
 	return m
 }
@@ -183,9 +183,9 @@ func setLabelDiffs(plan, state *gdriveLabelPolicyResourceModel, ctx context.Cont
 				}
 			}
 		} else {
-			for f := range planLabels[i].Field {
+			for f := range planLabels[i].Fields {
 				var fieldMod *drive.LabelFieldModification
-				fieldMod, diags = planLabels[i].Field[f].toFieldModification(ctx)
+				fieldMod, diags = planLabels[i].Fields[f].toFieldModification(ctx)
 				if diags.HasError() {
 					return diags
 				}
@@ -263,7 +263,7 @@ func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) populate(ctx con
 		diags.AddError("Config Error", fmt.Sprintf("Unable to use ID, got error: %s", e))
 		return diags
 	}
-	labelAssignmentModel.Field = []*gdriveLabelFieldModel{}
+	labelAssignmentModel.Fields = []*gdriveLabelFieldModel{}
 	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
 	for l := range currentLabels {
 		if l.Id == labelID {
@@ -273,7 +273,7 @@ func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) populate(ctx con
 				if diags.HasError() {
 					return diags
 				}
-				labelAssignmentModel.Field = append(labelAssignmentModel.Field, field)
+				labelAssignmentModel.Fields = append(labelAssignmentModel.Fields, field)
 			}
 		}
 	}
@@ -289,14 +289,14 @@ func (labelAssignmentModel *gdriveLabelAssignmentResourceModel) populate(ctx con
 
 func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Context) diag.Diagnostics {
 	var diags diag.Diagnostics
-	labelPolicyModel.Label = []*gdriveLabelPolicyLabelModel{}
+	labelPolicyModel.Labels = []*gdriveLabelPolicyLabelModel{}
 	labelPolicyModel.FileId = labelPolicyModel.Id
 	fileID := labelPolicyModel.FileId.ValueString()
 	currentLabels, err := gsmdrive.ListLabels(fileID, "", 1)
 	for l := range currentLabels {
 		label := &gdriveLabelPolicyLabelModel{
 			LabelId: types.StringValue(l.Id),
-			Field:   []*gdriveLabelFieldModel{},
+			Fields:  []*gdriveLabelFieldModel{},
 		}
 		for f := range l.Fields {
 			field := &gdriveLabelFieldModel{
@@ -338,9 +338,9 @@ func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Con
 					return diags
 				}
 			}
-			label.Field = append(label.Field, field)
+			label.Fields = append(label.Fields, field)
 		}
-		labelPolicyModel.Label = append(labelPolicyModel.Label, label)
+		labelPolicyModel.Labels = append(labelPolicyModel.Labels, label)
 	}
 	e := <-err
 	if e != nil {
@@ -350,11 +350,12 @@ func (labelPolicyModel *gdriveLabelPolicyResourceModel) populate(ctx context.Con
 	return diags
 }
 
-func labelAssignmentField() rsschema.SetNestedBlock {
-	return rsschema.SetNestedBlock{
+func labelAssignmentField() rsschema.SetNestedAttribute {
+	return rsschema.SetNestedAttribute{
 		MarkdownDescription: `A field of the assigned label.
 This block may be used multiple times to set multiple fields of the same label.`,
-		NestedObject: rsschema.NestedBlockObject{
+		Required: true,
+		NestedObject: rsschema.NestedAttributeObject{
 			Attributes: map[string]rsschema.Attribute{
 				"field_id": rsschema.StringAttribute{
 					Required:    true,

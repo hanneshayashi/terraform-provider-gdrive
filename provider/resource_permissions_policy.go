@@ -94,12 +94,10 @@ func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resourc
 				Optional:    true,
 				Description: "Use domain admin access",
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"permissions": schema.SetNestedBlock{
-				MarkdownDescription: `This block defines on set of permissions to set on the file or Shared Drive.
-Multiple blocks can be defined to set multiple permissions.`,
-				NestedObject: schema.NestedBlockObject{
+			"permissions": schema.SetNestedAttribute{
+				Required:            true,
+				MarkdownDescription: `Defines the set of permissions to set on the file or Shared Drive.`,
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"permission_id": schema.StringAttribute{
 							MarkdownDescription: "PermissionID of the trustee",

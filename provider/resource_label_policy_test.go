@@ -101,22 +101,28 @@ resource "gdrive_file" "file" {
 
 resource "gdrive_label_policy" "policy" {
   file_id  = gdrive_file.file.file_id
-  label {
-	label_id = gdrive_label.test.label_id
-    field {
-      field_id   = gdrive_label_text_field.text_field.field_id
-      value_type = "text"
-      values     = ["%s"]
+  labels = [
+    {
+	  label_id = gdrive_label.test.label_id
+      fields = [
+        {
+          field_id   = gdrive_label_text_field.text_field.field_id
+          value_type = "text"
+          values     = ["%s"]
+        }
+      ]
+    },
+    {
+      label_id = gdrive_label.test2.label_id
+      fields = [
+        {
+          field_id   =  gdrive_label_integer_field.integer_field.field_id
+          value_type = "integer"
+          values     = [%s]
+        }
+	  ]
     }
-  }
-  label {
-	label_id = gdrive_label.test2.label_id
-    field {
-      field_id   =  gdrive_label_integer_field.integer_field.field_id
-      value_type = "integer"
-      values     = [%s]
-    }
-  }
+  ]
 }`, textValue, intValue)
 	}
 	return strings.Join([]string{

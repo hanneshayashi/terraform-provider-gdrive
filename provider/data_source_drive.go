@@ -59,8 +59,6 @@ func (d *driveDataSource) Schema(ctx context.Context, req datasource.SchemaReque
 				Computed:    true,
 				Description: "The name of this shared drive.",
 			},
-		},
-		Blocks: map[string]schema.Block{
 			"restrictions": dsDriveRestrictions(),
 		},
 	}

@@ -56,7 +56,7 @@ type gdriveLabelAssignmentResourceModel struct {
 	FileId  types.String             `tfsdk:"file_id"`
 	LabelId types.String             `tfsdk:"label_id"`
 	Id      types.String             `tfsdk:"id"`
-	Field   []*gdriveLabelFieldModel `tfsdk:"field"`
+	Fields  []*gdriveLabelFieldModel `tfsdk:"fields"`
 }
 
 func (r *gdriveLabelAssignmentResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -82,9 +82,7 @@ func (r *gdriveLabelAssignmentResource) Schema(ctx context.Context, req resource
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"field": labelAssignmentField(),
+			"fields": labelAssignmentField(),
 		},
 	}
 }

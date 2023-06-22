@@ -78,12 +78,10 @@ See the https://developers.google.com/drive/api/v3/search-shareddrives for suppo
 			"name": schema.StringAttribute{
 				Computed:    true,
 				Description: "The name of this shared drive.",
-			},
-		},
-		Blocks: map[string]schema.Block{
-			"drives": schema.SetNestedBlock{
+			}, "drives": schema.SetNestedAttribute{
+				Computed:            true,
 				MarkdownDescription: "A set of Shared Drives that match the specified query.",
-				NestedObject: schema.NestedBlockObject{
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": dsId(),
 						"drive_id": schema.StringAttribute{
@@ -94,8 +92,6 @@ See the https://developers.google.com/drive/api/v3/search-shareddrives for suppo
 							Computed:    true,
 							Description: "The name of this shared drive.",
 						},
-					},
-					Blocks: map[string]schema.Block{
 						"restrictions": dsDriveRestrictions(),
 					},
 				},
