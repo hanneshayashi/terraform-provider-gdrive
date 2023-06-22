@@ -25,7 +25,7 @@ func TestAccDrives(t *testing.T) {
 					resource.TestCheckResourceAttr("gdrive_drive.drive_restrictions", "restrictions.admin_managed_restrictions", "true"),
 				),
 			},
-			// 3 - Rename and change restrictions
+			// 2 - Rename and change restrictions
 			{
 				Config: testAccDrivesDataSourceConfig(name, "1"),
 				Check: resource.ComposeAggregateTestCheckFunc(

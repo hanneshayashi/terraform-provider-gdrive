@@ -46,7 +46,7 @@ c3,c4
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
-			// 3 - Rename and change restrictions
+			// 3 - Rename
 			{
 				Config: testAccFileResourceConfig(renamed, testFile, "true"),
 				Check: resource.ComposeAggregateTestCheckFunc(

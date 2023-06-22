@@ -29,7 +29,7 @@ func TestAccPermission(t *testing.T) {
 				ImportStateVerify:   true,
 				ImportStateIdPrefix: "false,",
 			},
-			// 2 - Change Role
+			// 3 - Change Role
 			{
 				Config: testAccPermissionResourceConfig("1", "FIRST_USER", "writer"),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -37,7 +37,7 @@ func TestAccPermission(t *testing.T) {
 					resource.TestCheckResourceAttr("gdrive_permission.permission", "email_address", os.Getenv("FIRST_USER")),
 				),
 			},
-			// 3 - Change User
+			// 4 - Change User
 			{
 				Config: testAccPermissionResourceConfig("1", "SECOND_USER", "writer"),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -45,7 +45,7 @@ func TestAccPermission(t *testing.T) {
 					resource.TestCheckResourceAttr("gdrive_permission.permission", "email_address", os.Getenv("SECOND_USER")),
 				),
 			},
-			// 4 - Delete File
+			// 5 - Delete File
 			{
 				Config: testAccPermissionResourceConfig("0", "SECOND_USER", "writer"),
 			},
