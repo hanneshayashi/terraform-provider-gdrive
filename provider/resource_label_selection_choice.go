@@ -136,7 +136,18 @@ func (r *gdriveLabelSelectionChoiceResource) Metadata(ctx context.Context, req r
 
 func (r *gdriveLabelSelectionChoiceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Creates a Choice for a Selection Field Label.",
+		MarkdownDescription: `Creates a Choice for a Selection Field.
+
+Changes made to a Choice must be published via the Choice's Selection Field's Label before they are available for files.
+
+Publishing can only be done via the Label resource, NOT the Choice or Field resources.
+
+This means that, if you have Labels and Choices / Fields in the same Terraform configuration and you make changes
+to the Choices / Fields you may have to apply twice in order to
+1. Apply the changes to the Choices / Fields.
+2. Publish the changes via the Label.
+
+A Choice must be deactivated before it can be deleted.`,
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"choice_id": schema.StringAttribute{

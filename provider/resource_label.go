@@ -82,7 +82,22 @@ func (r *gdriveLabelResource) Metadata(ctx context.Context, req resource.Metadat
 
 func (r *gdriveLabelResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Creates a Drive Label.",
+		MarkdownDescription: `Creates a Drive Label.
+
+The label must be published before it can be assigned to files. This is controlled via the 'life_cycle'
+property.
+
+Publishing can only be done via the label resource, NOT the field resources.
+
+If a label is changed via an "external" resource (e.g., a field), those changes must be published
+via the label resource, before they are available for files.
+
+This means that, if you have labels and fields in the same Terraform configuration and you make changes
+to the fields you may have to apply twice in order to
+1. Apply the changes to the fields.
+2. Publish the changes via the label.
+
+A label must be deactivated before it can be deleted.`,
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"label_id": schema.StringAttribute{

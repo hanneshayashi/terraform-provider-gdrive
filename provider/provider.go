@@ -127,10 +127,10 @@ func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	var scopes []string
 	if data.Scopes.IsNull() {
 		scopes = []string{
-			"https://www.googleapis.com/auth/cloud-identity.orgunits",
 			"https://www.googleapis.com/auth/drive",
 			"https://www.googleapis.com/auth/drive.labels",
 			"https://www.googleapis.com/auth/drive.admin.labels",
+			"https://www.googleapis.com/auth/cloud-identity.orgunits",
 		}
 	} else {
 		resp.Diagnostics.Append(data.Scopes.ElementsAs(ctx, &scopes, false)...)

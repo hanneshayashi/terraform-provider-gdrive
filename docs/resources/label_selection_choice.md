@@ -3,12 +3,30 @@
 page_title: "gdrive_label_selection_choice Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Creates a Choice for a Selection Field Label.
+  Creates a Choice for a Selection Field.
+  Changes made to a Choice must be published via the Choice's Selection Field's Label before they are available for files.
+  Publishing can only be done via the Label resource, NOT the Choice or Field resources.
+  This means that, if you have Labels and Choices / Fields in the same Terraform configuration and you make changes
+  to the Choices / Fields you may have to apply twice in order to
+  1. Apply the changes to the Choices / Fields.
+  2. Publish the changes via the Label.
+  A Choice must be deactivated before it can be deleted.
 ---
 
 # gdrive_label_selection_choice (Resource)
 
-Creates a Choice for a Selection Field Label.
+Creates a Choice for a Selection Field.
+
+Changes made to a Choice must be published via the Choice's Selection Field's Label before they are available for files.
+
+Publishing can only be done via the Label resource, NOT the Choice or Field resources.
+
+This means that, if you have Labels and Choices / Fields in the same Terraform configuration and you make changes
+to the Choices / Fields you may have to apply twice in order to
+1. Apply the changes to the Choices / Fields.
+2. Publish the changes via the Label.
+
+A Choice must be deactivated before it can be deleted.
 
 ## Example Usage
 

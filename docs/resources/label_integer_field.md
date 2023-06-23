@@ -4,11 +4,29 @@ page_title: "gdrive_label_integer_field Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
   Creates an Integer Field for a Drive Label.
+  Changes made to a Field must be published via the Field's Label before they are available for files.
+  Publishing can only be done via the Label resource, NOT the Field resources.
+  This means that, if you have Labels and Fields in the same Terraform configuration and you make changes
+  to the Fields you may have to apply twice in order to
+  1. Apply the changes to the Fields.
+  2. Publish the changes via the Label.
+  A Field must be deactivated before it can be deleted.
 ---
 
 # gdrive_label_integer_field (Resource)
 
 Creates an Integer Field for a Drive Label.
+
+Changes made to a Field must be published via the Field's Label before they are available for files.
+
+Publishing can only be done via the Label resource, NOT the Field resources.
+
+This means that, if you have Labels and Fields in the same Terraform configuration and you make changes
+to the Fields you may have to apply twice in order to
+1. Apply the changes to the Fields.
+2. Publish the changes via the Label.
+
+A Field must be deactivated before it can be deleted.
 
 ## Example Usage
 
