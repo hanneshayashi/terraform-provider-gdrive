@@ -104,10 +104,10 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 				},
 			},
 			"domain": schema.StringAttribute{
-				MarkdownDescription: "The domain that should be granted access",
+				MarkdownDescription: "The domain that should be granted access.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.RequiresReplaceIfConfigured(),
 				},
 				Validators: []validator.String{
 					stringvalidator.ConflictsWith(path.Expressions{
@@ -116,10 +116,10 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 				},
 			},
 			"email_address": schema.StringAttribute{
-				MarkdownDescription: "The email address of the trustee",
+				MarkdownDescription: "The email address of the trustee.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.RequiresReplaceIfConfigured(),
 				},
 				Validators: []validator.String{
 					stringvalidator.ConflictsWith(path.Expressions{
@@ -128,7 +128,7 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 				},
 			},
 			"role": schema.StringAttribute{
-				MarkdownDescription: "The role",
+				MarkdownDescription: "The role.",
 				Required:            true,
 			},
 			"use_domain_admin_access": schema.BoolAttribute{
@@ -136,7 +136,7 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 				Optional:            true,
 			},
 			"transfer_ownership": schema.BoolAttribute{
-				MarkdownDescription: "Whether to transfer ownership to the specified user",
+				MarkdownDescription: "Whether to transfer ownership to the specified user.",
 				Optional:            true,
 			},
 			"move_to_new_owners_root": schema.BoolAttribute{
@@ -230,13 +230,15 @@ func (r *gdrivePermissionResource) Update(ctx context.Context, req resource.Upda
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	permissionReq := &drive.Permission{
-		Role: plan.Role.ValueString(),
-	}
-	_, err := gsmdrive.UpdatePermission(plan.FileId.ValueString(), plan.PermissionId.ValueString(), fieldsPermission, plan.UseDomainAdminAccess.ValueBool(), false, permissionReq)
-	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update permission on file, got error: %s", err))
-		return
+	if !plan.Role.Equal(state.Role) {
+		permissionReq := &drive.Permission{
+			Role: plan.Role.ValueString(),
+		}
+		_, err := gsmdrive.UpdatePermission(plan.FileId.ValueString(), plan.PermissionId.ValueString(), fieldsPermission, plan.UseDomainAdminAccess.ValueBool(), false, permissionReq)
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update permission on file, got error: %s", err))
+			return
+		}
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
