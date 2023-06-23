@@ -3,12 +3,12 @@
 page_title: "gdrive_permission Data Source - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Returns the metadata of a permission on a file or Shared Drive
+  Returns the metadata of a permission on a file or Shared Drive.
 ---
 
 # gdrive_permission (Data Source)
 
-Returns the metadata of a permission on a file or Shared Drive
+Returns the metadata of a permission on a file or Shared Drive.
 
 ## Example Usage
 

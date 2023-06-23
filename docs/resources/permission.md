@@ -40,16 +40,16 @@ resource "gdrive_permission" "permissions_owner_transfer" {
 ### Required
 
 - `file_id` (String) ID of the file or Shared Drive.
-- `role` (String) The role
+- `role` (String) The role.
 
 ### Optional
 
-- `domain` (String) The domain that should be granted access
-- `email_address` (String) The email address of the trustee
+- `domain` (String) The domain that should be granted access.
+- `email_address` (String) The email address of the trustee.
 - `email_message` (String) An optional email message that will be sent when the permission is created.
 - `move_to_new_owners_root` (Boolean) This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.
 - `send_notification_email` (Boolean) Wether to send a notfication email.
-- `transfer_ownership` (Boolean) Whether to transfer ownership to the specified user
+- `transfer_ownership` (Boolean) Whether to transfer ownership to the specified user.
 - `type` (String) The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.
 - `use_domain_admin_access` (Boolean) Use domain admin access.
 
