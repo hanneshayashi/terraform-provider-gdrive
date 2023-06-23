@@ -123,7 +123,7 @@ terraform import [resource address] [fileId]
 							Optional:            true,
 							Validators: []validator.String{
 								stringvalidator.ConflictsWith(path.Expressions{
-									path.MatchRoot("email_address"),
+									path.MatchRelative().AtParent().AtName("email_address"),
 								}...),
 							},
 						},
@@ -132,7 +132,7 @@ terraform import [resource address] [fileId]
 							Optional:            true,
 							Validators: []validator.String{
 								stringvalidator.ConflictsWith(path.Expressions{
-									path.MatchRoot("domain"),
+									path.MatchRelative().AtParent().AtName("domain"),
 								}...),
 							},
 						},
