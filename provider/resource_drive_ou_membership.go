@@ -61,7 +61,15 @@ func (r *gdriveOrgUnitMembershipResource) Metadata(ctx context.Context, req reso
 
 func (r *gdriveOrgUnitMembershipResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Creates a OrgUnit or folder with the given MIME type and optionally uploads a local OrgUnit",
+		MarkdownDescription: `Sets the membership of a Shared Drive in an organizational unit.
+
+The resource will move the Shared Drive to the specified OU in your Admin Console.
+
+Some things to note:
+* You need to specify the **ID** of the OU (**not the path**).
+  * You can find the ID via the Admin SDK (or https://gsm.hayashi-ke.online/gsm/orgunits/list/).
+* If you move the Shared Drive outside of Terraform, the resource will be re-created.
+* A destroy of this resource will not do anything.`,
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
 			"org_unit_id": schema.StringAttribute{

@@ -14,12 +14,14 @@ that require approval from multiple people before changes are deployed to produc
 standards across your orgnization like naming conventions, default permissions or Label assignments.
 
 ## Features
+
 * Manage Shared Drives and organize them into organizational units
 * Manage Google Drive files (including file uploads, downloads and exports)
 * Manage Google Drive permissions
 * Manage Google Drive Labels, fields, assignments to files and permissions
 
 ## Installation
+
 To install this provider, copy and paste this code into your Terraform configuration. Then, run `terraform init`.
 
 ```terraform
@@ -34,15 +36,11 @@ terraform {
 ```
 
 ## Upgrade from 0.x
+
 Please see the [Upgrade Guide](https://registry.terraform.io/providers/hanneshayashi/gdrive/latest/docs/guides/version_1_upgrade) and make sure you have a backup of your state file before upgrading.
 
 ## Setup
-First, you need a GCP Service Account with [Domain Wide Delegation](https://support.google.com/a/answer/162106) set up with the Google Drive scope.
 
-This provider uses [GSM](https://github.com/hanneshayashi/gsm) for authentication and API access.
-You can take a look at the GSM [Setup Guide](https://gsm.hayashi-ke.online/setup), if you need help.
-
-The basic steps are:
 1. Create GCP Project (or use an existing one)
 2. Enable the following APIs:
     * Drive API
@@ -87,3 +85,6 @@ provider "gdrive" {
 ```
 
 You can also set the `SERVICE_ACCOUNT_KEY` environment variable to store either the path to the Key file or the JSON contents directly.
+
+This provider uses [GSM](https://github.com/hanneshayashi/gsm) for authentication and API access.
+You can take a look at the GSM [Setup Guide](https://gsm.hayashi-ke.online/setup), if you need help.

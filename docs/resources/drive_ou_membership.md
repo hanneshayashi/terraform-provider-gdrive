@@ -3,12 +3,26 @@
 page_title: "gdrive_drive_ou_membership Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Creates a OrgUnit or folder with the given MIME type and optionally uploads a local OrgUnit
+  Sets the membership of a Shared Drive in an organizational unit.
+  The resource will move the Shared Drive to the specified OU in your Admin Console.
+  Some things to note:
+  * You need to specify the ID of the OU (not the path).
+    * You can find the ID via the Admin SDK (or https://gsm.hayashi-ke.online/gsm/orgunits/list/).
+  * If you move the Shared Drive outside of Terraform, the resource will be re-created.
+  * A destroy of this resource will not do anything.
 ---
 
 # gdrive_drive_ou_membership (Resource)
 
-Creates a OrgUnit or folder with the given MIME type and optionally uploads a local OrgUnit
+Sets the membership of a Shared Drive in an organizational unit.
+
+The resource will move the Shared Drive to the specified OU in your Admin Console.
+
+Some things to note:
+* You need to specify the **ID** of the OU (**not the path**).
+  * You can find the ID via the Admin SDK (or https://gsm.hayashi-ke.online/gsm/orgunits/list/).
+* If you move the Shared Drive outside of Terraform, the resource will be re-created.
+* A destroy of this resource will not do anything.
 
 ## Example Usage
 
