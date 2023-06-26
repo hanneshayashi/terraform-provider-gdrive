@@ -16,15 +16,18 @@ that require approval from multiple people before changes are deployed to produc
 standards across your orgnization like naming conventions, default permissions or Label assignments.
 
 ## Features
+
 * Manage Shared Drives and organize them into organizational units
 * Manage Google Drive files (including file uploads, downloads and exports)
 * Manage Google Drive permissions
 * Manage Google Drive Labels, fields, assignments to files and permissions
 
 ## Upgrade from 0.x
+
 Please see the [Upgrade Guide](https://registry.terraform.io/providers/hanneshayashi/gdrive/latest/docs/guides/version_1_upgrade) and make sure you have a backup of your state file before upgrading.
 
 ## Setup
+
 First, you need a GCP Service Account with [Domain Wide Delegation](https://support.google.com/a/answer/162106) set up with the Google Drive scope.
 
 This provider uses [GSM](https://github.com/hanneshayashi/gsm) for authentication and API access.
