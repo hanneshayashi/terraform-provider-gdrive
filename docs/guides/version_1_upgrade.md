@@ -163,6 +163,20 @@ fields = [
 ]
 ```
 
+A state upgrade is not necessary for this change, but your configuration files must be updated. Any references must also
+be changed from
+
+```terraform
+...field[0]
+```
+
+to
+
+
+```terraform
+...fields[0]
+```
+
 ## Permissions
 
 The `permissions` property of the `gdrive_permissions_policy` resources has also been changed from multiple blocks to
@@ -214,7 +228,7 @@ Starting with `1.0.0`, the provider will now retry on HTTP error codes `404` and
 that was introduced in `0.9.1` to deal with the Drive API not being strongly consistent (i.e., the API will return
 the Drive object immediately, even though other API endpoints will not find it yet and return `404`) unnecessary.
 
-The attribute `wait_after_create` needs to be removed from the Terraform configuration of `gdrive_drive` resources.
+The attribute `wait_after_create` needs to be *removed* from the Terraform configuration of `gdrive_drive` resources.
 
 Old configuration:
 
@@ -251,7 +265,7 @@ You will now have to access it like this:
 data.gdrive_labels.labels.properties.title
 ```
 
-The data source will now also returns the `life_cycle` and IDs for the labels, fields and choices.
+The data source will now also return the `life_cycle` and IDs for the labels, fields and choices.
 
 ## List to Block
 
@@ -271,7 +285,7 @@ The following properties where previously implemented as lists with a single blo
   * `user_options`
   * `properties`
 
-They are not implemented as a nested block and you must no longer specify an index when accessing these properties. Example:
+They are now implemented as a nested block and you must no longer specify an index when accessing these properties. Example:
 
 Before:
 

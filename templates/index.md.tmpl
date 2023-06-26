@@ -8,7 +8,6 @@ description: ](-
 # Google Drive provider
 
 ## Upgrade from 0.x
-
 Please see the [Upgrade Guide](https://registry.terraform.io/providers/hanneshayashi/gdrive/latest/docs/guides/version_1_upgrade) and make sure you have a backup of your state file before upgrading.
 
 ## Setup
