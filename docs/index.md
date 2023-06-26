@@ -7,6 +7,20 @@ description: ](-
 
 # Google Drive provider
 
+The Terraform provider for Google Drive can be used to manage Google Drive objects like files and folders, Shared Drives and Labels.
+
+It can also be used to manage permissions to any of these objects, as well as import and export files to and from Google Drive.
+
+Using Terraform and a source code management solution to manage your Google Drive environment can help you estabilsh secure processes
+that require approval from multiple people before changes are deployed to production. You can also build your own modules to estabilsh
+standards across your orgnization like naming conventions, default permissions or Label assignments.
+
+## Features
+* Manage Shared Drives and organize them into organizational units
+* Manage Google Drive files (including file uploads, downloads and exports)
+* Manage Google Drive permissions
+* Manage Google Drive Labels, fields, assignments to files and permissions
+
 ## Upgrade from 0.x
 Please see the [Upgrade Guide](https://registry.terraform.io/providers/hanneshayashi/gdrive/latest/docs/guides/version_1_upgrade) and make sure you have a backup of your state file before upgrading.
 
