@@ -98,46 +98,48 @@ resource "gdrive_file" "folder" {
 }
 
 resource "gdrive_file" "file" {
-  name             = "file"
-  mime_type        = "application/vnd.google-apps.spreadsheet"
-  drive_id  	     = gdrive_drive.drive.drive_id
-  parent           = gdrive_file.folder.file_id
+  name      = "file"
+  mime_type = "application/vnd.google-apps.spreadsheet"
+  drive_id  = gdrive_drive.drive.drive_id
+  parent    = gdrive_file.folder.file_id
 }
 
 resource "gdrive_label_assignment" "assignment" {
   file_id  = gdrive_file.file.file_id
   label_id = gdrive_label.test.label_id
-  field {
-    field_id   = gdrive_label_date_field.date_field.field_id
-    value_type = "dateString"
-    values     = ["%s"]
-  }
-  field {
-    field_id   =  gdrive_label_integer_field.integer_field.field_id
-    value_type = "integer"
-    values     = [%s]
-  }
-  field {
-    field_id   =  gdrive_label_selection_field.selection_field.field_id
-    value_type = "selection"
-    values     = [
-		  gdrive_label_selection_choice.first_choice.choice_id,
-		  gdrive_label_selection_choice.second_choice.choice_id
-    ]
-  }
-  field {
-    field_id   =  gdrive_label_text_field.text_field.field_id
-    value_type = "text"
-    values     = ["%s"]
-  }
-  field {
-    field_id   =  gdrive_label_user_field.user_field.field_id
-    value_type = "user"
-    values     = [
-		  "%s",
-		  "%s"
-    ]
-  }
+  fields = [
+    {
+      field_id   = gdrive_label_date_field.date_field.field_id
+      value_type = "dateString"
+      values     = ["%s"]
+    },
+    {
+      field_id   =  gdrive_label_integer_field.integer_field.field_id
+      value_type = "integer"
+      values     = [%s]
+    },
+    {
+      field_id   =  gdrive_label_selection_field.selection_field.field_id
+      value_type = "selection"
+      values     = [
+        gdrive_label_selection_choice.first_choice.choice_id,
+        gdrive_label_selection_choice.second_choice.choice_id
+      ]
+    },
+    {
+      field_id   =  gdrive_label_text_field.text_field.field_id
+      value_type = "text"
+      values     = ["%s"]
+    },
+    {
+      field_id   =  gdrive_label_user_field.user_field.field_id
+      value_type = "user"
+      values     = [
+        "%s",
+	    "%s"
+      ]
+    }
+  ]
 }`, dateValue, intValue, textValue, os.Getenv("FIRST_USER"), os.Getenv("SECOND_USER"))
 	}
 	return strings.Join([]string{
