@@ -7,6 +7,10 @@ description: ](-
 
 # Google Drive provider
 
+## Upgrade from 0.x
+
+Please see the [Upgrade Guide](https://registry.terraform.io/providers/hanneshayashi/gdrive/latest/docs/guides/version_1_upgrade) and make sure you have a backup of your state file before upgrading.
+
 ## Setup
 First, you need a GCP Service Account with [Domain Wide Delegation](https://support.google.com/a/answer/162106) set up with the Google Drive scope.
 
@@ -21,7 +25,7 @@ The basic steps are:
     * Cloud Identity API
 3. Create a Service Account + Enable Domain Wide Delegation
     * See [Perform Google Workspace Domain-Wide Delegation of Authority](https://developers.google.com/admin-sdk/directory/v1/guides/delegation)
-    * **You don't need the Service Account Key if you want to use [Application Default Credential](https://cloud.google.com/iam/docs/best-practices-for-using-and-managing-service-accounts#use-attached-service-accounts)**
+    * **You *don't* need the Service Account Key if you want to use [Application Default Credential](https://cloud.google.com/iam/docs/best-practices-for-using-and-managing-service-accounts#use-attached-service-accounts)**
 4. Enter the Client ID of the Service Account with the following scopes in your Admin Console:
     *	`https://www.googleapis.com/auth/drive`
     *	`https://www.googleapis.com/auth/drive.labels`
@@ -57,7 +61,7 @@ provider "gdrive" {
 }
 ```
 
-You can also set the `SERVICE_ACCOUNT_KEY` environment variable to store either the key or the json contents.
+You can also set the `SERVICE_ACCOUNT_KEY` environment variable to store either the path to the Key file or the JSON contents directly.
 
 ## Example Usage
 
