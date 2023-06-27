@@ -1,7 +1,7 @@
 # Create a folder inside the impersonated user's personal Drive
 resource "gdrive_file" "folder" {
   mime_type = "application/vnd.google-apps.folder"
-  parent    = "root"
+  parent    = "root" # This will cause a planned changed during the next refresh because the provider will read the actual FileID of the user's root folder
   name      = "folder"
 }
 

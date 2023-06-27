@@ -18,143 +18,214 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"context"
+	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"google.golang.org/api/drive/v3"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func resourceFile() *schema.Resource {
-	return &schema.Resource{
-		Description: "Creates a file or folder with the given MIME type and optionally uploads a local file",
-		Schema: map[string]*schema.Schema{
-			"parent": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "fileId of the parent",
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ resource.Resource = &gdriveFileResource{}
+var _ resource.ResourceWithImportState = &gdriveFileResource{}
+
+const fieldsFile = "parents,mimeType,driveId,name,id"
+
+func newFile() resource.Resource {
+	return &gdriveFileResource{}
+}
+
+// gdriveFileResource defines the resource implementation.
+type gdriveFileResource struct {
+	client *http.Client
+}
+
+// gdriveFileResourceModel describes the resource data model.
+type gdriveFileResourceModel struct {
+	Parent         types.String `tfsdk:"parent"`
+	Name           types.String `tfsdk:"name"`
+	MimeType       types.String `tfsdk:"mime_type"`
+	Id             types.String `tfsdk:"id"`
+	FileId         types.String `tfsdk:"file_id"`
+	MimeTypeSource types.String `tfsdk:"mime_type_source"`
+	DriveId        types.String `tfsdk:"drive_id"`
+	Content        types.String `tfsdk:"content"`
+}
+
+func (r *gdriveFileResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_file"
+}
+
+func (r *gdriveFileResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Creates a file or folder with the given MIME type and optionally uploads or imports a local file.",
+		Attributes: map[string]schema.Attribute{
+			"id": rsId(),
+			"file_id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The ID of the file.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
-			"name": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "name of the file / folder",
+			"parent": schema.StringAttribute{
+				MarkdownDescription: "The file_id of the parent.",
+				Required:            true,
 			},
-			"mime_type": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "MIME type of the target file (in Google Drive)",
+			"name": schema.StringAttribute{
+				MarkdownDescription: "name of the file / folder.",
+				Required:            true,
 			},
-			"mime_type_source": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "MIME type of the source file (on the local system)",
+			"mime_type": schema.StringAttribute{
+				MarkdownDescription: "MIME type of the target file (in Google Drive).",
+				Required:            true,
 			},
-			"drive_id": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "driveId of the Shared Drive",
+			"mime_type_source": schema.StringAttribute{
+				MarkdownDescription: "MIME type of the source file (on the local system).,",
+				Optional:            true,
 			},
-			"content": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Description: `path to a file to upload.
+			"drive_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the Shared Drive.",
+				Optional:            true,
+			},
+			"content": schema.StringAttribute{
+				MarkdownDescription: `Path to a file to upload.
+
 The provider does not check the content of the file for updates.
-If you need to upload a new version of a file, you need to supply a different file name.`,
+
+If you need to upload/import a new version of a file, you need to supply a different file name.`,
+				Optional: true,
 			},
-		},
-		Create: resourceCreateFile,
-		Read:   resourceReadFile,
-		Update: resourceUpdateFile,
-		Delete: resourceDeleteFile,
-		Exists: resourceExistsFile,
-		Importer: &schema.ResourceImporter{
-			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
 
-func resourceCreateFile(d *schema.ResourceData, _ any) error {
-	var err error
-	f := &drive.File{
-		MimeType: d.Get("mime_type").(string),
-		Name:     d.Get("name").(string),
-		DriveId:  d.Get("drive_id").(string),
-		Parents:  []string{d.Get("parent").(string)},
+func (r *gdriveFileResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
 	}
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+	r.client = client
+}
+
+func (r *gdriveFileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	plan := &gdriveFileResourceModel{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	fileReq := plan.toRequest()
+	fileReq.Parents = []string{plan.Parent.ValueString()}
 	var content *os.File
-	if d.HasChange("content") {
-		content, err = os.Open(d.Get("content").(string))
+	var err error
+	if !plan.Content.IsNull() {
+		content, err = os.Open(plan.Content.ValueString())
 		if err != nil {
-			return err
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to open local file (content), got error: %s", err))
+			return
 		}
 		defer content.Close()
 	}
-	r, err := gsmdrive.CreateFile(f, content, false, false, false, "", "", d.Get("mime_type_source").(string), "id")
+	f, err := gsmdrive.CreateFile(fileReq, content, false, false, false, "", "", plan.MimeTypeSource.ValueString(), fieldsFile)
 	if err != nil {
-		return err
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create file, got error: %s", err))
+		return
 	}
-	d.SetId(r.Id)
-	err = resourceReadFile(d, nil)
-	if err != nil {
-		return err
-	}
-	return nil
+	plan.Id = types.StringValue(f.Id)
+	plan.FileId = plan.Id
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func resourceReadFile(d *schema.ResourceData, _ any) error {
-	r, err := gsmdrive.GetFile(d.Id(), "parents,mimeType,driveId,name", "")
-	if err != nil {
-		return err
+func (r *gdriveFileResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	state := &gdriveFileResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	d.Set("parent", r.Parents[0])
-	d.Set("mime_type", r.MimeType)
-	d.Set("drive_id", r.DriveId)
-	d.Set("name", r.Name)
-	return nil
+	f, err := gsmdrive.GetFile(state.Id.ValueString(), fieldsFile, "")
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get file, got error: %s", err))
+		return
+	}
+	if len(f.Parents) != 0 {
+		state.Parent = types.StringValue(f.Parents[0])
+	}
+	if f.DriveId != "" {
+		state.DriveId = types.StringValue(f.DriveId)
+	}
+	state.Name = types.StringValue(f.Name)
+	state.FileId = types.StringValue(f.Id)
+	state.MimeType = types.StringValue(f.MimeType)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func resourceUpdateFile(d *schema.ResourceData, _ any) error {
+func (r *gdriveFileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	plan := &gdriveFileResourceModel{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state := &gdriveFileResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	var addParents string
 	var removeParents string
 	var err error
-	f := &drive.File{
-		MimeType: d.Get("mime_type").(string),
-		Name:     d.Get("name").(string),
-		DriveId:  d.Get("drive_id").(string),
-	}
-	if d.HasChange("parent") {
-		rp, ap := d.GetChange("parent")
-		removeParents = rp.(string)
-		addParents = ap.(string)
+	fileReq := plan.toRequest()
+	if !plan.Parent.Equal(state.Parent) {
+		removeParents = state.Parent.ValueString()
+		addParents = plan.Parent.ValueString()
 	}
 	var content *os.File
-	if d.HasChange("content") {
-		content, err = os.Open(d.Get("content").(string))
+	if !plan.Content.Equal(state.Content) && !plan.Content.IsNull() {
+		content, err = os.Open(plan.Content.ValueString())
 		if err != nil {
-			return err
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to open local file (content), got error: %s", err))
+			return
 		}
 		defer content.Close()
 	}
-	_, err = gsmdrive.UpdateFile(d.Id(), addParents, removeParents, "", "", "id", f, content, false, false)
+	_, err = gsmdrive.UpdateFile(plan.Id.ValueString(), addParents, removeParents, "", "", fieldsFile, fileReq, content, false, false)
 	if err != nil {
-		return err
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update file, got error: %s", err))
+		return
 	}
-	err = resourceReadFile(d, nil)
-	if err != nil {
-		return err
-	}
-	return nil
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func resourceDeleteFile(d *schema.ResourceData, _ any) error {
-	_, err := gsmdrive.DeleteFile(d.Id())
-	return err
+func (r *gdriveFileResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	plan := &gdriveFileResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	_, err := gsmdrive.DeleteFile(plan.Id.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete file, got error: %s", err))
+		return
+	}
 }
 
-func resourceExistsFile(d *schema.ResourceData, _ any) (bool, error) {
-	_, err := gsmdrive.GetFile(d.Id(), "", "")
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+func (r *gdriveFileResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

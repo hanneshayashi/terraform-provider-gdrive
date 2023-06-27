@@ -15,129 +15,127 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Package provider implements the Terraform provider
 package provider
 
 import (
-	"encoding/json"
+	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"time"
+
+	"encoding/json"
 
 	"github.com/hanneshayashi/gsm/gsmauth"
 	"github.com/hanneshayashi/gsm/gsmcibeta"
 	"github.com/hanneshayashi/gsm/gsmdrive"
 	"github.com/hanneshayashi/gsm/gsmdrivelabels"
 	"github.com/hanneshayashi/gsm/gsmhelpers"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"google.golang.org/api/drive/v3"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func init() {
-	schema.DescriptionKind = schema.StringMarkdown
+var _ provider.Provider = &gdriveProvider{}
+
+type gdriveProvider struct {
+	version string
 }
 
-// Provider returns the Terraform provider
-func Provider() *schema.Provider {
-	return &schema.Provider{
-		Schema: map[string]*schema.Schema{
-			"service_account_key": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Description: `The path to or the content of a key file for your Service Account.
-Leave empty if you want to use Application Default Credentials (ADC).<br>
+// gdriveProviderModel describes the provider data model.
+type gdriveProviderModel struct {
+	ServiceAccountKey types.String `tfsdk:"service_account_key"`
+	ServiceAccount    types.String `tfsdk:"service_account"`
+	Subject           types.String `tfsdk:"subject"`
+	RetryOn           types.List   `tfsdk:"retry_on"`
+	Scopes            types.List   `tfsdk:"scopes"`
+}
+
+func (p *gdriveProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "gdrive"
+	resp.Version = p.version
+}
+
+func (p *gdriveProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "",
+		Attributes: map[string]schema.Attribute{
+			"service_account_key": schema.StringAttribute{
+				Optional:  true,
+				Sensitive: true,
+				MarkdownDescription: `The path to or the content of a key file for your Service Account.
+Leave empty if you want to use Application Default Credentials (ADC) (**recommended**).<br>
 You can also use the "SERVICE_ACCOUNT_KEY" environment variable to store either the path to the key file or the key itself (in JSON format).`,
-				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT_KEY", ""),
 			},
-			"service_account": {
-				Type:     schema.TypeString,
+			"service_account": schema.StringAttribute{
 				Optional: true,
-				Description: `The email address of the Service Account you want to impersonate with Application Default Credentials (ADC).
+				MarkdownDescription: `The email address of the Service Account you want to impersonate with Application Default Credentials (ADC).
 Leave empty if you want to use the Service Account of a GCP service (GCE, Cloud Run, Cloud Build, etc) directly.<br>
 You can also use the "SERVICE_ACCOUNT" environment variable.`,
-				DefaultFunc: schema.EnvDefaultFunc("SERVICE_ACCOUNT", ""),
 			},
-			"subject": {
-				Type:     schema.TypeString,
-				Required: true,
-				Description: `The email address of the Workspace user you want to impersonate with Domain Wide Delegation (DWD).<br>
+			"subject": schema.StringAttribute{
+				Optional: true,
+				MarkdownDescription: `The email address of the Workspace user you want to impersonate with Domain Wide Delegation (DWD).<br>
 You can also use the "SUBJECT" environment variable.`,
-				DefaultFunc: schema.EnvDefaultFunc("SUBJECT", ""),
 			},
-			"retry_on": {
-				Type:        schema.TypeList,
-				Optional:    true,
-				Description: `A list of HTTP error codes you want the provider to retry on (e.g. 404).`,
-				Elem: &schema.Schema{
-					Type: schema.TypeInt,
-				},
-			},
-			"use_cloud_identity_api": {
-				Type:     schema.TypeBool,
+			"retry_on": schema.ListAttribute{
 				Optional: true,
-				Description: `Set this to true if you want to manage Shared Drives in organizational units.
-Adds the scope 'https://www.googleapis.com/auth/cloud-identity.orgunits' to the provider's http client.
-This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
-Can also be set with the environment variable "USE_CLOUD_IDENTITY_API"`,
-				DefaultFunc: schema.EnvDefaultFunc("USE_CLOUD_IDENTITY_API", false),
+				MarkdownDescription: `A list of HTTP error codes you want the provider to retry on.
+If this is unset, the provider will retry on 404 and 502 using an exponential backoff strategy. If you DON'T want the provider to retry on any error, set this to an empty list.
+The provider will ALWAYS retry on 403 errors that indicate a rate limiting / quota issue.`,
+				ElementType: types.Int64Type,
 			},
-			"use_labels_api": {
-				Type:     schema.TypeBool,
+			"scopes": schema.ListAttribute{
 				Optional: true,
-				Description: `Set this to true if you want to manage Drive labels.
-Adds the scope 'https://www.googleapis.com/auth/drive.labels' to the provider's http client.
-This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
-Can also be set with the environment variable "USE_LABELS_API"`,
-				DefaultFunc: schema.EnvDefaultFunc("USE_LABELS_API", false),
-			},
-			"use_labels_admin_scope": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Description: `Set this to true if you want to manage Drive labels with the admin scope.
-Only has effect if 'use_labels_api' is also set to 'true'.
-Adds the scope 'https://www.googleapis.com/auth/drive.admin.labels' to the provider's http client.
-This scope needs to be added to the Domain Wide Delegation configuration in the Admin Console in Google Workspace.
-Can also be set with the environment variable "USE_LABELS_ADMIN_SCOPE"`,
-				DefaultFunc: schema.EnvDefaultFunc("USE_LABELS_ADMIN_SCOPE", false),
+				MarkdownDescription: `List of scopes that the provider will add to the API client.
+If this is unset, the provider will use the following scopes that must be added to the Domain-Wide Delegation configuration in the Google Workspace Admin Console:
+* https://www.googleapis.com/auth/drive
+* https://www.googleapis.com/auth/drive.labels
+* https://www.googleapis.com/auth/drive.admin.labels
+* https://www.googleapis.com/auth/cloud-identity.orgunits`,
+				ElementType: types.StringType,
 			},
 		},
-		ResourcesMap: map[string]*schema.Resource{
-			"gdrive_drive":               resourceDrive(),
-			"gdrive_permission":          resourcePermission(),
-			"gdrive_permissions_policy":  resourcePermissionsPolicy(),
-			"gdrive_file":                resourceFile(),
-			"gdrive_drive_ou_membership": resourceDriveOuMembership(),
-			"gdrive_label_assignment":    resourceLabelAssignment(),
-			"gdrive_label_policy":        resourceLabelPolicy(),
-		},
-		DataSourcesMap: map[string]*schema.Resource{
-			"gdrive_drive":       dataSourceDrive(),
-			"gdrive_drives":      dataSourceDrives(),
-			"gdrive_permission":  dataSourcePermission(),
-			"gdrive_permissions": dataSourcePermissions(),
-			"gdrive_file":        dataSourceFile(),
-			"gdrive_files":       dataSourceFiles(),
-			"gdrive_label":       dataSourceLabel(),
-			"gdrive_labels":      dataSourceLabels(),
-		},
-		ConfigureFunc: providerConfigure,
 	}
 }
 
-func providerConfigure(d *schema.ResourceData) (any, error) {
-	serviceAccountKey := d.Get("service_account_key").(string)
-	scopes := []string{drive.DriveScope}
-	use_cloud_identity_api := d.Get("use_cloud_identity_api").(bool)
-	if use_cloud_identity_api {
-		scopes = append(scopes, "https://www.googleapis.com/auth/cloud-identity.orgunits")
+func (p *gdriveProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var data gdriveProviderModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	use_labels_api := d.Get("use_labels_api").(bool)
-	use_labels_admin_scope := d.Get("use_labels_admin_scope").(bool)
-	if use_labels_api {
-		scopes = append(scopes, "https://www.googleapis.com/auth/drive.labels")
-		if use_labels_admin_scope {
-			scopes = append(scopes, "https://www.googleapis.com/auth/drive.admin.labels")
+	serviceAccountKey := data.ServiceAccountKey.ValueString()
+	if serviceAccountKey == "" {
+		serviceAccountKey = os.Getenv("SERVICE_ACCOUNT_KEY")
+	}
+	serviceAccount := data.ServiceAccount.ValueString()
+	if serviceAccount == "" {
+		serviceAccount = os.Getenv("SERVICE_ACCOUNT")
+	}
+	subject := data.Subject.ValueString()
+	if subject == "" {
+		subject = os.Getenv("SUBJECT")
+	}
+	if subject == "" {
+		resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Subject must be set"))
+		return
+	}
+	var scopes []string
+	if data.Scopes.IsNull() {
+		scopes = []string{
+			"https://www.googleapis.com/auth/drive",
+			"https://www.googleapis.com/auth/drive.labels",
+			"https://www.googleapis.com/auth/drive.admin.labels",
+			"https://www.googleapis.com/auth/cloud-identity.orgunits",
+		}
+	} else {
+		resp.Diagnostics.Append(data.Scopes.ElementsAs(ctx, &scopes, false)...)
+		if resp.Diagnostics.HasError() {
+			return
 		}
 	}
 	var client *http.Client
@@ -151,34 +149,82 @@ func providerConfigure(d *schema.ResourceData) (any, error) {
 			var f *os.File
 			f, err = os.Open(serviceAccountKey)
 			if err != nil {
-				return nil, err
+				resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to open Service Account Key file, got error: %s", err))
+				return
 			}
 			saKey, err = io.ReadAll(f)
 			if err != nil {
-				return nil, err
+				resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to read Service Account Key file, got error: %s", err))
+				return
 			}
 		}
-		client, err = gsmauth.GetClient(d.Get("subject").(string), saKey, scopes...)
+		client, err = gsmauth.GetClient(subject, saKey, scopes...)
+		if err != nil {
+			resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to get client, got error: %s", err))
+			return
+		}
 	} else {
-		serviceAccount := d.Get("service_account").(string)
-		client, err = gsmauth.GetClientADC(d.Get("subject").(string), serviceAccount, scopes...)
-	}
-	if err != nil {
-		return nil, err
-	}
-	gsmdrive.SetClient(client)
-	if use_cloud_identity_api {
-		gsmcibeta.SetClient(client)
-	}
-	if use_labels_api {
-		gsmdrivelabels.SetClient(client)
-	}
-	retryOn := d.Get("retry_on").([]any)
-	if len(retryOn) > 0 {
-		for i := range retryOn {
-			gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i].(int))
+		client, err = gsmauth.GetClientADC(subject, serviceAccount, scopes...)
+		if err != nil {
+			resp.Diagnostics.AddError("Configuration Error", fmt.Sprintf("Unable to get ADC client, got error: %s", err))
+			return
 		}
 	}
-	gsmhelpers.SetStandardRetrier(time.Duration(500 * time.Millisecond))
-	return nil, nil
+	gsmdrive.SetClient(client)
+	gsmcibeta.SetClient(client)
+	gsmdrivelabels.SetClient(client)
+	var retryOn []int
+	if data.RetryOn.IsNull() {
+		retryOn = []int{404, 502}
+	} else {
+		resp.Diagnostics.Append(data.RetryOn.ElementsAs(ctx, &retryOn, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+	for i := range retryOn {
+		gsmhelpers.RetryOn = append(gsmhelpers.RetryOn, retryOn[i])
+	}
+	gsmhelpers.SetStandardRetrier(time.Duration(500*time.Millisecond), time.Duration(60*time.Second), time.Duration(3*time.Minute))
+}
+
+func (p *gdriveProvider) Resources(ctx context.Context) []func() resource.Resource {
+	return []func() resource.Resource{
+		newDrive,
+		newFile,
+		newPermission,
+		newPermissionPolicy,
+		newLabelAssignment,
+		newLabelPolicy,
+		newOrgUnitMembership,
+		newLabel,
+		newLabelTextField,
+		newLabelIntegerField,
+		newLabelDateField,
+		newLabelUserField,
+		newLabelSelectionField,
+		newLabelSelectionChoice,
+		newLabelPermission,
+	}
+}
+
+func (p *gdriveProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{
+		newDriveDataSource,
+		newDrivesDataSource,
+		newFileDataSource,
+		newFilesDataSource,
+		newLabelDataSource,
+		newLabelsDataSource,
+		newPermissionDataSource,
+		newPermissionsDataSource,
+	}
+}
+
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &gdriveProvider{
+			version: version,
+		}
+	}
 }

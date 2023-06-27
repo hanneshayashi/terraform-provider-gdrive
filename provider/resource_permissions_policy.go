@@ -18,263 +18,240 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"google.golang.org/api/drive/v3"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type gDrivePermission struct {
-	Permission            *drive.Permission
-	EmailMessage          string
-	SendNotificationEmail bool
-	TransferOwnership     bool
-	MoveToNewOwnersRoot   bool
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ resource.Resource = &gdrivePermissionPolicyResource{}
+var _ resource.ResourceWithImportState = &gdrivePermissionPolicyResource{}
+
+func newPermissionPolicy() resource.Resource {
+	return &gdrivePermissionPolicyResource{}
 }
 
-func resourcePermissionsPolicy() *schema.Resource {
-	return &schema.Resource{
-		Description: `Creates an authoratative permissions policy on a file or Shared Drive.
+// gdrivePermissionPolicyResource defines the resource implementation.
+type gdrivePermissionPolicyResource struct {
+	client *http.Client
+}
+
+// gdrivePermissionPolicyResourceModel describes the resource data model.
+type gdrivePermissionPolicyPermissionResourceModel struct {
+	PermissionId          types.String `tfsdk:"permission_id"`
+	EmailMessage          types.String `tfsdk:"email_message"`
+	Type                  types.String `tfsdk:"type"`
+	Domain                types.String `tfsdk:"domain"`
+	EmailAddress          types.String `tfsdk:"email_address"`
+	Role                  types.String `tfsdk:"role"`
+	SendNotificationEmail types.Bool   `tfsdk:"send_notification_email"`
+	TransferOwnership     types.Bool   `tfsdk:"transfer_ownership"`
+	MoveToNewOwnersRoot   types.Bool   `tfsdk:"move_to_new_owners_root"`
+}
+
+// gdrivePermissionPolicyResourceModel describes the resource data model.
+type gdrivePermissionPolicyResourceModel struct {
+	FileId               types.String                                     `tfsdk:"file_id"`
+	Id                   types.String                                     `tfsdk:"id"`
+	Permissions          []*gdrivePermissionPolicyPermissionResourceModel `tfsdk:"permissions"`
+	UseDomainAdminAccess types.Bool                                       `tfsdk:"use_domain_admin_access"`
+}
+
+func (r *gdrivePermissionPolicyResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_permissions_policy"
+}
+
+func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: `Creates an authoratative permissions policy on a file or Shared Drive.
 
 **Warning: This resource will set exactly the defined permissions and remove everything else!**
 
 It is HIGHLY recommended that you import the resource and make sure that the owner is properly set before applying it!
 
-You can import the resource using the file's or Shared Drive's id like so:
-
-terraform import [resource address] [fileId]
-
 **Important**: On a *destroy*, this resource will preserve the owner and organizer permissions!`,
-		Schema: map[string]*schema.Schema{
-			"file_id": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "ID of the file or Shared Drive",
-				ForceNew:    true,
+		Attributes: map[string]schema.Attribute{
+			"id": rsId(),
+			"file_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the file or Shared Drive.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
-			"permissions": {
-				Type:     schema.TypeSet,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"permission_id": {
-							Type:        schema.TypeString,
-							Description: "The permission ID",
-							Computed:    true,
+			"use_domain_admin_access": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Use domain admin access.",
+			},
+			"permissions": schema.SetNestedAttribute{
+				Required:            true,
+				MarkdownDescription: `Defines the set of permissions to set on the file or Shared Drive.`,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"permission_id": schema.StringAttribute{
+							MarkdownDescription: "PermissionID of the trustee.",
+							Computed:            true,
 						},
-						"email_message": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Description: "An optional email message that will be sent when the permission is created",
+						"email_message": schema.StringAttribute{
+							MarkdownDescription: "An optional email message that will be sent when the permission is created.",
+							Optional:            true,
 						},
-						"send_notification_email": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "Wether to send a notfication email",
+						"send_notification_email": schema.BoolAttribute{
+							MarkdownDescription: "Wether to send a notfication email.",
+							Optional:            true,
 						},
-						"type": {
-							Type:         schema.TypeString,
-							Required:     true,
-							Description:  "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
-							ValidateFunc: validatePermissionType,
+						"type": schema.StringAttribute{
+							MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.",
+							Optional:            true,
 						},
-						"domain": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Description: "The domain that should be granted access",
+						"domain": schema.StringAttribute{
+							MarkdownDescription: "The domain that should be granted access.",
+							Optional:            true,
+							Validators: []validator.String{
+								stringvalidator.ConflictsWith(path.Expressions{
+									path.MatchRelative().AtParent().AtName("email_address"),
+								}...),
+							},
 						},
-						"email_address": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Description: "The email address of the trustee",
+						"email_address": schema.StringAttribute{
+							MarkdownDescription: "The email address of the trustee.",
+							Optional:            true,
+							Validators: []validator.String{
+								stringvalidator.ConflictsWith(path.Expressions{
+									path.MatchRelative().AtParent().AtName("domain"),
+								}...),
+							},
 						},
-						"role": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "The role",
+						"role": schema.StringAttribute{
+							MarkdownDescription: "The role.",
+							Required:            true,
 						},
-						"transfer_ownership": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "Whether to transfer ownership to the specified user",
+						"transfer_ownership": schema.BoolAttribute{
+							MarkdownDescription: "Whether to transfer ownership to the specified user.",
+							Optional:            true,
 						},
-						"move_to_new_owners_root": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.",
+						"move_to_new_owners_root": schema.BoolAttribute{
+							MarkdownDescription: "This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.",
+							Optional:            true,
 						},
 					},
 				},
 			},
-			"use_domain_admin_access": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: "Use domain admin access",
-			},
-		},
-		Create: resourceCreatePermissionsPolicy,
-		Read:   resourceReadPermissionsPolicy,
-		Update: resourceUpdatePermissionsPolicy,
-		Delete: resourceDeletePermissionsPolicy,
-		Exists: resourceExistsFile,
-		Importer: &schema.ResourceImporter{
-			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
 
-func resourceCreatePermissionsPolicy(d *schema.ResourceData, _ any) error {
-	fileID := d.Get("file_id").(string)
-	useDomAccess := d.Get("use_domain_admin_access").(bool)
-	permissionsD := d.Get("permissions").(*schema.Set).List()
-	for i := range permissionsD {
-		p := permissionsD[i].(map[string]any)
-		permission := mapToPermission(p)
-		r, err := gsmdrive.CreatePermission(fileID, permission.EmailMessage, "id", useDomAccess, permission.SendNotificationEmail, false, false, permission.Permission)
-		if err != nil {
-			return err
-		}
-		p["permission_id"] = r.Id
-		permissionsD[i] = p
+func (r *gdrivePermissionPolicyResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
 	}
-	d.SetId(fileID)
-	d.Set("permissions", permissionsD)
-	err := resourceReadPermissionsPolicy(d, nil)
-	if err != nil {
-		return err
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
 	}
-	return nil
+
+	r.client = client
 }
 
-func resourceReadPermissionsPolicy(d *schema.ResourceData, _ any) error {
-	fileID := d.Id()
-	permissionsD := d.Get("permissions").(*schema.Set).List()
-	permissionsM := make(map[string]*gDrivePermission, 0)
-	for _, o := range permissionsD {
-		m := o.(map[string]any)
-		permissionsM[mapToTrusteeId(m)] = mapToPermission(m)
+func (r *gdrivePermissionPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	plan := &gdrivePermissionPolicyResourceModel{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	permissionsSet := schema.NewSet(permissionToSet, nil)
-	r, err := gsmdrive.ListPermissions(fileID, "", "permissions(id,displayName,domain,deleted,emailAddress,expirationTime,role,type),nextPageToken", d.Get("use_domain_admin_access").(bool), 1)
-	for p := range r {
-		trustee := combineId(p.Domain, p.EmailAddress)
-		permission := map[string]any{
-			"permission_id": p.Id,
-			"domain":        p.Domain,
-			"email_address": p.EmailAddress,
-			"role":          p.Role,
-			"type":          p.Type,
-		}
-		if permissionsM[trustee] != nil {
-			permission["email_message"] = permissionsM[trustee].EmailMessage
-			permission["send_notification_email"] = permissionsM[trustee].SendNotificationEmail
-			permission["transfer_ownership"] = permissionsM[trustee].TransferOwnership
-			permission["move_to_new_owners_root"] = permissionsM[trustee].MoveToNewOwnersRoot
-		}
-		permissionsSet.Add(permission)
+	mockState := &gdrivePermissionPolicyResourceModel{
+		FileId: plan.FileId,
+		Id:     plan.FileId,
 	}
-	e := <-err
-	if e != nil {
-		return e
+	resp.Diagnostics.Append(mockState.populate(ctx)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	d.SetId(fileID)
-	d.Set("file_id", fileID)
-	d.Set("permissions", permissionsSet)
-	return nil
+	resp.Diagnostics.Append(setPermissionDiffs(plan, mockState)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.Id = plan.FileId
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func mapToPermission(m map[string]any) *gDrivePermission {
-	return &gDrivePermission{
-		Permission: &drive.Permission{
-			Type:         m["type"].(string),
-			Role:         m["role"].(string),
-			EmailAddress: m["email_address"].(string),
-			Domain:       m["domain"].(string),
-			Id:           m["permission_id"].(string),
-		},
-		EmailMessage:          m["email_message"].(string),
-		SendNotificationEmail: m["send_notification_email"].(bool),
-		TransferOwnership:     m["transfer_ownership"].(bool),
-		MoveToNewOwnersRoot:   m["move_to_new_owners_root"].(bool),
+func (r *gdrivePermissionPolicyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	state := &gdrivePermissionPolicyResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
+	resp.Diagnostics.Append(state.populate(ctx)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	currentPermissionsMap := state.toMap()
+	for i := range currentPermissionsMap {
+		sP, ok := currentPermissionsMap[combineId(currentPermissionsMap[i].Domain.ValueString(), currentPermissionsMap[i].EmailAddress.ValueString())]
+		if ok {
+			currentPermissionsMap[i].EmailMessage = sP.EmailMessage
+			currentPermissionsMap[i].MoveToNewOwnersRoot = sP.MoveToNewOwnersRoot
+			currentPermissionsMap[i].SendNotificationEmail = sP.SendNotificationEmail
+			currentPermissionsMap[i].TransferOwnership = sP.TransferOwnership
+		}
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func mapToTrusteeId(m map[string]any) string {
-	return combineId(m["domain"].(string), m["email_address"].(string))
+func (r *gdrivePermissionPolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	plan := &gdrivePermissionPolicyResourceModel{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state := &gdrivePermissionPolicyResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(setPermissionDiffs(plan, state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func resourceUpdatePermissionsPolicy(d *schema.ResourceData, _ any) error {
-	fileID := d.Id()
-	old, new := d.GetChange("permissions")
-	useDomAccess := d.Get("use_domain_admin_access").(bool)
-	permissionsOld := make(map[string]*gDrivePermission, 0)
-	permissionsNew := make(map[string]*gDrivePermission, 0)
-	remove := make([]string, 0)
-	create := make([]*gDrivePermission, 0)
-	update := make(map[string]*drive.Permission, 0)
-	for _, o := range old.(*schema.Set).List() {
-		m := o.(map[string]any)
-		permissionsOld[mapToTrusteeId(m)] = mapToPermission(m)
+func (r *gdrivePermissionPolicyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	plan := &gdrivePermissionPolicyResourceModel{}
+	resp.Diagnostics.Append(req.State.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	for _, n := range new.(*schema.Set).List() {
-		m := n.(map[string]any)
-		permissionsNew[mapToTrusteeId(m)] = mapToPermission(m)
-	}
-	for t := range permissionsOld {
-		if permissionsNew[t] == nil {
-			remove = append(remove, permissionsOld[t].Permission.Id)
-		}
-	}
-	for t := range permissionsNew {
-		if permissionsOld[t] == nil {
-			create = append(create, permissionsNew[t])
-		} else if permissionsNew[t].Permission.Role != permissionsOld[t].Permission.Role {
-			if permissionsNew[t].Permission.Role == "owner" {
-				_, err := gsmdrive.UpdatePermission(fileID, permissionsOld[t].Permission.Id, "id", useDomAccess, false, &drive.Permission{Role: permissionsNew[t].Permission.Role})
-				if err != nil {
-					return err
-				}
-			} else {
-				update[permissionsOld[t].Permission.Id] = &drive.Permission{Role: permissionsNew[t].Permission.Role}
-			}
-		}
-	}
-	for i := range create {
-		_, err := gsmdrive.CreatePermission(fileID, create[i].EmailMessage, "id", useDomAccess, create[i].SendNotificationEmail, create[i].TransferOwnership, create[i].MoveToNewOwnersRoot, create[i].Permission)
-		if err != nil {
-			return err
-		}
-	}
-	for i := range update {
-		_, err := gsmdrive.UpdatePermission(fileID, i, "id", useDomAccess, false, update[i])
-		if err != nil {
-			return err
-		}
-	}
-	for i := range remove {
-		_, err := gsmdrive.DeletePermission(fileID, remove[i], useDomAccess)
-		if err != nil {
-			return err
-		}
-	}
-	err := resourceReadPermissionsPolicy(d, nil)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func resourceDeletePermissionsPolicy(d *schema.ResourceData, _ any) error {
-	fileID := d.Id()
-	useDomAccess := d.Get("use_domain_admin_access").(bool)
-	permissions := d.Get("permissions").(*schema.Set).List()
-	for p := range permissions {
-		permission := permissions[p].(map[string]any)
-		if permission["role"].(string) != "owner" && permission["role"].(string) != "organizer" {
-			_, err := gsmdrive.DeletePermission(fileID, permission["permission_id"].(string), useDomAccess)
+	for i := range plan.Permissions {
+		role := plan.Permissions[i].Role.ValueString()
+		if role != "owner" && role != "organizer" {
+			_, err := gsmdrive.DeletePermission(plan.FileId.ValueString(), plan.Permissions[i].PermissionId.ValueString(), plan.UseDomainAdminAccess.ValueBool())
 			if err != nil {
-				return err
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete permission, got error: %s", err))
+				return
 			}
 		}
 	}
-	return nil
+}
+
+func (r *gdrivePermissionPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resp.Diagnostics.Append(importSplitId(ctx, req, resp, adminAttributeDrive, "file_id")...)
 }

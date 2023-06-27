@@ -18,308 +18,226 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+
 	"github.com/hanneshayashi/gsm/gsmdrivelabels"
 	"github.com/hanneshayashi/gsm/gsmhelpers"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func lifecycle() *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeList,
-		Computed: true,
-		Description: `The lifecycle state of an object, such as label, field, or choice.
-The lifecycle enforces the following transitions:
-UNPUBLISHED_DRAFT (starting state)
-UNPUBLISHED_DRAFT -> PUBLISHED
-UNPUBLISHED_DRAFT -> (Deleted)
-PUBLISHED -> DISABLED
-DISABLED -> PUBLISHED
-DISABLED -> (Deleted)`,
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"state": {
-					Type:        schema.TypeString,
-					Description: "The state of the object associated with this lifecycle.",
-					Computed:    true,
-				},
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ datasource.DataSource = &labelDataSource{}
+
+func newLabelDataSource() datasource.DataSource {
+	return &labelDataSource{}
+}
+
+// labelDataSource defines the data source implementation.
+type labelDataSource struct {
+	client *http.Client
+}
+
+type gdriveLabelListOptionsModel struct {
+	MaxEntries types.Int64 `tfsdk:"max_entries"`
+}
+
+type gdriveLabelChoicePropertiesModel struct {
+	BadgeConfig *gdriveLabelChoiceBadgeConfigModel `tfsdk:"badge_config"`
+	DisplayName types.String                       `tfsdk:"display_name"`
+}
+
+type gdriveLabelChoiceModel struct {
+	LifeCycle  *gdriveLabelLifeCycleDSModel      `tfsdk:"life_cycle"`
+	Properties *gdriveLabelChoicePropertiesModel `tfsdk:"properties"`
+	Id         types.String                      `tfsdk:"id"`
+	ChoiceId   types.String                      `tfsdk:"choice_id"`
+}
+
+type gdriveLabelDateFieldModel struct {
+	Day   types.Int64 `tfsdk:"day"`
+	Month types.Int64 `tfsdk:"month"`
+	Year  types.Int64 `tfsdk:"year"`
+}
+
+type gdriveLabelTextOptionsModel struct {
+	MinLength types.Int64 `tfsdk:"min_length"`
+	MaxLength types.Int64 `tfsdk:"max_length"`
+}
+
+type gdriveLabelIntegerOptionsModel struct {
+	MinValue types.Int64 `tfsdk:"min_value"`
+	MaxValue types.Int64 `tfsdk:"max_value"`
+}
+
+type gdriveLabelDateOptionsModel struct {
+	MinValue       *gdriveLabelDateFieldModel `tfsdk:"min_value"`
+	MaxValue       *gdriveLabelDateFieldModel `tfsdk:"max_value"`
+	DateFormat     types.String               `tfsdk:"date_format"`
+	DateFormatType types.String               `tfsdk:"date_format_type"`
+}
+
+type gdriveLabelUserOptionseModel struct {
+	ListOptions *gdriveLabelListOptionsModel `tfsdk:"list_options"`
+}
+
+type gdriveLabelSelectionOptionsModel struct {
+	ListOptions *gdriveLabelListOptionsModel `tfsdk:"list_options"`
+	Choices     []*gdriveLabelChoiceModel    `tfsdk:"choices"`
+}
+
+type gdriveLabelLifeCycleDisabledPolicyModel struct {
+	HideInSearch types.Bool `tfsdk:"hide_in_search"`
+	ShowInApply  types.Bool `tfsdk:"show_in_apply"`
+}
+
+type gdriveLabelLifeCycleDSModel struct {
+	DisabledPolicy        *gdriveLabelLifeCycleDisabledPolicyModel `tfsdk:"disabled_policy"`
+	State                 types.String                             `tfsdk:"state"`
+	HasUnpublishedChanges types.Bool                               `tfsdk:"has_unpublished_changes"`
+}
+
+type gdriveLabelLifeCycleModel struct {
+	DisabledPolicy *gdriveLabelLifeCycleDisabledPolicyModel `tfsdk:"disabled_policy"`
+	State          types.String                             `tfsdk:"state"`
+}
+
+type gdriveLabelDataSourceFieldPropertieseModel struct {
+	DisplayName types.String `tfsdk:"display_name"`
+	Required    types.Bool   `tfsdk:"required"`
+}
+
+type gdriveLabelDataSourceFieldsModel struct {
+	LifeCycle        *gdriveLabelLifeCycleDSModel                `tfsdk:"life_cycle"`
+	DateOptions      *gdriveLabelDateOptionsModel                `tfsdk:"date_options"`
+	SelectionOptions *gdriveLabelSelectionOptionsModel           `tfsdk:"selection_options"`
+	IntegerOptions   *gdriveLabelIntegerOptionsModel             `tfsdk:"integer_options"`
+	TextOptions      *gdriveLabelTextOptionsModel                `tfsdk:"text_options"`
+	UserOptions      *gdriveLabelUserOptionseModel               `tfsdk:"user_options"`
+	Properties       *gdriveLabelDataSourceFieldPropertieseModel `tfsdk:"properties"`
+	Id               types.String                                `tfsdk:"id"`
+	FieldId          types.String                                `tfsdk:"field_id"`
+	QueryKey         types.String                                `tfsdk:"query_key"`
+	ValueType        types.String                                `tfsdk:"value_type"`
+}
+
+type gdriveLabelDataSourceModel struct {
+	LifeCycle      *gdriveLabelLifeCycleDSModel        `tfsdk:"life_cycle"`
+	Id             types.String                        `tfsdk:"id"`
+	LabelId        types.String                        `tfsdk:"label_id"`
+	Name           types.String                        `tfsdk:"name"`
+	LanguageCode   types.String                        `tfsdk:"language_code"`
+	Revision       types.String                        `tfsdk:"revision"`
+	LabelType      types.String                        `tfsdk:"label_type"`
+	Properties     *gdriveLabelResourcePropertiesModel `tfsdk:"properties"`
+	Fields         []*gdriveLabelDataSourceFieldsModel `tfsdk:"fields"`
+	UseAdminAccess types.Bool                          `tfsdk:"use_admin_access"`
+}
+
+func (d *labelDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_label"
+}
+
+func (d *labelDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: `This resource can be used to get the fields and other metadata for a single label.`,
+		Attributes: map[string]schema.Attribute{
+			"id": dsId(),
+			"label_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the label",
+				Computed:            true,
 			},
-		},
-	}
-}
-
-func listOptions() *schema.Schema {
-	return &schema.Schema{
-		Type:        schema.TypeList,
-		Computed:    true,
-		Description: `Options for a multi-valued variant of an associated field type.`,
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"max_entries": {
-					Type:        schema.TypeInt,
-					Description: "Maximum number of entries permitted.",
-					Computed:    true,
-				},
-			},
-		},
-	}
-}
-
-func dateField() map[string]*schema.Schema {
-	return map[string]*schema.Schema{
-		"day": {
-			Type:     schema.TypeInt,
-			Computed: true,
-			Description: `Day of a month.
-Must be from 1 to 31 and valid for the year and month, or 0 to specify a year by itself or a year and month where the day isn't significant.`,
-		},
-		"month": {
-			Type:        schema.TypeInt,
-			Computed:    true,
-			Description: "Month of a year. Must be from 1 to 12, or 0 to specify a year without a month and day.",
-		},
-		"year": {
-			Type:        schema.TypeInt,
-			Computed:    true,
-			Description: "Year of the date. Must be from 1 to 9999, or 0 to specify a date without a year.",
-		},
-	}
-}
-
-func labelFieldsDS() *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeList,
-		Computed: true,
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"id": {
-					Type:     schema.TypeString,
-					Computed: true,
-					Description: `The key of a field, unique within a label or library.
-Use this when referencing a field somewhere.`,
-				},
-				"value_type": {
-					Type:     schema.TypeString,
-					Computed: true,
-					Description: `The type of the field.
-Use this when setting the values for a field.`,
-				},
-				"date_options": {
-					Type:        schema.TypeList,
-					Computed:    true,
-					Description: "Options for the date field type.",
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"date_format": {
-								Type:        schema.TypeString,
-								Computed:    true,
-								Description: "ICU date format.",
-							},
-							"date_format_type": {
-								Type:        schema.TypeString,
-								Computed:    true,
-								Description: "Localized date formatting option. Field values are rendered in this format according to their locale.",
-							},
-							"max_value": {
-								Type:        schema.TypeList,
-								Required:    true,
-								Description: "Maximum valid value (year, month, day).",
-								Elem: &schema.Resource{
-									Schema: dateField(),
-								},
-							},
-							"min_value": {
-								Type:        schema.TypeList,
-								Required:    true,
-								Description: "Minimum valid value (year, month, day).",
-								Elem: &schema.Resource{
-									Schema: dateField(),
-								},
-							},
-						},
-					},
-				},
-				"selection_options": {
-					Type:        schema.TypeList,
-					Computed:    true,
-					Description: "Options for the selection field type.",
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"list_options": listOptions(),
-							"choices": {
-								Type:     schema.TypeList,
-								Computed: true,
-								Elem: &schema.Resource{
-									Schema: map[string]*schema.Schema{
-										"id": {
-											Type:     schema.TypeString,
-											Computed: true,
-											Description: `The unique value of the choice.
-Use this when referencing / setting a choice.`,
-										},
-										"life_cycle": lifecycle(),
-										"display_name": {
-											Type:        schema.TypeString,
-											Computed:    true,
-											Description: "The display text to show in the UI identifying this field.",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				"integer_options": {
-					Type:        schema.TypeList,
-					Computed:    true,
-					Description: "Options for the Integer field type.",
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"max_value": {
-								Type:        schema.TypeInt,
-								Computed:    true,
-								Description: "The maximum valid value for the integer field.",
-							},
-							"min_value": {
-								Type:        schema.TypeInt,
-								Computed:    true,
-								Description: "The minimum valid value for the integer field.",
-							},
-						},
-					},
-				},
-				"text_options": {
-					Type:        schema.TypeList,
-					Computed:    true,
-					Description: "Options for the Text field type.",
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"min_length": {
-								Type:        schema.TypeInt,
-								Computed:    true,
-								Description: "The minimum valid length of values for the text field.",
-							},
-							"max_length": {
-								Type:        schema.TypeInt,
-								Computed:    true,
-								Description: "The maximum valid length of values for the text field.",
-							},
-						},
-					},
-				},
-				"user_options": {
-					Type:        schema.TypeList,
-					Computed:    true,
-					Description: "Options for the user field type.",
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"list_options": listOptions(),
-						},
-					},
-				},
-				"properties": {
-					Type:        schema.TypeList,
-					Computed:    true,
-					Description: "The basic properties of the field.",
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"display_name": {
-								Type:        schema.TypeString,
-								Computed:    true,
-								Description: "The display text to show in the UI identifying this field.",
-							},
-							"required": {
-								Type:        schema.TypeBool,
-								Computed:    true,
-								Description: "Whether the field should be marked as required.",
-							},
-						},
-					},
-				},
-				"query_key": {
-					Type:     schema.TypeString,
-					Computed: true,
-					Description: `The key to use when constructing Drive search queries to find files based on values defined for this field on files.
-For example, "{queryKey} > 2001-01-01".`,
-				},
-				"life_cycle": lifecycle(),
-			},
-		},
-	}
-}
-
-func dataSourceLabel() *schema.Resource {
-	return &schema.Resource{
-		Description: `This resource can be used to get the fields and other metadata for a single label.
-This resource requires additional setup:
-1. Enable the Drive Labels API in your GCP project
-2. Add 'https://www.googleapis.com/auth/drive.labels' as a scope to your Domain Wide Delegation config
-3. Set 'use_labels_api' to 'true' in your provider configuration`,
-		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:     schema.TypeString,
+			"name": schema.StringAttribute{
 				Required: true,
-				Description: `Label resource name.
+				MarkdownDescription: `Label resource name.
+
 May be any of:
-- labels/{id} (equivalent to labels/{id}@latest)
-- labels/{id}@latest
-- labels/{id}@published
-- labels/{id}@{revisionId}`,
+* labels/{id} (equivalent to labels/{id}@latest)
+* labels/{id}@latest
+* labels/{id}@published
+* labels/{id}@{revisionId}`,
 			},
-			"use_admin_access": {
-				Type:     schema.TypeBool,
+			"use_admin_access": schema.BoolAttribute{
 				Optional: true,
-				Description: `Set to true in order to use the user's admin credentials.
-The server verifies that the user is an admin for the label before allowing access.
-Requires setting the 'use_labels_admin_scope' property to 'true' in the provider config.`,
+				MarkdownDescription: `Set to true in order to use the user's admin credentials.
+
+The server verifies that the user is an admin for the label before allowing access.`,
 			},
-			"language_code": {
-				Type:     schema.TypeString,
+			"language_code": schema.StringAttribute{
 				Optional: true,
-				Description: `The BCP-47 language code to use for evaluating localized field labels.
+				MarkdownDescription: `The BCP-47 language code to use for evaluating localized field labels.
+
 When not specified, values in the default configured language are used.`,
 			},
-			"revision": {
-				Type:     schema.TypeString,
+			"revision": schema.StringAttribute{
 				Optional: true,
-				Description: `The revision of the label to retrieve.
+				MarkdownDescription: `The revision of the label to retrieve.
+
 Defaults to the latest revision.
+
 Reading other revisions may require addtional permissions and / or setting the 'use_admin_access' flag.`,
 			},
-			"label_type": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: `The type of this label.`,
+			"label_type": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: `The type of this label.`,
 			},
-			"description": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: `The description of the label.`,
-			},
-			"title": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: `Title of the label.`,
-			},
-			"fields": labelFieldsDS(),
+			"life_cycle": lifecycleDS(),
+			"fields":     fieldsDS(),
+			"properties": labelPropertiesDS(),
 		},
-		Read: dataSourceReadLabel,
 	}
 }
 
-func dataSourceReadLabel(d *schema.ResourceData, _ any) error {
-	labelID := gsmhelpers.EnsurePrefix(d.Get("name").(string), "labels/")
-	revision := d.Get("revision").(string)
-	if revision != "" {
-		labelID = labelID + "@" + revision
+func (d *labelDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
 	}
-	label, err := gsmdrivelabels.GetLabel(labelID, d.Get("language_code").(string), "LABEL_VIEW_FULL", "*", d.Get("use_admin_access").(bool))
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
+func (ds *labelDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	config := &gdriveLabelDataSourceModel{}
+	resp.Diagnostics.Append(req.Config.Get(ctx, config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	labelID := gsmhelpers.EnsurePrefix(config.Name.ValueString(), "labels/")
+	if !config.Revision.IsNull() {
+		labelID += "@" + config.Revision.ValueString()
+	}
+	l, err := gsmdrivelabels.GetLabel(labelID, config.LanguageCode.ValueString(), "LABEL_VIEW_FULL", "*", config.UseAdminAccess.ValueBool())
 	if err != nil {
-		return err
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get label, got error: %s", err))
+		return
 	}
-	d.SetId(label.Id)
-	d.Set("description", label.Properties.Description)
-	d.Set("label_type", label.LabelType)
-	d.Set("title", label.Properties.Title)
-	d.Set("fields", getLabelFields(label.Fields))
-	return nil
+	config.LabelId = types.StringValue(l.Id)
+	config.Id = types.StringValue(l.Id)
+	config.LabelType = types.StringValue(l.LabelType)
+	config.Revision = types.StringValue(l.RevisionId)
+	config.Fields = fieldsToModel(l.Fields)
+	config.LifeCycle = &gdriveLabelLifeCycleDSModel{}
+	config.LifeCycle.populate(l.Lifecycle)
+	if l.Properties != nil {
+		config.Properties = &gdriveLabelResourcePropertiesModel{
+			Title:       types.StringValue(l.Properties.Title),
+			Description: types.StringValue(l.Properties.Description),
+		}
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

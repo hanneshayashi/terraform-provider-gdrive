@@ -18,188 +18,295 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
-	"time"
+	"context"
+	"fmt"
+	"net/http"
 
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"google.golang.org/api/drive/v3"
 )
 
-func resourceDrive() *schema.Resource {
-	return &schema.Resource{
-		Description: "Creates a Shared Drive",
-		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Name of the Shared Drive",
-			},
-			"use_domain_admin_access": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: "Use domain admin access",
-			},
-			"wait_after_create": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  60,
-				Description: `The Drive API returns a Shared Drive object immediately after creation, even though it is often not ready or visibile in other APIS.
-In order to prevent 404 errors after the creation of a Shared Drive, the provider will wait the specified number of seconds after the creation of a Shared Drive and before returning or attempting further operations.
-This value is only used for the initial creation and not used for updates. Changing this value after the initial creation has no effect.`,
-			},
-			"restrictions": {
-				Type:     schema.TypeList,
-				Optional: true,
-				DiffSuppressFunc: func(_, oldValue, newValue string, _ *schema.ResourceData) bool {
-					if (oldValue == "true" && newValue == "false") || (oldValue == "false" && newValue == "true") || (oldValue == "" && newValue != "") || (oldValue == "0" && newValue == "1") {
-						return false
-					}
-					return true
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ resource.Resource = &gdriveDriveResource{}
+var _ resource.ResourceWithImportState = &gdriveDriveResource{}
+
+const (
+	fieldsDrive         = "id,name,restrictions"
+	adminAttributeDrive = "use_domain_admin_access"
+)
+
+func newDrive() resource.Resource {
+	return &gdriveDriveResource{}
+}
+
+// gdriveDriveResource defines the resource implementation.
+type gdriveDriveResource struct {
+	client *http.Client
+}
+
+type driveRestrictionsModel struct {
+	AdminManagedRestrictions     types.Bool `tfsdk:"admin_managed_restrictions"`
+	CopyRequiresWriterPermission types.Bool `tfsdk:"copy_requires_writer_permission"`
+	DomainUsersOnly              types.Bool `tfsdk:"domain_users_only"`
+	DriveMembersOnly             types.Bool `tfsdk:"drive_members_only"`
+}
+
+// gdriveDriveResourceModelV1 describes the resource data model V1.
+type gdriveDriveResourceModelV1 struct {
+	Restrictions         *driveRestrictionsModel `tfsdk:"restrictions"`
+	Name                 types.String            `tfsdk:"name"`
+	DriveId              types.String            `tfsdk:"drive_id"`
+	Id                   types.String            `tfsdk:"id"`
+	UseDomainAdminAccess types.Bool              `tfsdk:"use_domain_admin_access"`
+}
+
+// gdriveDriveResourceModelV0 describes the resource data model V0.
+type gdriveDriveResourceModelV0 struct {
+	Name                 types.String              `tfsdk:"name"`
+	Id                   types.String              `tfsdk:"id"`
+	Restrictions         []*driveRestrictionsModel `tfsdk:"restrictions"`
+	WaitAfterCreate      types.Int64               `tfsdk:"wait_after_create"`
+	UseDomainAdminAccess types.Bool                `tfsdk:"use_domain_admin_access"`
+}
+
+func (r *gdriveDriveResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_drive"
+}
+
+func (r *gdriveDriveResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Version:             1,
+		MarkdownDescription: "Creates a Shared Drive.",
+		Attributes: map[string]schema.Attribute{
+			"id": rsId(),
+			"drive_id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The ID of the Shared Drive.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
-				Description: "The restrictions that should be set on the Shared Drive",
-				MaxItems:    1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"admin_managed_restrictions": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "Whether administrative privileges on this Shared Drive are required to modify restrictions",
-						},
-						"copy_requires_writer_permission": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Description: `Whether the options to copy, print, or download files inside this Shared Drive, should be disabled for readers and commenters.
-When this restriction is set to true, it will override the similarly named field to true for any file inside this Shared Drive`,
-						},
-						"domain_users_only": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Description: `Whether access to this Shared Drive and items inside this Shared Drive is restricted to users of the domain to which this Shared Drive belongs.
-This restriction may be overridden by other sharing policies controlled outside of this Shared Drive`,
-						},
-						"drive_members_only": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "Whether access to items inside this Shared Drive is restricted to its members",
-						},
+			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Name of the Shared Drive.",
+				Required:            true,
+			},
+			"use_domain_admin_access": schema.BoolAttribute{
+				MarkdownDescription: "Use domain admin access.",
+				Optional:            true,
+			},
+		},
+		Blocks: map[string]schema.Block{
+			"restrictions": schema.SingleNestedBlock{
+				MarkdownDescription: "The restrictions that should be set on the Shared Drive.",
+				Attributes: map[string]schema.Attribute{
+					"admin_managed_restrictions": schema.BoolAttribute{
+						MarkdownDescription: "Whether administrative privileges on this Shared Drive are required to modify restrictions.",
+						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(false),
+					},
+					"copy_requires_writer_permission": schema.BoolAttribute{
+						MarkdownDescription: `Whether the options to copy, print, or download files inside this Shared Drive, should be disabled for readers and commenters.
+
+When this restriction is set to true, it will override the similarly named field to true for any file inside this Shared Drive.`,
+						Optional: true,
+						Computed: true,
+						Default:  booldefault.StaticBool(false),
+					},
+					"domain_users_only": schema.BoolAttribute{
+						MarkdownDescription: `Whether access to this Shared Drive and items inside this Shared Drive is restricted to users of the domain to which this Shared Drive belongs.
+
+This restriction may be overridden by other sharing policies controlled outside of this Shared Drive.`,
+						Optional: true,
+						Computed: true,
+						Default:  booldefault.StaticBool(false),
+					},
+					"drive_members_only": schema.BoolAttribute{
+						MarkdownDescription: "Whether access to items inside this Shared Drive is restricted to its members.",
+						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(false),
 					},
 				},
 			},
 		},
-		Create: resourceCreateDrive,
-		Read:   resourceReadDrive,
-		Update: resourceUpdateDrive,
-		Delete: resourceDeleteDrive,
-		Exists: resourceExistsDrive,
-		Importer: &schema.ResourceImporter{
-			StateContext: schema.ImportStatePassthroughContext,
+	}
+}
+
+func (r *gdriveDriveResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"name": schema.StringAttribute{
+						Required: true,
+					},
+					"use_domain_admin_access": schema.BoolAttribute{
+						Optional: true,
+					},
+					"wait_after_create": schema.Int64Attribute{
+						Optional: true,
+						Computed: true,
+						Default:  int64default.StaticInt64(60),
+					},
+					"id": schema.StringAttribute{
+						Computed: true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"restrictions": schema.ListNestedAttribute{
+						Optional: true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"admin_managed_restrictions": schema.BoolAttribute{
+									Optional: true,
+								},
+								"copy_requires_writer_permission": schema.BoolAttribute{
+									Optional: true,
+								},
+								"domain_users_only": schema.BoolAttribute{
+									Optional: true,
+								},
+								"drive_members_only": schema.BoolAttribute{
+									Optional: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				stateV0 := &gdriveDriveResourceModelV0{}
+				resp.Diagnostics.Append(req.State.Get(ctx, stateV0)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				stateV1 := &gdriveDriveResourceModelV1{
+					Name:                 stateV0.Name,
+					UseDomainAdminAccess: stateV0.UseDomainAdminAccess,
+					Id:                   stateV0.Id,
+					DriveId:              stateV0.Id,
+					Restrictions:         stateV0.Restrictions[0],
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, stateV1)...)
+			},
 		},
 	}
 }
 
-func dataToDrive(d *schema.ResourceData, update bool) (*drive.Drive, error) {
-	newDrive := &drive.Drive{}
-	if d.HasChange("name") {
-		newDrive.Name = d.Get("name").(string)
-		if newDrive.Name == "" {
-			newDrive.ForceSendFields = append(newDrive.ForceSendFields, "Name")
+func (r *gdriveDriveResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	r.client = client
+}
+
+func (r *gdriveDriveResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	plan := &gdriveDriveResourceModelV1{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	driveReq := &drive.Drive{
+		Name: plan.Name.ValueString(),
+	}
+	d, err := gsmdrive.CreateDrive(driveReq, fieldsDrive, false)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create drive, got error: %s", err))
+		return
+	}
+	plan.Id = types.StringValue(d.Id)
+	plan.DriveId = types.StringValue(d.Id)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if plan.Restrictions != nil {
+		driveReq = &drive.Drive{
+			Restrictions: plan.Restrictions.toDriveRestrictions(),
+		}
+		_, err = gsmdrive.UpdateDrive(d.Id, fieldsDrive, plan.UseDomainAdminAccess.ValueBool(), driveReq)
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to set drive restrictions, got error: %s", err))
+			return
 		}
 	}
-	if update {
-		if d.HasChange("restrictions") {
-			newDrive.Restrictions = &drive.DriveRestrictions{}
-			restrictions := d.Get("restrictions").([]any)
-			if len(restrictions) > 0 {
-				if d.HasChange("restrictions.0.admin_managed_restrictions") {
-					newDrive.Restrictions.AdminManagedRestrictions = d.Get("restrictions.0.admin_managed_restrictions").(bool)
-					if !newDrive.Restrictions.AdminManagedRestrictions {
-						newDrive.Restrictions.ForceSendFields = append(newDrive.Restrictions.ForceSendFields, "AdminManagedRestrictions")
-					}
-				}
-				if d.HasChange("restrictions.0.copy_requires_writer_permission") {
-					newDrive.Restrictions.CopyRequiresWriterPermission = d.Get("restrictions.0.copy_requires_writer_permission").(bool)
-					if !newDrive.Restrictions.CopyRequiresWriterPermission {
-						newDrive.Restrictions.ForceSendFields = append(newDrive.Restrictions.ForceSendFields, "CopyRequiresWriterPermission")
-					}
-				}
-				if d.HasChange("restrictions.0.domain_users_only") {
-					newDrive.Restrictions.DomainUsersOnly = d.Get("restrictions.0.domain_users_only").(bool)
-					if !newDrive.Restrictions.DomainUsersOnly {
-						newDrive.Restrictions.ForceSendFields = append(newDrive.Restrictions.ForceSendFields, "DomainUsersOnly")
-					}
-				}
-				if d.HasChange("restrictions.0.drive_members_only") {
-					newDrive.Restrictions.DriveMembersOnly = d.Get("restrictions.0.drive_members_only").(bool)
-					if !newDrive.Restrictions.DriveMembersOnly {
-						newDrive.Restrictions.ForceSendFields = append(newDrive.Restrictions.ForceSendFields, "DriveMembersOnly")
-					}
-				}
-			} else {
-				newDrive.Restrictions.ForceSendFields = append(newDrive.Restrictions.ForceSendFields, "AdminManagedRestrictions", "CopyRequiresWriterPermission", "DomainUsersOnly", "DriveMembersOnly")
-			}
-		}
-	}
-	return newDrive, nil
 }
 
-func resourceCreateDrive(d *schema.ResourceData, _ any) error {
-	var driveResult *drive.Drive
-	var err error
-	driveRequest, err := dataToDrive(d, false)
-	if err != nil {
-		return err
+func (r *gdriveDriveResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	state := &gdriveDriveResourceModelV1{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	driveResult, err = gsmdrive.CreateDrive(driveRequest, "*", true)
-	if err != nil {
-		return err
+	state.DriveId = state.Id
+	resp.Diagnostics.Append(state.populate()...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	d.SetId(driveResult.Id)
-	time.Sleep(time.Duration(d.Get("wait_after_create").(int)) * time.Second)
-	if d.HasChange("restrictions") {
-		return resourceUpdateDrive(d, nil)
-	}
-	return resourceReadDrive(d, nil)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func resourceReadDrive(d *schema.ResourceData, _ any) error {
-	r, err := gsmdrive.GetDrive(d.Id(), "*", d.Get("use_domain_admin_access").(bool))
+func (r *gdriveDriveResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	plan := &gdriveDriveResourceModelV1{}
+	resp.Diagnostics.Append(req.Plan.Get(ctx, plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state := &gdriveDriveResourceModelV1{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	driveReq := &drive.Drive{}
+	if !plan.Name.Equal(state.Name) {
+		driveReq.Name = plan.Name.ValueString()
+	}
+	if plan.Restrictions != nil {
+		driveReq.Restrictions = plan.Restrictions.toDriveRestrictions()
+	}
+	_, err := gsmdrive.UpdateDrive(plan.Id.ValueString(), fieldsDrive, plan.UseDomainAdminAccess.ValueBool(), driveReq)
 	if err != nil {
-		return err
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update drive, got error: %s", err))
+		return
 	}
-	d.Set("name", r.Name)
-	restrictions := []map[string]bool{
-		{
-			"admin_managed_restrictions":      r.Restrictions.AdminManagedRestrictions,
-			"copy_requires_writer_permission": r.Restrictions.CopyRequiresWriterPermission,
-			"domain_users_only":               r.Restrictions.DomainUsersOnly,
-			"drive_members_only":              r.Restrictions.DriveMembersOnly,
-		},
-	}
-	d.Set("restrictions", restrictions)
-	return nil
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func resourceUpdateDrive(d *schema.ResourceData, _ any) error {
-	driveRequest, err := dataToDrive(d, true)
-	if err != nil {
-		return err
+func (r *gdriveDriveResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	state := &gdriveDriveResourceModelV1{}
+	resp.Diagnostics.Append(req.State.Get(ctx, state)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	_, err = gsmdrive.UpdateDrive(d.Id(), "id", d.Get("use_domain_admin_access").(bool), driveRequest)
+	_, err := gsmdrive.DeleteDrive(state.Id.ValueString(), state.UseDomainAdminAccess.ValueBool())
 	if err != nil {
-		return err
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete drive, got error: %s", err))
+		return
 	}
-	return resourceReadDrive(d, nil)
 }
 
-func resourceDeleteDrive(d *schema.ResourceData, _ any) error {
-	_, err := gsmdrive.DeleteDrive(d.Id())
-	return err
-}
-
-func resourceExistsDrive(d *schema.ResourceData, _ any) (bool, error) {
-	_, err := gsmdrive.GetDrive(d.Id(), "id", d.Get("use_domain_admin_access").(bool))
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+func (r *gdriveDriveResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resp.Diagnostics.Append(importSplitId(ctx, req, resp, adminAttributeDrive, "drive_id")...)
 }

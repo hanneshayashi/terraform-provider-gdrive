@@ -3,57 +3,102 @@
 page_title: "gdrive_label_policy Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Sets the labels on a Drive object
+  Enforces a set of labels on a Drive object.
 ---
 
 # gdrive_label_policy (Resource)
 
-Sets the labels on a Drive object
+Enforces a set of labels on a Drive object.
 
 ## Example Usage
 
 ```terraform
-resource "gdrive_label_policy" "policy" {
-  file_id = "..."
-  label {
-    label_id = "..."
-    field {
-      field_id   = "..."
-      value_type = "..."
-      values     = ["..."]
-    }
-    field {
-      field_id   = "..."
-      value_type = "..."
-      values     = ["..."]
-    }
+# Create and publish two Labels
+resource "gdrive_label" "label_1" {
+  label_type       = "ADMIN"
+  use_admin_access = true
+  properties {
+    title       = "My First Label"
+    description = "My Description"
   }
-  label {
-    label_id = "..."
-    field {
-      field_id   = "..."
-      value_type = "..."
-      values     = ["..."]
-    }
+  life_cycle {
+    state = "PUBLISHED"
   }
 }
 
-# Assign a label policy to all files in a folder
-data "gdrive_files" "files" {
-  query = "'file_id of a folder' in parents"
+resource "gdrive_label" "label_2" {
+  label_type       = "ADMIN"
+  use_admin_access = true
+  properties {
+    title       = "My Second Label"
+    description = "My Description"
+  }
+  life_cycle {
+    state = "PUBLISHED"
+  }
 }
 
-resource "gdrive_label_policy" "policy" {
-  for_each = toset([for file in data.gdrive_files.files.files : file.file_id])
-  file_id  = each.value
-  label {
-    label_id = "..."
-    field {
-      field_id   = "..."
-      value_type = "..."
-      values     = ["..."]
-    }
+# Create a Date Field for the first Label
+resource "gdrive_label_date_field" "field" {
+  label_id         = gdrive_label.label_1.label_id
+  use_admin_access = true
+  properties {
+    display_name = "My Date Field"
   }
+}
+
+# Create a Selection Field for the second Label
+resource "gdrive_label_selection_field" "field" {
+  label_id         = gdrive_label.label_2.label_id
+  use_admin_access = true
+  properties {
+    display_name = "My Selection Field"
+  }
+}
+
+# Create a Choice for the Selection Field
+resource "gdrive_label_selection_choice" "choice" {
+  label_id         = gdrive_label_selection_field.field.label_id
+  field_id         = gdrive_label_selection_field.field.field_id
+  use_admin_access = true
+  properties {
+    display_name = "My Choice"
+  }
+}
+
+# Create an empty Sheet
+resource "gdrive_file" "empty_speadsheet" {
+  name      = "my_sheet"
+  mime_type = "application/vnd.google-apps.spreadsheet"
+  parent    = "root"
+}
+
+# BE SURE TO CREATE AND PUBLISH(!) THE LABEL FIRST!
+# Assign the Label with the Field and Choice to a File
+resource "gdrive_label_policy" "policy" {
+  file_id = gdrive_file.empty_speadsheet.file_id
+  labels = [
+    {
+      label_id = gdrive_label.label_1.label_id
+      fields = [
+        {
+          field_id   = gdrive_label_date_field.field.field_id
+          value_type = "dateString"
+          values     = ["2023-06-22"] # YYYY-MM-DD
+        }
+      ]
+    },
+    {
+      label_id = gdrive_label.label_2.label_id
+      fields = [
+        {
+          field_id   = gdrive_label_selection_field.field.field_id
+          value_type = "selection"
+          values     = [gdrive_label_selection_choice.choice.choice_id]
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -62,42 +107,37 @@ resource "gdrive_label_policy" "policy" {
 
 ### Required
 
-- `file_id` (String) ID of the file to assign the label policy to.
-
-### Optional
-
-- `label` (Block Set) Represents a single label configuration.
-May be used multiple times to assign multiple labels to the file.
-All labels not configured here will be removed.
-If no labels are defined, all labels will be removed! (see [below for nested schema](#nestedblock--label))
+- `file_id` (String) ID of the file to assign the label(s) to.
+- `labels` (Attributes Set) The set of labels that should be applied to this file. (see [below for nested schema](#nestedatt--labels))
 
 ### Read-Only
 
-- `id` (String) The ID of this resource.
+- `id` (String) The unique ID of this resource.
 
-<a id="nestedblock--label"></a>
-### Nested Schema for `label`
+<a id="nestedatt--labels"></a>
+### Nested Schema for `labels`
 
 Required:
 
-- `field` (Block Set, Min: 1) (see [below for nested schema](#nestedblock--label--field))
+- `fields` (Attributes Set) A Set of fields of the assigned label. (see [below for nested schema](#nestedatt--labels--fields))
 - `label_id` (String) The ID of the label.
 
-<a id="nestedblock--label--field"></a>
-### Nested Schema for `label.field`
+<a id="nestedatt--labels--fields"></a>
+### Nested Schema for `labels.fields`
 
 Required:
 
 - `field_id` (String) The identifier of this field.
 - `value_type` (String) The field type.
 While new values may be supported in the future, the following are currently allowed:
-- dateString
-- integer
-- selection
-- text
-- user
+* dateString
+* integer
+* selection
+* text
+* user
 - `values` (Set of String) The values that should be set.
-Must be compatible with the specified valueType.
+
+Must be compatible with the specified value_type.
 
 ## Import
 

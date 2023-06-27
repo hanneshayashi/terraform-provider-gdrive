@@ -18,65 +18,117 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package provider
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+
 	"github.com/hanneshayashi/gsm/gsmdrive"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func dataSourcePermission() *schema.Resource {
-	return &schema.Resource{
-		Description: "Returns the metadata of a permission on a file or Shared Drive",
-		Schema: map[string]*schema.Schema{
-			"permission_id": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "ID of the permission",
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ datasource.DataSource = &permissionDataSource{}
+
+func newPermissionDataSource() datasource.DataSource {
+	return &permissionDataSource{}
+}
+
+// permissionDataSource defines the data source implementation.
+type permissionDataSource struct {
+	client *http.Client
+}
+
+type gdrivePermissionDataSourceModel struct {
+	Id                   types.String `tfsdk:"id"`
+	PermissionId         types.String `tfsdk:"permission_id"`
+	FileId               types.String `tfsdk:"file_id"`
+	Type                 types.String `tfsdk:"type"`
+	Domain               types.String `tfsdk:"domain"`
+	EmailAddress         types.String `tfsdk:"email_address"`
+	Role                 types.String `tfsdk:"role"`
+	UseDomainAdminAccess types.Bool   `tfsdk:"use_domain_admin_access"`
+}
+
+func (d *permissionDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_permission"
+}
+
+func (d *permissionDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Returns the metadata of a permission on a file or Shared Drive.",
+		Attributes: map[string]schema.Attribute{
+			"id": dsId(),
+			"permission_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the permission.",
+				Required:            true,
 			},
-			"file_id": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "ID of the file or Shared Drive",
+			"file_id": schema.StringAttribute{
+				Required:            true,
+				MarkdownDescription: "ID of the file or Shared Drive.",
 			},
-			"type": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'",
+			"type": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.",
 			},
-			"domain": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "The domain if the type of this permissions is 'domain'",
+			"domain": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The domain if the type of this permissions is 'domain'.",
 			},
-			"email_address": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "The email address if the type of this permissions is 'user' or 'group'",
+			"email_address": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The email address if the type of this permissions is 'user' or 'group'.",
 			},
-			"role": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "The role that this trustee is granted",
+			"role": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The role that this trustee is granted.",
 			},
-			"use_domain_admin_access": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: "Use domain admin access",
+			"use_domain_admin_access": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Use domain admin access.",
 			},
 		},
-		Read: dataSourceReadPermission,
 	}
 }
 
-func dataSourceReadPermission(d *schema.ResourceData, _ any) error {
-	fileID := d.Get("file_id").(string)
-	permissionID := d.Get("permission_id").(string)
-	r, err := gsmdrive.GetPermission(fileID, permissionID, "emailAddress,domain,role,type", d.Get("use_domain_admin_access").(bool))
-	if err != nil {
-		return err
+func (d *permissionDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
 	}
-	d.SetId(combineId(fileID, r.Id))
-	d.Set("email_address", r.EmailAddress)
-	d.Set("domain", r.Domain)
-	d.Set("role", r.Role)
-	d.Set("type", r.Type)
-	return nil
+
+	client, ok := req.ProviderData.(*http.Client)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
+func (ds *permissionDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	config := &gdrivePermissionDataSourceModel{}
+	resp.Diagnostics.Append(req.Config.Get(ctx, config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	fileID := config.FileId.ValueString()
+	permissionID := config.PermissionId.ValueString()
+	r, err := gsmdrive.GetPermission(fileID, permissionID, "emailAddress,domain,role,type,id", config.UseDomainAdminAccess.ValueBool())
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to get permission, got error: %s", err))
+		return
+	}
+	config.Id = types.StringValue(combineId(fileID, r.Id))
+	config.EmailAddress = types.StringValue(r.EmailAddress)
+	config.Domain = types.StringValue(r.Domain)
+	config.Role = types.StringValue(r.Role)
+	config.Type = types.StringValue(r.Type)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }
