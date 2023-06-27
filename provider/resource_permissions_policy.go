@@ -79,10 +79,6 @@ func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resourc
 
 It is HIGHLY recommended that you import the resource and make sure that the owner is properly set before applying it!
 
-You can import the resource using the file's or Shared Drive's id like so:
-
-terraform import [resource address] [fileId]
-
 **Important**: On a *destroy*, this resource will preserve the owner and organizer permissions!`,
 		Attributes: map[string]schema.Attribute{
 			"id": rsId(),
