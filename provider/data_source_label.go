@@ -178,7 +178,7 @@ When not specified, values in the default configured language are used.`,
 
 Defaults to the latest revision.
 
-Reading other revisions may require addtional permissions and / or setting the 'use_admin_access' flag.`,
+Reading other revisions may require additional permissions and / or setting the 'use_admin_access' flag.`,
 			},
 			"label_type": schema.StringAttribute{
 				Computed:            true,
