@@ -53,7 +53,7 @@ When not specified, values in the default configured language are used.
 
 Defaults to the latest revision.
 
-Reading other revisions may require addtional permissions and / or setting the 'use_admin_access' flag.
+Reading other revisions may require additional permissions and / or setting the 'use_admin_access' flag.
 - `use_admin_access` (Boolean) Set to true in order to use the user's admin credentials.
 
 The server verifies that the user is an admin for the label before allowing access.
