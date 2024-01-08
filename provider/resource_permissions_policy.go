@@ -73,7 +73,7 @@ func (r *gdrivePermissionPolicyResource) Metadata(ctx context.Context, req resou
 
 func (r *gdrivePermissionPolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: `Creates an authoratative permissions policy on a file or Shared Drive.
+		MarkdownDescription: `Creates an authoritative permissions policy on a file or Shared Drive.
 
 **Warning: This resource will set exactly the defined permissions and remove everything else!**
 
@@ -107,7 +107,7 @@ It is HIGHLY recommended that you import the resource and make sure that the own
 							Optional:            true,
 						},
 						"send_notification_email": schema.BoolAttribute{
-							MarkdownDescription: "Wether to send a notfication email.",
+							MarkdownDescription: "Wether to send a notification email.",
 							Optional:            true,
 						},
 						"type": schema.StringAttribute{

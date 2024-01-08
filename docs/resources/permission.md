@@ -48,7 +48,7 @@ resource "gdrive_permission" "permissions_owner_transfer" {
 - `email_address` (String) The email address of the trustee.
 - `email_message` (String) An optional email message that will be sent when the permission is created.
 - `move_to_new_owners_root` (Boolean) This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.
-- `send_notification_email` (Boolean) Wether to send a notfication email.
+- `send_notification_email` (Boolean) Wether to send a notification email.
 - `transfer_ownership` (Boolean) Whether to transfer ownership to the specified user.
 - `type` (String) The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.
 - `use_domain_admin_access` (Boolean) Use domain admin access.

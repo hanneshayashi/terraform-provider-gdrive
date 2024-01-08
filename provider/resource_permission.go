@@ -93,7 +93,7 @@ func (r *gdrivePermissionResource) Schema(ctx context.Context, req resource.Sche
 				Optional:            true,
 			},
 			"send_notification_email": schema.BoolAttribute{
-				MarkdownDescription: "Wether to send a notfication email.",
+				MarkdownDescription: "Wether to send a notification email.",
 				Optional:            true,
 			},
 			"type": schema.StringAttribute{

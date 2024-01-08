@@ -3,7 +3,7 @@
 page_title: "gdrive_permissions_policy Resource - terraform-provider-gdrive"
 subcategory: ""
 description: |-
-  Creates an authoratative permissions policy on a file or Shared Drive.
+  Creates an authoritative permissions policy on a file or Shared Drive.
   Warning: This resource will set exactly the defined permissions and remove everything else!
   It is HIGHLY recommended that you import the resource and make sure that the owner is properly set before applying it!
   Important: On a destroy, this resource will preserve the owner and organizer permissions!
@@ -11,7 +11,7 @@ description: |-
 
 # gdrive_permissions_policy (Resource)
 
-Creates an authoratative permissions policy on a file or Shared Drive.
+Creates an authoritative permissions policy on a file or Shared Drive.
 
 **Warning: This resource will set exactly the defined permissions and remove everything else!**
 
@@ -91,7 +91,7 @@ Optional:
 - `email_address` (String) The email address of the trustee.
 - `email_message` (String) An optional email message that will be sent when the permission is created.
 - `move_to_new_owners_root` (Boolean) This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.
-- `send_notification_email` (Boolean) Wether to send a notfication email.
+- `send_notification_email` (Boolean) Wether to send a notification email.
 - `transfer_ownership` (Boolean) Whether to transfer ownership to the specified user.
 - `type` (String) The type of the trustee. Can be 'user', 'domain', 'group' or 'anyone'.
 

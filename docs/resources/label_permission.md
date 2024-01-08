@@ -63,7 +63,7 @@ resource "gdrive_label_permission" "permission_audience" {
 - `audience` (String) Audience to grant a role to.
 
 The magic value of 'audiences/default' may be used to apply the role to the default audience in the context of the organization that owns the Label.
-- `email` (String) Specifies the email address for a user or group pricinpal.
+- `email` (String) Specifies the email address for a user or group principal.
 
 User and Group permissions may only be inserted using email address.
 - `use_admin_access` (Boolean) Set to true in order to use the user's admin credentials.

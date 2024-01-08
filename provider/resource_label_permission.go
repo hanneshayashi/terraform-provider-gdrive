@@ -96,7 +96,7 @@ The server verifies that the user is an admin for the label before allowing acce
 			},
 			"email": schema.StringAttribute{
 				Optional: true,
-				MarkdownDescription: `Specifies the email address for a user or group pricinpal.
+				MarkdownDescription: `Specifies the email address for a user or group principal.
 
 User and Group permissions may only be inserted using email address.`,
 				Validators: []validator.String{

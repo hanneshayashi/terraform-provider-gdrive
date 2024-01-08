@@ -11,9 +11,9 @@ The Terraform provider for Google Drive can be used to manage Google Drive objec
 
 It can also be used to manage permissions to any of these objects, as well as import and export files to and from Google Drive.
 
-Using Terraform and a source code management solution to manage your Google Drive environment can help you estabilsh secure processes
-that require approval from multiple people before changes are deployed to production. You can also build your own modules to estabilsh
-standards across your orgnization like naming conventions, default permissions or Label assignments.
+Using Terraform and a source code management solution to manage your Google Drive environment can help you establish secure processes
+that require approval from multiple people before changes are deployed to production. You can also build your own modules to establish
+standards across your organization like naming conventions, default permissions or Label assignments.
 
 ## Features
 
